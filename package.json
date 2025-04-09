@@ -1,0 +1,27 @@
+{
+  "name": "quickmeazure",
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/ui": "^2.14.1",
+    "@libsql/client": "^0.5.6",
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.29.5",
+    "jsonwebtoken": "^9.0.2",
+    "nuxt": "^3.10.3",
+    "uuid": "^9.0.1",
+    "vue": "^3.4.19",
+    "vue-router": "^4.2.5"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "latest",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.19"
+  }
+}
