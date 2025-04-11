@@ -1,15 +1,14 @@
 <template>
   <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">Measurements</h1>
-      <UButton
-        to="/measurements/new"
-        color="primary"
-        icon="i-heroicons-plus"
-      >
-        Add New Measurement
-      </UButton>
-    </div>
+    <PageHeader
+      title="Measurements"
+      subtitle="Track and manage your client measurements collection"
+      :primaryAction="{
+        label: 'Add New Measurement',
+        icon: 'i-heroicons-plus',
+        to: '/measurements/new'
+      }"
+    />
     
     <!-- Search and Filter -->
     <div class="flex flex-col md:flex-row gap-4">
@@ -73,69 +72,208 @@
       </div>
     </UCard>
     
-    <!-- Measurements Table -->
+    <!-- Measurements Table (desktop) / Cards (mobile) -->
     <UCard class="bg-white">
-      <UTable 
-        :columns="columns" 
-        :rows="filteredMeasurements" 
-        :loading="isLoading"
-        :empty-state="{
-          icon: 'i-heroicons-variable',
-          label: 'No measurements found',
-          description: search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by adding your first measurement',
-          action: search || isFilterApplied ? { label: 'Reset filters', click: resetFilters } : { label: 'Add measurement', to: '/measurements/new' }
-        }"
-      >
-        <template #client-data="{ row }">
-          <div class="flex items-center">
-            <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
-              <span class="text-primary-700 font-medium">{{ getInitials(row.client) }}</span>
+      <!-- Desktop Table View (hidden on mobile) -->
+      <div class="hidden sm:block">
+        <UTable 
+          :columns="columns" 
+          :rows="filteredMeasurements" 
+          :loading="isLoading"
+          :empty-state="{
+            icon: 'i-heroicons-variable',
+            label: 'No measurements found',
+            description: search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by adding your first measurement',
+            action: search || isFilterApplied ? { label: 'Reset filters', click: resetFilters } : { label: 'Add measurement', to: '/measurements/new' }
+          }"
+        >
+          <template #client-data="{ row }">
+            <div class="flex items-center">
+              <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
+                <span class="text-primary-700 font-medium">{{ getInitials(row.client) }}</span>
+              </div>
+              <NuxtLink :to="`/clients/${row.clientId}`" class="font-medium text-primary-600 hover:underline">
+                {{ row.client }}
+              </NuxtLink>
             </div>
-            <NuxtLink :to="`/clients/${row.clientId}`" class="font-medium text-primary-600 hover:underline">
-              {{ row.client }}
-            </NuxtLink>
-          </div>
+          </template>
+          
+          <template #measurements-data="{ row }">
+            <div class="flex flex-wrap gap-1">
+              <UBadge v-for="(value, key) in row.keyMeasurements" :key="key" color="gray" variant="subtle" size="sm">
+                {{ key }}: {{ value }}
+              </UBadge>
+            </div>
+          </template>
+          
+          <template #lastUpdated-data="{ row }">
+            {{ formatDate(row.lastUpdated) }}
+          </template>
+          
+          <template #actions-data="{ row }">
+            <div class="flex space-x-2">
+              <UButton
+                :to="`/measurements/${row.id}/detail`"
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-eye"
+                size="xs"
+              />
+              <UButton
+                :to="`/measurements/${row.id}/edit`"
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-pencil-square"
+                size="xs"
+              />
+              <UButton
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-trash"
+                size="xs"
+                @click="confirmDelete(row)"
+              />
+            </div>
+          </template>
+        </UTable>
+      </div>
+      
+      <!-- Mobile Card View (shown only on mobile) -->
+      <div class="sm:hidden space-y-4">
+        <template v-if="!isLoading && filteredMeasurements.length > 0">
+          <UCard 
+            v-for="measurement in filteredMeasurements" 
+            :key="measurement.id"
+            class="border border-gray-200 shadow-sm"
+          >
+            <div class="flex items-center mb-3">
+              <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3">
+                <span class="text-primary-700 font-medium text-lg">{{ getInitials(measurement.client) }}</span>
+              </div>
+              <NuxtLink :to="`/clients/${measurement.clientId}`" class="font-semibold text-lg text-primary-600 hover:underline">
+                {{ measurement.client }}
+              </NuxtLink>
+            </div>
+            
+            <div class="space-y-3">
+              <!-- Key Measurements -->
+              <div>
+                <h4 class="text-sm font-medium text-gray-500 mb-2">Key Measurements</h4>
+                <div class="flex flex-wrap gap-2">
+                  <UBadge 
+                    v-for="(value, key) in measurement.keyMeasurements" 
+                    :key="key" 
+                    color="gray" 
+                    variant="subtle"
+                  >
+                    {{ key }}: {{ value }}
+                  </UBadge>
+                </div>
+              </div>
+              
+              <!-- Last Updated -->
+              <div class="flex justify-between py-1 border-t border-gray-100 mt-2 pt-2">
+                <span class="text-gray-500 text-sm">Last Updated</span>
+                <span class="text-sm">{{ formatDate(measurement.lastUpdated) }}</span>
+              </div>
+            </div>
+            
+            <template #footer>
+              <div class="flex justify-between items-center">
+                <UButton
+                  :to="`/measurements/${measurement.id}/detail`"
+                  color="primary"
+                  variant="ghost"
+                  size="sm"
+                >
+                  View Details
+                </UButton>
+                
+                <div class="flex space-x-2">
+                  <UButton
+                    :to="`/measurements/${measurement.id}/edit`"
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-pencil-square"
+                    size="sm"
+                  />
+                  <UButton
+                    color="red"
+                    variant="ghost"
+                    icon="i-heroicons-trash"
+                    size="sm"
+                    @click="confirmDelete(measurement)"
+                  />
+                </div>
+              </div>
+            </template>
+          </UCard>
         </template>
         
-        <template #measurements-data="{ row }">
-          <div class="flex flex-wrap gap-1">
-            <UBadge v-for="(value, key) in row.keyMeasurements" :key="key" color="gray" variant="subtle" size="sm">
-              {{ key }}: {{ value }}
-            </UBadge>
+        <!-- Empty state for mobile -->
+        <div v-else-if="!isLoading && filteredMeasurements.length === 0" class="text-center py-8">
+          <div class="bg-gray-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <UIcon name="i-heroicons-variable" class="text-gray-400 text-xl" />
           </div>
-        </template>
+          <h3 class="text-lg font-medium text-gray-800 mb-1">No measurements found</h3>
+          <p class="text-gray-500 text-sm mb-4">
+            {{ search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by adding your first measurement' }}
+          </p>
+          <UButton
+            v-if="!search && !isFilterApplied"
+            to="/measurements/new"
+            color="primary"
+            size="sm"
+          >
+            Add measurement
+          </UButton>
+          <UButton
+            v-else
+            color="gray"
+            variant="outline"
+            size="sm"
+            @click="resetFilters"
+          >
+            Reset filters
+          </UButton>
+        </div>
         
-        <template #actions-data="{ row }">
-          <div class="flex space-x-2">
-            <UButton
-              :to="`/measurements/${row.id}`"
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-eye"
-              size="xs"
-            />
-            <UButton
-              :to="`/measurements/${row.id}/edit`"
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-pencil-square"
-              size="xs"
-            />
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-trash"
-              size="xs"
-              @click="confirmDelete(row)"
-            />
+        <!-- Loading state for mobile -->
+        <template v-else>
+          <div v-for="i in 3" :key="i" class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-gray-200 animate-pulse mr-3"></div>
+              <div class="h-6 bg-gray-200 rounded animate-pulse w-1/2"></div>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/3 mb-2"></div>
+                <div class="flex flex-wrap gap-2">
+                  <div class="h-6 bg-gray-200 rounded-full animate-pulse w-16"></div>
+                  <div class="h-6 bg-gray-200 rounded-full animate-pulse w-20"></div>
+                  <div class="h-6 bg-gray-200 rounded-full animate-pulse w-24"></div>
+                </div>
+              </div>
+              <div class="flex justify-between py-1 border-t border-gray-100 mt-2 pt-2">
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div>
+              </div>
+            </div>
+            <div class="flex justify-between items-center pt-2">
+              <div class="h-8 bg-gray-200 rounded animate-pulse w-1/3"></div>
+              <div class="flex space-x-2">
+                <div class="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                <div class="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
           </div>
         </template>
-      </UTable>
+      </div>
       
       <!-- Pagination -->
       <template #footer>
-        <div class="flex justify-between items-center">
-          <div class="text-sm text-gray-500">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div class="text-sm text-gray-500 order-2 sm:order-1">
             Showing {{ filteredMeasurements.length }} of {{ measurements.length }} measurements
           </div>
           <UPagination
@@ -143,6 +281,7 @@
             :page-count="pageCount"
             :total="filteredMeasurements.length"
             :ui="{ rounded: 'rounded-lg' }"
+            class="order-1 sm:order-2"
           />
         </div>
       </template>
@@ -189,6 +328,9 @@ useHead({
   title: 'Measurements - QuickMeazure',
 });
 
+// Import auth composable
+import { useAuth } from '~/composables/useAuth';
+
 // Table configuration
 const columns = [
   {
@@ -213,98 +355,19 @@ const columns = [
   },
 ];
 
-// Mock data
-const measurements = ref([
-  {
-    id: '1',
-    clientId: '1',
-    client: 'John Doe',
-    keyMeasurements: {
-      'Chest': '42"',
-      'Waist': '36"',
-      'Hip': '40"',
-      'Sleeve': '25"',
-    },
-    lastUpdated: '2023-11-15',
-    hasOrders: true,
-  },
-  {
-    id: '2',
-    clientId: '2',
-    client: 'Jane Smith',
-    keyMeasurements: {
-      'Bust': '38"',
-      'Waist': '30"',
-      'Hip': '40"',
-      'Shoulder': '15"',
-    },
-    lastUpdated: '2023-11-10',
-    hasOrders: true,
-  },
-  {
-    id: '3',
-    clientId: '4',
-    client: 'Sarah Williams',
-    keyMeasurements: {
-      'Bust': '36"',
-      'Waist': '28"',
-      'Hip': '38"',
-      'Inseam': '30"',
-    },
-    lastUpdated: '2023-10-28',
-    hasOrders: false,
-  },
-  {
-    id: '4',
-    clientId: '6',
-    client: 'Emily Davis',
-    keyMeasurements: {
-      'Bust': '34"',
-      'Waist': '26"',
-      'Hip': '36"',
-      'Sleeve': '23"',
-    },
-    lastUpdated: '2023-10-15',
-    hasOrders: true,
-  },
-  {
-    id: '5',
-    clientId: '8',
-    client: 'Olivia Taylor',
-    keyMeasurements: {
-      'Bust': '32"',
-      'Waist': '24"',
-      'Hip': '34"',
-      'Shoulder': '14"',
-    },
-    lastUpdated: '2023-10-05',
-    hasOrders: true,
-  },
-  {
-    id: '6',
-    clientId: '9',
-    client: 'James Anderson',
-    keyMeasurements: {
-      'Chest': '44"',
-      'Waist': '38"',
-      'Hip': '42"',
-      'Inseam': '32"',
-    },
-    lastUpdated: '2023-09-28',
-    hasOrders: false,
-  },
-]);
-
-// State variables
-const isLoading = ref(false);
+// State management
+const measurements = ref([]);
+const isLoading = ref(true);
 const search = ref('');
-const sortBy = ref('client-asc');
 const isFilterOpen = ref(false);
+const filteredMeasurements = ref([]);
 const currentPage = ref(1);
-const pageSize = 10;
-const filteredMeasurements = ref([...measurements.value]);
+const isDeleteModalOpen = ref(false);
+const measurementToDelete = ref(null);
+const isDeleting = ref(false);
 
-// Filter options
+// Sort and filter options
+const sortBy = ref('client-asc');
 const sortOptions = [
   { label: 'Client Name (A-Z)', value: 'client-asc' },
   { label: 'Client Name (Z-A)', value: 'client-desc' },
@@ -312,158 +375,285 @@ const sortOptions = [
   { label: 'Last Updated (Oldest)', value: 'date-asc' },
 ];
 
+const filters = ref({
+  dateAdded: null,
+  hasOrders: null,
+});
+
 const dateOptions = [
-  { label: 'Any time', value: 'any' },
-  { label: 'Today', value: 'today' },
-  { label: 'This week', value: 'week' },
-  { label: 'This month', value: 'month' },
-  { label: 'This year', value: 'year' },
+  { label: 'Last 7 days', value: '7days' },
+  { label: 'Last 30 days', value: '30days' },
+  { label: 'Last 3 months', value: '3months' },
+  { label: 'Last year', value: '1year' },
 ];
 
 const booleanOptions = [
-  { label: 'All clients', value: 'any' },
-  { label: 'Yes', value: 'yes' },
-  { label: 'No', value: 'no' },
+  { label: 'Yes', value: true },
+  { label: 'No', value: false },
 ];
 
-const filters = ref({
-  dateAdded: 'any',
-  hasOrders: 'any',
-});
-
 // Computed properties
-const isFilterApplied = computed(() => {
-  return filters.value.dateAdded !== 'any' || 
-         filters.value.hasOrders !== 'any';
-});
-
 const pageCount = computed(() => {
-  return Math.ceil(filteredMeasurements.value.length / pageSize);
+  return Math.ceil(filteredMeasurements.value.length / 10);
 });
 
-// Delete measurement functionality
-const isDeleteModalOpen = ref(false);
-const measurementToDelete = ref(null);
-const isDeleting = ref(false);
+const isFilterApplied = computed(() => {
+  return filters.value.dateAdded !== null || filters.value.hasOrders !== null;
+});
+
+// Helper functions
+const getInitials = (name) => {
+  if (!name) return '';
+  return name.split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
+};
+
+// Format measurements for display
+const formatMeasurements = (measurement) => {
+  const keyMeasurements = {};
+  
+  // Add the most important measurements
+  if (measurement.bust) keyMeasurements['Bust'] = formatMeasurement(measurement.bust);
+  if (measurement.waist) keyMeasurements['Waist'] = formatMeasurement(measurement.waist);
+  if (measurement.hip) keyMeasurements['Hip'] = formatMeasurement(measurement.hip);
+  if (measurement.shoulder) keyMeasurements['Shoulder'] = formatMeasurement(measurement.shoulder);
+  if (measurement.chest) keyMeasurements['Chest'] = formatMeasurement(measurement.chest);
+  if (measurement.sleeve) keyMeasurements['Sleeve'] = formatMeasurement(measurement.sleeve);
+  
+  return {
+    id: measurement.id,
+    clientId: measurement.clientId,
+    client: measurement.clientName,
+    keyMeasurements,
+    lastUpdated: new Date(measurement.updatedAt).toISOString(),
+    hasOrders: measurement.hasOrders, // Using real data from API
+    // Include all original measurements for reference
+    originalData: measurement
+  };
+};
+
+const formatMeasurement = (value) => {
+  if (value === null || value === undefined) return 'N/A';
+  return `${value}"`;
+};
+
+const filterMeasurements = () => {
+  let filtered = [...measurements.value];
+  
+  // Apply search filter
+  if (search.value) {
+    const searchLower = search.value.toLowerCase();
+    filtered = filtered.filter(measurement => 
+      measurement.client.toLowerCase().includes(searchLower)
+    );
+  }
+  
+  // Apply date filter
+  if (filters.value.dateAdded) {
+    const now = new Date();
+    let cutoffDate = new Date();
+    
+    switch (filters.value.dateAdded) {
+      case '7days':
+        cutoffDate.setDate(now.getDate() - 7);
+        break;
+      case '30days':
+        cutoffDate.setDate(now.getDate() - 30);
+        break;
+      case '3months':
+        cutoffDate.setMonth(now.getMonth() - 3);
+        break;
+      case '1year':
+        cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+    
+    filtered = filtered.filter(measurement => {
+      const measurementDate = new Date(measurement.lastUpdated);
+      return measurementDate >= cutoffDate;
+    });
+  }
+  
+  // Apply orders filter
+  if (filters.value.hasOrders !== null) {
+    filtered = filtered.filter(measurement => 
+      measurement.hasOrders === filters.value.hasOrders
+    );
+  }
+  
+  // Apply sorting
+  if (sortBy.value) {
+    const [field, direction] = sortBy.value.split('-');
+    
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      if (field === 'client') {
+        comparison = a.client.localeCompare(b.client);
+      } else if (field === 'date') {
+        const dateA = new Date(a.lastUpdated).getTime();
+        const dateB = new Date(b.lastUpdated).getTime();
+        comparison = dateA - dateB;
+      }
+      
+      return direction === 'desc' ? -comparison : comparison;
+    });
+  }
+  
+  filteredMeasurements.value = filtered;
+};
+
+const resetFilters = () => {
+  search.value = '';
+  filters.value = {
+    dateAdded: null,
+    hasOrders: null,
+  };
+  sortBy.value = 'client-asc';
+  isFilterOpen.value = false;
+  filterMeasurements();
+};
 
 const confirmDelete = (measurement) => {
   measurementToDelete.value = measurement;
   isDeleteModalOpen.value = true;
 };
 
+// Delete measurement
 const deleteMeasurement = async () => {
+  if (!measurementToDelete.value) return;
+  
   isDeleting.value = true;
   
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
     
-    // Remove measurement from list
-    measurements.value = measurements.value.filter(m => m.id !== measurementToDelete.value.id);
-    filteredMeasurements.value = filteredMeasurements.value.filter(m => m.id !== measurementToDelete.value.id);
+    if (!token) {
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to delete measurements',
+        color: 'orange'
+      });
+      navigateTo('/auth/login');
+      return;
+    }
+    
+    // Call the delete endpoint
+    await $fetch(`/api/measurements/${measurementToDelete.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    // Remove from local array
+    const index = measurements.value.findIndex(m => m.id === measurementToDelete.value.id);
+    if (index !== -1) {
+      measurements.value.splice(index, 1);
+    }
+    
+    // Update filtered measurements
+    filterMeasurements();
     
     // Show success notification
+    useToast().add({
+      title: 'Measurement deleted',
+      description: `Measurement for ${measurementToDelete.value.client} has been deleted successfully.`,
+      color: 'green',
+    });
+    
+    // Close modal
     isDeleteModalOpen.value = false;
+    measurementToDelete.value = null;
   } catch (error) {
-    console.error('Delete failed:', error);
-    // Show error notification
+    console.error('Error deleting measurement:', error);
+    let errorMessage = 'Failed to delete measurement. Please try again.';
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red',
+    });
   } finally {
     isDeleting.value = false;
   }
 };
 
-// Filter and sort measurements
-const filterMeasurements = () => {
+// Fetch measurements data
+const fetchMeasurements = async () => {
   isLoading.value = true;
   
-  // Simulate API delay
-  setTimeout(() => {
-    let result = [...measurements.value];
+  try {
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
     
-    // Apply search filter
-    if (search.value) {
-      const searchLower = search.value.toLowerCase();
-      result = result.filter(measurement => 
-        measurement.client.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    // Apply order filter
-    if (filters.value.hasOrders !== 'any') {
-      const hasOrders = filters.value.hasOrders === 'yes';
-      result = result.filter(measurement => measurement.hasOrders === hasOrders);
-    }
-    
-    // Apply date filter (simplified for demo)
-    if (filters.value.dateAdded !== 'any') {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      
-      result = result.filter(measurement => {
-        const measurementDate = new Date(measurement.lastUpdated).getTime();
-        
-        switch (filters.value.dateAdded) {
-          case 'today':
-            return measurementDate >= today;
-          case 'week':
-            const weekAgo = today - 7 * 24 * 60 * 60 * 1000;
-            return measurementDate >= weekAgo;
-          case 'month':
-            const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).getTime();
-            return measurementDate >= monthAgo;
-          case 'year':
-            const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).getTime();
-            return measurementDate >= yearAgo;
-          default:
-            return true;
-        }
+    if (!token) {
+      // Redirect to login if not authenticated
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to view measurements',
+        color: 'orange'
       });
+      navigateTo('/auth/login');
+      return;
     }
     
-    // Apply sorting
-    result.sort((a, b) => {
-      switch (sortBy.value) {
-        case 'client-asc':
-          return a.client.localeCompare(b.client);
-        case 'client-desc':
-          return b.client.localeCompare(a.client);
-        case 'date-asc':
-          return new Date(a.lastUpdated) - new Date(b.lastUpdated);
-        case 'date-desc':
-          return new Date(b.lastUpdated) - new Date(a.lastUpdated);
-        default:
-          return 0;
+    const data = await $fetch('/api/measurements', {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
     });
     
-    filteredMeasurements.value = result;
+    // Format the measurements data for display
+    measurements.value = data.map(measurement => formatMeasurements(measurement));
+    
+    filterMeasurements();
+  } catch (error) {
+    console.error('Error fetching measurements:', error);
+    let errorMessage = 'Failed to load measurements. Please refresh the page.';
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red',
+    });
+    
+    measurements.value = [];
+  } finally {
     isLoading.value = false;
-  }, 300);
+  }
 };
 
-// Reset all filters
-const resetFilters = () => {
-  search.value = '';
-  sortBy.value = 'client-asc';
-  filters.value = {
-    dateAdded: 'any',
-    hasOrders: 'any',
-  };
-  filterMeasurements();
-};
-
-// Helper function to get initials from name
-const getInitials = (name) => {
-  return name
-    .split(' ')
-    .map(part => part.charAt(0))
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
-};
-
-// Initialize
+// Initial fetch on component mount
 onMounted(() => {
-  filterMeasurements();
+  fetchMeasurements();
 });
+
+const formatDate = (timestamp) => {
+  const date = new Date(timestamp);
+  const month = date.toLocaleString('en-US', { month: 'short' });
+  const day = date.getDate().toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month} ${day}, ${year}`;
+};
 </script>

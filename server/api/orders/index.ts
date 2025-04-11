@@ -1,21 +1,39 @@
 import { db } from '~/server/database';
-import { orders, clients, styles } from '~/server/database/schema';
+import { orders, clients, styles, measurements } from '~/server/database/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and } from 'drizzle-orm';
 
 // Define event handler for orders API
 export default defineEventHandler(async (event) => {
   const method = getMethod(event);
-  const userId = '1'; // In a real app, this would come from authentication
+  
+  // Get authenticated user from event context
+  const auth = event.context.auth;
+  if (!auth || !auth.userId) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+    });
+  }
 
   // Handle GET request to fetch all orders
   if (method === 'GET') {
     try {
-      // Join with clients to ensure we only get orders for this user's clients
+      // Check for clientId filter
+      const query = getQuery(event);
+      const clientId = query.clientId as string;
+      
+      // Build where condition based on clientId filter
+      const whereCondition = clientId 
+        ? and(eq(clients.userId, auth.userId), eq(orders.clientId, clientId))
+        : eq(clients.userId, auth.userId);
+      
+      // Execute query with the appropriate filter
       const allOrders = await db
         .select({
           id: orders.id,
           clientId: orders.clientId,
+          measurementId: orders.measurementId,
           styleId: orders.styleId,
           status: orders.status,
           dueDate: orders.dueDate,
@@ -34,7 +52,7 @@ export default defineEventHandler(async (event) => {
         .from(orders)
         .innerJoin(clients, eq(orders.clientId, clients.id))
         .leftJoin(styles, eq(orders.styleId, styles.id))
-        .where(eq(clients.userId, userId));
+        .where(whereCondition);
 
       return allOrders;
     } catch (error) {
@@ -58,6 +76,13 @@ export default defineEventHandler(async (event) => {
           statusMessage: 'Client ID is required',
         });
       }
+      
+      if (!body.measurementId) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Measurement ID is required',
+        });
+      }
 
       if (!body.totalAmount) {
         throw createError({
@@ -71,13 +96,28 @@ export default defineEventHandler(async (event) => {
         .from(clients)
         .where(and(
           eq(clients.id, body.clientId),
-          eq(clients.userId, userId)
+          eq(clients.userId, auth.userId)
         ));
 
       if (clientExists.length === 0) {
         throw createError({
           statusCode: 404,
           statusMessage: 'Client not found',
+        });
+      }
+      
+      // Verify measurement exists and belongs to this client
+      const measurementExists = await db.select()
+        .from(measurements)
+        .where(and(
+          eq(measurements.id, body.measurementId),
+          eq(measurements.clientId, body.clientId)
+        ));
+        
+      if (measurementExists.length === 0) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: 'Measurement not found or does not belong to this client',
         });
       }
 
@@ -87,7 +127,7 @@ export default defineEventHandler(async (event) => {
           .from(styles)
           .where(and(
             eq(styles.id, body.styleId),
-            eq(styles.userId, userId)
+            eq(styles.userId, auth.userId)
           ));
 
         if (styleExists.length === 0) {
@@ -107,15 +147,16 @@ export default defineEventHandler(async (event) => {
       const newOrder = {
         id: uuidv4(),
         clientId: body.clientId,
+        measurementId: body.measurementId,
         styleId: body.styleId || null,
-        status: body.status || 'Pending',
-        dueDate: body.dueDate || null,
+        status: body.status || 'pending',
+        dueDate: body.dueDate ? new Date(body.dueDate) : null,
         totalAmount,
         depositAmount,
         balanceAmount,
         notes: body.notes || null,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       await db.insert(orders).values(newOrder);
@@ -127,7 +168,7 @@ export default defineEventHandler(async (event) => {
         styleName: body.styleId ? (await db.select().from(styles).where(eq(styles.id, body.styleId)))[0]?.name : null,
         styleImageUrl: body.styleId ? (await db.select().from(styles).where(eq(styles.id, body.styleId)))[0]?.imageUrl : null
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating order:', error);
       if (error.statusCode) {
         throw error; // Re-throw validation errors

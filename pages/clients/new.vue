@@ -8,7 +8,7 @@
         to="/clients"
         class="mr-4"
       />
-      <h1 class="text-2xl font-bold">Add New Client</h1>
+      <h1 class="text-xl font-bold">Add New Client</h1>
     </div>
     
     <UCard class="bg-white">
@@ -109,20 +109,70 @@ const saveClient = async () => {
   
   try {
     // Validate required fields
-    if (!client.value.name || !client.value.phone) {
-      // Show error notification
+    if (!client.value.name) {
+      useToast().add({
+        title: 'Missing information',
+        description: 'Please enter the client name',
+        color: 'red'
+      });
+      isSaving.value = false;
       return;
     }
     
-    // Simulate API call to save client
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
     
-    // In a real app, this would save to the database
-    // For now, we'll just redirect to the clients page
+    if (!token) {
+      // Redirect to login if not authenticated
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to add clients',
+        color: 'orange'
+      });
+      navigateTo('/auth/login');
+      return;
+    }
+    
+    // Call API to save client
+    await $fetch('/api/clients', {
+      method: 'POST',
+      body: client.value,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    // Show success notification
+    useToast().add({
+      title: 'Client saved',
+      description: 'The client has been added successfully',
+      color: 'green'
+    });
+    
+    // Redirect to clients page
     navigateTo('/clients');
   } catch (error) {
     console.error('Failed to save client:', error);
-    // Show error notification
+    let errorMessage = 'An error occurred while saving the client';
+    
+    // Get more specific error message if available
+    if (error.data?.statusMessage) {
+      errorMessage = error.data.statusMessage;
+    }
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red'
+    });
   } finally {
     isSaving.value = false;
   }

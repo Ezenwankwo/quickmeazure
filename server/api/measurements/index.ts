@@ -1,45 +1,104 @@
 import { db } from '~/server/database';
-import { measurements, clients } from '~/server/database/schema';
+import { measurements, clients, orders } from '~/server/database/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, exists } from 'drizzle-orm';
+import { SQL } from 'drizzle-orm';
 
 // Define event handler for GET requests
 export default defineEventHandler(async (event) => {
   const method = getMethod(event);
-  const userId = '1'; // In a real app, this would come from authentication
+  
+  // Get authenticated user from event context
+  const auth = event.context.auth;
+  if (!auth || !auth.userId) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+    });
+  }
 
   // Handle GET request to fetch all measurements
   if (method === 'GET') {
     try {
-      // Join with clients to ensure we only get measurements for this user's clients
-      const allMeasurements = await db
-        .select({
-          id: measurements.id,
-          clientId: measurements.clientId,
-          bust: measurements.bust,
-          waist: measurements.waist,
-          hip: measurements.hip,
-          shoulder: measurements.shoulder,
-          sleeve: measurements.sleeve,
-          inseam: measurements.inseam,
-          neck: measurements.neck,
-          chest: measurements.chest,
-          back: measurements.back,
-          thigh: measurements.thigh,
-          calf: measurements.calf,
-          ankle: measurements.ankle,
-          wrist: measurements.wrist,
-          armhole: measurements.armhole,
-          customMeasurements: measurements.customMeasurements,
-          createdAt: measurements.createdAt,
-          updatedAt: measurements.updatedAt,
-          // Include client name for display
-          clientName: clients.name
-        })
-        .from(measurements)
-        .innerJoin(clients, eq(measurements.clientId, clients.id))
-        .where(eq(clients.userId, userId));
-
+      // Get the clientId from query parameters if provided
+      const query = getQuery(event);
+      const clientId = query.clientId as string | undefined;
+      
+      // Build query based on whether clientId is provided
+      let measurementsQuery;
+      
+      if (clientId) {
+        // Query with clientId filter
+        measurementsQuery = db
+          .select({
+            id: measurements.id,
+            clientId: measurements.clientId,
+            clientName: clients.name,
+            bust: measurements.bust,
+            waist: measurements.waist,
+            hip: measurements.hip,
+            shoulder: measurements.shoulder,
+            sleeve: measurements.sleeve,
+            inseam: measurements.inseam,
+            neck: measurements.neck,
+            chest: measurements.chest,
+            back: measurements.back,
+            thigh: measurements.thigh,
+            calf: measurements.calf,
+            ankle: measurements.ankle,
+            wrist: measurements.wrist,
+            armhole: measurements.armhole,
+            customMeasurements: measurements.customMeasurements,
+            notes: measurements.notes,
+            createdAt: measurements.createdAt,
+            updatedAt: measurements.updatedAt,
+            // Check if client has orders
+            hasOrders: exists(
+              db.select().from(orders).where(eq(orders.clientId, measurements.clientId))
+            ),
+          })
+          .from(measurements)
+          .innerJoin(clients, eq(measurements.clientId, clients.id))
+          .where(and(
+            eq(clients.userId, auth.userId),
+            eq(measurements.clientId, clientId)
+          ));
+      } else {
+        // Query without clientId filter
+        measurementsQuery = db
+          .select({
+            id: measurements.id,
+            clientId: measurements.clientId,
+            clientName: clients.name,
+            bust: measurements.bust,
+            waist: measurements.waist,
+            hip: measurements.hip,
+            shoulder: measurements.shoulder,
+            sleeve: measurements.sleeve,
+            inseam: measurements.inseam,
+            neck: measurements.neck,
+            chest: measurements.chest,
+            back: measurements.back,
+            thigh: measurements.thigh,
+            calf: measurements.calf,
+            ankle: measurements.ankle,
+            wrist: measurements.wrist,
+            armhole: measurements.armhole,
+            customMeasurements: measurements.customMeasurements,
+            notes: measurements.notes,
+            createdAt: measurements.createdAt,
+            updatedAt: measurements.updatedAt,
+            // Check if client has orders
+            hasOrders: exists(
+              db.select().from(orders).where(eq(orders.clientId, measurements.clientId))
+            ),
+          })
+          .from(measurements)
+          .innerJoin(clients, eq(measurements.clientId, clients.id))
+          .where(eq(clients.userId, auth.userId));
+      }
+      
+      const allMeasurements = await measurementsQuery;
       return allMeasurements;
     } catch (error) {
       console.error('Error fetching measurements:', error);
@@ -68,7 +127,7 @@ export default defineEventHandler(async (event) => {
         .from(clients)
         .where(and(
           eq(clients.id, body.clientId),
-          eq(clients.userId, userId)
+          eq(clients.userId, auth.userId)
         ));
 
       if (clientExists.length === 0) {
@@ -97,8 +156,9 @@ export default defineEventHandler(async (event) => {
         wrist: body.wrist || null,
         armhole: body.armhole || null,
         customMeasurements: body.customMeasurements ? JSON.stringify(body.customMeasurements) : null,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        notes: body.notes || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       await db.insert(measurements).values(newMeasurement);
@@ -108,7 +168,7 @@ export default defineEventHandler(async (event) => {
         ...newMeasurement,
         clientName: clientExists[0].name
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating measurement:', error);
       if (error.statusCode) {
         throw error; // Re-throw validation errors

@@ -149,22 +149,41 @@ const isFormValid = computed(() => {
   );
 });
 
-// Mock register function - will be replaced with actual API call
 const handleRegister = async () => {
   if (!isFormValid.value) return;
   
   isLoading.value = true;
   
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, we'll just redirect to dashboard
-    // In a real app, this would create a user account and set auth state
+    // Use the register function from useAuth composable
+    const auth = useAuth();
+    const result = await auth.register(
+      name.value,
+      email.value,
+      password.value,
+      selectedPlan.value
+    );
+
+    if (!result.success) {
+      throw new Error(result.error || 'Registration failed');
+    }
+
+    // Show success message
+    useToast().add({
+      title: 'Registration successful',
+      description: 'Welcome to QuickMeazure!',
+      color: 'green'
+    });
+
+    // Redirect to dashboard
     navigateTo('/dashboard');
   } catch (error) {
     console.error('Registration failed:', error);
-    // Show error notification
+    useToast().add({
+      title: 'Registration failed',
+      description: error.message || 'An error occurred during registration',
+      color: 'red'
+    });
   } finally {
     isLoading.value = false;
   }

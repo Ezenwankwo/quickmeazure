@@ -8,7 +8,7 @@
         to="/styles"
         class="mr-4"
       />
-      <h1 class="text-2xl font-bold">Add New Style</h1>
+      <h1 class="text-xl font-bold">Add New Style</h1>
     </div>
     
     <UCard class="bg-white">
@@ -140,28 +140,71 @@ const handleImageUpload = (event) => {
 // Save style
 const saveStyle = async () => {
   if (!style.value.name) {
-    alert('Style name is required');
+    useToast().add({
+      title: 'Validation Error',
+      description: 'Style name is required',
+      color: 'red'
+    });
     return;
   }
   
   isSaving.value = true;
   
   try {
-    // Simulate API call to save style
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const { authFetch } = useApiAuth();
     
-    // In a real app, this would upload the image and save to the database
-    console.log('Style saved:', {
-      name: style.value.name,
-      description: style.value.description,
-      imageFile: style.value.imageFile ? style.value.imageFile.name : null
+    // Handle image upload via FormData if we have an image file
+    let newStyle;
+    
+    if (style.value.imageFile) {
+      // Use FormData to send the file directly to the server
+      const formData = new FormData();
+      formData.append('name', style.value.name);
+      
+      if (style.value.description) {
+        formData.append('description', style.value.description);
+      }
+      
+      formData.append('image', style.value.imageFile);
+      
+      // Send form data to the server for processing
+      newStyle = await authFetch('/api/styles', {
+        method: 'POST',
+        body: formData
+      });
+    } else {
+      // If no image, just send JSON data
+      const styleData = {
+        name: style.value.name,
+        description: style.value.description || null
+      };
+      
+      newStyle = await authFetch('/api/styles', {
+        method: 'POST',
+        body: styleData
+      });
+    }
+    
+    // Show success notification
+    useToast().add({
+      title: 'Style Created',
+      description: 'Your style has been created successfully',
+      color: 'green'
     });
     
-    // Navigate back to styles list
+    // Navigate to the styles page
     navigateTo('/styles');
   } catch (error) {
-    console.error('Error saving style:', error);
-    alert('Failed to save style. Please try again.');
+    console.error('Error creating style:', error);
+    
+    // Error notification (auth errors are handled by authFetch)
+    if (!error.message?.includes('No authentication token')) {
+      useToast().add({
+        title: 'Error',
+        description: 'Failed to create style. Please try again.',
+        color: 'red'
+      });
+    }
   } finally {
     isSaving.value = false;
   }

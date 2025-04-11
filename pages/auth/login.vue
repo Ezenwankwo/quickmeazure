@@ -78,7 +78,17 @@ const isLoading = ref(false);
 // Import auth composable
 const { login, isLoggedIn } = useAuth();
 const router = useRouter();
-const error = ref('');
+
+// Reset auth interceptor flag on login page load
+onMounted(() => {
+  // Reset any previous error states when visiting the login page
+  // This is done here rather than in the plugin to ensure a clean login state
+  if (process.client) {
+    // Clear all auth-related error flags to ensure clean login
+    localStorage.removeItem('isHandlingAuthError');
+    localStorage.removeItem('lastLoginTime');
+  }
+});
 
 // Redirect if already logged in
 watchEffect(() => {
@@ -90,25 +100,56 @@ watchEffect(() => {
 // Handle login form submission
 const handleLogin = async () => {
   if (!email.value || !password.value) {
-    error.value = 'Please enter both email and password';
+    useToast().add({
+      title: 'Error',
+      description: 'Please enter both email and password',
+      color: 'red',
+      icon: 'i-heroicons-exclamation-circle',
+    });
     return;
   }
   
-  error.value = '';
   isLoading.value = true;
   
   try {
+    // Clear any pending auth errors before login attempt
+    if (process.client) {
+      localStorage.removeItem('isHandlingAuthError');
+    }
+    
     const result = await login(email.value, password.value);
     
     if (result.success) {
+      // Set login time marker to prevent immediate logout
+      if (process.client) {
+        localStorage.setItem('lastLoginTime', Date.now().toString());
+      }
+      
+      useToast().add({
+        title: 'Success',
+        description: 'You have been logged in successfully',
+        color: 'green',
+        icon: 'i-heroicons-check-circle',
+      });
+      
       // Redirect to dashboard on successful login
       router.push('/dashboard');
     } else {
-      error.value = result.error || 'Login failed. Please try again.';
+      useToast().add({
+        title: 'Error',
+        description: result.error || 'Login failed. Please try again.',
+        color: 'red',
+        icon: 'i-heroicons-exclamation-circle',
+      });
     }
-  } catch (e) {
-    console.error('Login error:', e);
-    error.value = 'An unexpected error occurred. Please try again.';
+  } catch (error) {
+    console.error('Login error:', error);
+    useToast().add({
+      title: 'Error',
+      description: 'An unexpected error occurred. Please try again.',
+      color: 'red',
+      icon: 'i-heroicons-exclamation-circle',
+    });
   } finally {
     isLoading.value = false;
   }

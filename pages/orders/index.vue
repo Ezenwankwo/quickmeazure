@@ -1,15 +1,14 @@
 <template>
   <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">Orders</h1>
-      <UButton
-        to="/orders/new"
-        color="primary"
-        icon="i-heroicons-plus"
-      >
-        Create New Order
-      </UButton>
-    </div>
+    <PageHeader
+      title="Orders"
+      subtitle="Manage your customer orders and track payments"
+      :primaryAction="{
+        label: 'Create New Order',
+        icon: 'i-heroicons-plus',
+        to: '/orders/new'
+      }"
+    />
     
     <!-- Search and Filter -->
     <div class="flex flex-col md:flex-row gap-4">
@@ -82,143 +81,334 @@
       </div>
     </UCard>
     
-    <!-- Orders Table -->
+    <!-- Orders Table (desktop) / Cards (mobile) -->
     <UCard class="bg-white">
-      <UTable 
-        :columns="columns" 
-        :rows="filteredOrders" 
-        :loading="isLoading"
-        :empty-state="{
-          icon: 'i-heroicons-shopping-bag',
-          label: 'No orders found',
-          description: search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by creating your first order',
-          action: search || isFilterApplied ? { label: 'Reset filters', click: resetFilters } : { label: 'Create order', to: '/orders/new' }
-        }"
-      >
-        <template #client-data="{ row }">
-          <div class="flex items-center">
-            <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
-              <span class="text-primary-700 font-medium">{{ getInitials(row.client) }}</span>
+      <!-- Desktop Table View (hidden on mobile) -->
+      <div class="hidden md:block">
+        <UTable 
+          :columns="columns" 
+          :rows="filteredOrders" 
+          :loading="isLoading"
+          :empty-state="{
+            icon: 'i-heroicons-shopping-bag',
+            label: 'No orders found',
+            description: search || isFilterApplied.value ? 'Try adjusting your search or filters' : 'Get started by creating your first order',
+            action: search || isFilterApplied.value ? { label: 'Reset filters', click: resetFilters } : { label: 'Create order', to: '/orders/new' }
+          }"
+        >
+          <template #client-data="{ row }">
+            <div class="flex items-center">
+              <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
+                <span class="text-primary-700 font-medium">{{ getInitials(row.client) }}</span>
+              </div>
+              <NuxtLink :to="`/orders/${row.id}/detail`" class="font-medium text-primary-600 hover:underline">
+                {{ row.clientName }}
+              </NuxtLink>
             </div>
-            <NuxtLink :to="`/clients/${row.clientId}`" class="font-medium text-primary-600 hover:underline">
-              {{ row.client }}
-            </NuxtLink>
-          </div>
-        </template>
-        
-        <template #style-data="{ row }">
-          <div v-if="row.style" class="flex items-center">
-            <div v-if="row.styleImageUrl" class="w-8 h-8 rounded bg-gray-100 mr-2 overflow-hidden">
-              <img :src="row.styleImageUrl" :alt="row.style" class="w-full h-full object-cover" />
-            </div>
-            <span>{{ row.style }}</span>
-          </div>
-          <span v-else class="text-gray-500">—</span>
-        </template>
-        
-        <template #dueDate-data="{ row }">
-          <div class="flex items-center">
-            <span :class="{
-              'text-red-600': isOverdue(row.dueDate),
-              'text-amber-600': isDueSoon(row.dueDate) && !isOverdue(row.dueDate),
-            }">{{ formatDate(row.dueDate) }}</span>
-            
-            <UBadge 
-              v-if="isOverdue(row.dueDate)" 
-              color="red" 
-              variant="subtle"
-              size="xs"
-              class="ml-2"
-            >
-              Overdue
-            </UBadge>
-            
-            <UBadge 
-              v-else-if="isDueSoon(row.dueDate)" 
-              color="amber" 
-              variant="subtle"
-              size="xs"
-              class="ml-2"
-            >
-              Due Soon
-            </UBadge>
-          </div>
-        </template>
-        
-        <template #status-data="{ row }">
-          <UBadge
-            :color="getStatusColor(row.status)"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.status }}
-          </UBadge>
-        </template>
-        
-        <template #payment-data="{ row }">
-          <div>
-            <div class="font-medium">{{ formatPrice(row.totalAmount) }}</div>
-            <div class="text-xs text-gray-500">
-              <span v-if="row.balanceAmount > 0">
-                {{ formatPrice(row.depositAmount) }} paid
+          </template>
+          
+          <template #style-data="{ row }">
+            <span v-if="row.style">{{ row.style }}</span>
+            <span v-else class="text-gray-400">No style</span>
+          </template>
+          
+          <template #dueDate-data="{ row }">
+            <div v-if="row.dueDate" class="flex items-center">
+              <span :class="{
+                'text-red-600 font-medium': isOverdue(row.dueDate),
+                'text-amber-600 font-medium': !isOverdue(row.dueDate) && isDueSoon(row.dueDate)
+              }">
+                {{ formatDate(row.dueDate) }}
               </span>
-              <span v-else class="text-green-600 font-medium">Paid in full</span>
+              <UIcon v-if="isOverdue(row.dueDate)" name="i-heroicons-exclamation-circle" class="text-red-500 ml-1" />
+              <UIcon v-else-if="isDueSoon(row.dueDate)" name="i-heroicons-clock" class="text-amber-500 ml-1" />
             </div>
-          </div>
-        </template>
-        
-        <template #actions-data="{ row }">
-          <div class="flex space-x-2">
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-eye"
-              size="xs"
-              :to="`/orders/${row.id}`"
-            />
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-pencil-square"
-              size="xs"
-              :to="`/orders/${row.id}/edit`"
-            />
-            <UDropdown
-              :items="[
-                [
-                  {
-                    label: 'Mark as Completed',
-                    icon: 'i-heroicons-check-circle',
-                    click: () => updateOrderStatus(row, 'Completed'),
-                    disabled: row.status === 'Completed'
-                  },
-                  {
-                    label: 'Record Payment',
-                    icon: 'i-heroicons-currency-dollar',
-                    to: `/orders/${row.id}/payment`,
-                    disabled: row.balanceAmount <= 0
-                  }
-                ],
-                [
-                  {
-                    label: 'Delete Order',
-                    icon: 'i-heroicons-trash',
-                    click: () => confirmDelete(row),
-                    color: 'red'
-                  }
-                ]
-              ]"
+            <span v-else class="text-gray-400">Not set</span>
+          </template>
+          
+          <template #status-data="{ row }">
+            <UBadge
+              :color="getStatusColor(row.status)"
+              variant="subtle"
+              size="sm"
             >
+              {{ row.status }}
+            </UBadge>
+          </template>
+          
+          <template #payment-data="{ row }">
+            <div class="flex flex-col">
+              <div class="text-sm font-medium">{{ formatPrice(row.totalAmount) }}</div>
+              <div class="text-xs" :class="{
+                'text-green-600': row.balanceAmount <= 0,
+                'text-amber-600': row.depositAmount > 0 && row.balanceAmount > 0,
+                'text-gray-500': row.depositAmount <= 0
+              }">
+                <template v-if="row.balanceAmount <= 0">Paid in full</template>
+                <template v-else-if="row.depositAmount > 0">{{ formatPrice(row.balanceAmount) }} balance</template>
+                <template v-else>No payment</template>
+              </div>
+            </div>
+          </template>
+          
+          <template #actions-data="{ row }">
+            <div class="flex space-x-2">
+              <UButton
+                icon="i-heroicons-eye"
+                color="gray"
+                variant="ghost"
+                size="xs"
+                :to="`/orders/${row.id}/detail`"
+              />
               <UButton
                 color="gray"
                 variant="ghost"
-                icon="i-heroicons-ellipsis-vertical"
+                icon="i-heroicons-pencil-square"
                 size="xs"
+                :to="`/orders/${row.id}/edit`"
               />
-            </UDropdown>
+              <UDropdown
+                :items="[
+                  [
+                    {
+                      label: 'Mark as Completed',
+                      icon: 'i-heroicons-check-circle',
+                      click: () => updateOrderStatus(row, 'Completed'),
+                      disabled: row.status === 'Completed'
+                    },
+                    {
+                      label: 'Record Payment',
+                      icon: 'i-heroicons-currency-dollar',
+                      to: `/orders/${row.id}/payment`,
+                      disabled: row.balanceAmount <= 0
+                    }
+                  ],
+                  [
+                    {
+                      label: 'Delete Order',
+                      icon: 'i-heroicons-trash',
+                      click: () => confirmDelete(row),
+                      color: 'red'
+                    }
+                  ]
+                ]"
+              >
+                <UButton
+                  color="gray"
+                  variant="ghost"
+                  icon="i-heroicons-ellipsis-vertical"
+                  size="xs"
+                />
+              </UDropdown>
+            </div>
+          </template>
+        </UTable>
+      </div>
+      
+      <!-- Mobile Card View -->
+      <div class="md:hidden space-y-4">
+        <!-- Loading state for mobile -->
+        <template v-if="isLoading">
+          <div v-for="i in 3" :key="i" class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-gray-200 animate-pulse mr-3"></div>
+              <div class="h-6 bg-gray-200 rounded animate-pulse w-1/2"></div>
+            </div>
+            <div class="space-y-2">
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-2/5"></div>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/6"></div>
+              </div>
+            </div>
+            <div class="flex justify-between items-center pt-2">
+              <div class="h-8 bg-gray-200 rounded animate-pulse w-1/4"></div>
+              <div class="flex space-x-2">
+                <div class="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                <div class="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
           </div>
         </template>
-      </UTable>
+
+        <!-- Orders list for mobile -->
+        <template v-else-if="filteredOrders.length > 0">
+          <div v-for="order in filteredOrders" :key="order.id" class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+            <div class="flex items-start mb-3">
+              <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3 flex-shrink-0">
+                <span class="text-primary-700 font-medium text-lg">{{ getInitials(order.client) }}</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <NuxtLink :to="`/orders/${order.id}/detail`" class="font-semibold text-lg text-primary-600 hover:underline block truncate">
+                  {{ order.client }}
+                </NuxtLink>
+                <div class="mt-1">
+                  <UBadge
+                    :color="getStatusColor(order.status)"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ order.status }}
+                  </UBadge>
+                </div>
+              </div>
+            </div>
+            
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-gray-500">Style</span>
+                <span v-if="order.style" class="text-right">{{ order.style }}</span>
+                <span v-else class="text-gray-400">No style</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-gray-500">Due Date</span>
+                <div v-if="order.dueDate" class="flex items-center" :class="{
+                  'text-red-600 font-medium': isOverdue(order.dueDate),
+                  'text-amber-600 font-medium': !isOverdue(order.dueDate) && isDueSoon(order.dueDate)
+                }">
+                  <span class="text-right">{{ formatDate(order.dueDate) }}</span>
+                  <UIcon v-if="isOverdue(order.dueDate)" name="i-heroicons-exclamation-circle" class="text-red-500 ml-1" />
+                  <UIcon v-else-if="isDueSoon(order.dueDate)" name="i-heroicons-clock" class="text-amber-500 ml-1" />
+                </div>
+                <span v-else class="text-gray-400">Not set</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-gray-500">Payment</span>
+                <div class="text-right">
+                  <div class="font-medium">{{ formatPrice(order.totalAmount) }}</div>
+                  <span :class="{
+                    'text-green-600': order.balanceAmount <= 0,
+                    'text-amber-600': order.depositAmount > 0 && order.balanceAmount > 0,
+                    'text-gray-500': order.depositAmount <= 0
+                  }">
+                    <template v-if="order.balanceAmount <= 0">(Paid)</template>
+                    <template v-else-if="order.depositAmount > 0">({{ formatPrice(order.balanceAmount) }} balance)</template>
+                    <template v-else>(No payment)</template>
+                  </span>
+                </div>
+              </div>
+              <div class="flex justify-between py-1">
+                <span class="text-gray-500">Created</span>
+                <span class="text-right">{{ formatDate(order.createdAt) }}</span>
+              </div>
+            </div>
+            
+            <div class="flex justify-between mt-3 pt-3 border-t border-gray-100">
+              <UButton
+                v-if="order.balanceAmount > 0"
+                color="primary"
+                variant="outline"
+                size="sm"
+                :to="`/orders/${order.id}/payment`"
+                icon="i-heroicons-currency-dollar"
+              >
+                Payment
+              </UButton>
+              <span v-else></span>
+              
+              <div class="flex space-x-2">
+                <UButton
+                  color="gray"
+                  variant="ghost"
+                  icon="i-heroicons-eye"
+                  size="sm"
+                  :to="`/orders/${order.id}/detail`"
+                />
+                <UButton
+                  color="gray"
+                  variant="ghost"
+                  icon="i-heroicons-pencil-square"
+                  size="sm"
+                  :to="`/orders/${order.id}/edit`"
+                />
+                <UDropdown
+                  :items="[
+                    [
+                      {
+                        label: 'Mark as Completed',
+                        icon: 'i-heroicons-check-circle',
+                        click: () => updateOrderStatus(order, 'Completed'),
+                        disabled: order.status === 'Completed'
+                      },
+                      {
+                        label: 'Record Payment',
+                        icon: 'i-heroicons-currency-dollar',
+                        to: `/orders/${order.id}/payment`,
+                        disabled: order.balanceAmount <= 0
+                      }
+                    ],
+                    [
+                      {
+                        label: 'Delete Order',
+                        icon: 'i-heroicons-trash',
+                        click: () => confirmDelete(order),
+                        color: 'red'
+                      }
+                    ]
+                  ]"
+                >
+                  <UButton
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-ellipsis-vertical"
+                    size="sm"
+                  />
+                </UDropdown>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Empty state for mobile -->
+        <div v-else class="py-12 flex flex-col items-center">
+          <UIcon name="i-heroicons-shopping-bag" class="text-gray-400 mb-4" size="xl" />
+          <h3 class="font-medium text-lg text-gray-900">No orders found</h3>
+          <p class="text-gray-500 text-center mt-1">
+            {{ search || isFilterApplied.value ? 'Try adjusting your search or filters' : 'Get started by creating your first order' }}
+          </p>
+          <UButton
+            v-if="search || isFilterApplied.value"
+            color="gray"
+            variant="outline"
+            class="mt-4"
+            @click="resetFilters"
+          >
+            Reset filters
+          </UButton>
+          <UButton
+            v-else
+            color="primary"
+            class="mt-4"
+            to="/orders/new"
+            icon="i-heroicons-plus"
+          >
+            Create order
+          </UButton>
+        </div>
+      </div>
+      
+      <!-- Pagination -->
+      <template #footer>
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div class="text-sm text-gray-500 order-2 sm:order-1">
+            Showing {{ filteredOrders.length }} of {{ orders.length }} orders
+          </div>
+          <UPagination
+            v-model="currentPage"
+            :page-count="pageCount"
+            :total="filteredOrders.length"
+            :ui="{ rounded: 'rounded-lg' }"
+            class="order-1 sm:order-2"
+          />
+        </div>
+      </template>
     </UCard>
     
     <!-- Delete Confirmation Modal -->
@@ -259,6 +449,9 @@ useHead({
   title: 'Orders - QuickMeazure',
 });
 
+// Import auth composable
+import { useAuth } from '~/composables/useAuth';
+
 // State
 const search = ref('');
 const sortBy = ref('dueDate-asc');
@@ -269,6 +462,7 @@ const isFilterOpen = ref(false);
 const showDeleteModal = ref(false);
 const orderToDelete = ref(null);
 const isDeleting = ref(false);
+const currentPage = ref(1);
 
 // Filters
 const filters = ref({
@@ -343,92 +537,66 @@ const columns = [
   },
 ];
 
-// Load orders
-onMounted(async () => {
+// Fetch orders from API
+const fetchOrders = async () => {
+  isLoading.value = true;
+  
   try {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
     
-    // Mock data
-    orders.value = [
-      {
-        id: '1',
-        clientId: '1',
-        client: 'John Doe',
-        style: 'Classic Suit',
-        styleId: '1',
-        styleImageUrl: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        dueDate: Date.now() + 2 * 24 * 60 * 60 * 1000, // 2 days from now
-        status: 'In Progress',
-        totalAmount: 45000,
-        depositAmount: 20000,
-        balanceAmount: 25000,
-        createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, // 7 days ago
-      },
-      {
-        id: '2',
-        clientId: '2',
-        client: 'Jane Smith',
-        style: 'Traditional Agbada',
-        styleId: '3',
-        styleImageUrl: 'https://images.unsplash.com/photo-1590735213920-68192a487bc2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        dueDate: Date.now() - 1 * 24 * 60 * 60 * 1000, // 1 day ago (overdue)
-        status: 'Ready for Pickup',
-        totalAmount: 65000,
-        depositAmount: 65000,
-        balanceAmount: 0,
-        createdAt: Date.now() - 14 * 24 * 60 * 60 * 1000, // 14 days ago
-      },
-      {
-        id: '3',
-        clientId: '3',
-        client: 'Michael Johnson',
-        style: 'Modern Blazer',
-        styleId: '2',
-        styleImageUrl: 'https://images.unsplash.com/photo-1617127365659-c47fa864d8bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        dueDate: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now
-        status: 'Pending',
-        totalAmount: 35000,
-        depositAmount: 15000,
-        balanceAmount: 20000,
-        createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000, // 3 days ago
-      },
-      {
-        id: '4',
-        clientId: '4',
-        client: 'Sarah Williams',
-        style: null,
-        styleId: null,
-        styleImageUrl: null,
-        dueDate: Date.now() + 14 * 24 * 60 * 60 * 1000, // 14 days from now
-        status: 'Completed',
-        totalAmount: 25000,
-        depositAmount: 25000,
-        balanceAmount: 0,
-        createdAt: Date.now() - 21 * 24 * 60 * 60 * 1000, // 21 days ago
-      },
-      {
-        id: '5',
-        clientId: '5',
-        client: 'David Brown',
-        style: 'Senator Style',
-        styleId: '4',
-        styleImageUrl: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        dueDate: Date.now() + 1 * 24 * 60 * 60 * 1000, // 1 day from now
-        status: 'In Progress',
-        totalAmount: 55000,
-        depositAmount: 0,
-        balanceAmount: 55000,
-        createdAt: Date.now() - 5 * 24 * 60 * 60 * 1000, // 5 days ago
-      },
-    ];
+    if (!token) {
+      // Redirect to login if not authenticated
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to view your orders',
+        color: 'orange'
+      });
+      navigateTo('/auth/login');
+      return;
+    }
+    
+    // Fetch orders from API
+    const data = await $fetch('/api/orders', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    // Map data to our format
+    orders.value = data.map(order => ({
+      id: order.id,
+      clientId: order.clientId,
+      client: order.clientName,
+      style: order.styleName,
+      styleId: order.styleId,
+      styleImageUrl: order.styleImageUrl,
+      status: order.status,
+      dueDate: order.dueDate,
+      totalAmount: order.totalAmount,
+      depositAmount: order.depositAmount,
+      balanceAmount: order.balanceAmount,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+    }));
     
     filterOrders();
-    isLoading.value = false;
   } catch (error) {
     console.error('Error loading orders:', error);
+    useToast().add({
+      title: 'Error',
+      description: 'Failed to load orders. Please try again.',
+      color: 'red',
+    });
+  } finally {
     isLoading.value = false;
   }
+};
+
+// Call fetchOrders on component mount
+onMounted(() => {
+  fetchOrders();
 });
 
 // Computed property to check if any filter is applied
@@ -436,6 +604,10 @@ const isFilterApplied = computed(() => {
   return filters.value.status !== 'any' || 
          filters.value.dueDate !== 'any' || 
          filters.value.paymentStatus !== 'any';
+});
+
+const pageCount = computed(() => {
+  return Math.ceil(filteredOrders.value.length / 10);
 });
 
 // Filter and sort orders
@@ -536,7 +708,7 @@ const resetFilters = () => {
 const formatDate = (timestamp) => {
   return new Date(timestamp).toLocaleDateString('en-US', { 
     month: 'short', 
-    day: 'numeric', 
+    day: '2-digit', 
     year: 'numeric' 
   });
 };
@@ -602,23 +774,53 @@ const deleteOrder = async () => {
   isDeleting.value = true;
   
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
     
-    // Remove from list
-    orders.value = orders.value.filter(o => o.id !== orderToDelete.value.id);
+    // Call the delete endpoint
+    await $fetch(`/api/orders/${orderToDelete.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    // Remove from local array
+    const index = orders.value.findIndex(o => o.id === orderToDelete.value.id);
+    if (index !== -1) {
+      orders.value.splice(index, 1);
+    }
+    
+    // Update filtered orders
     filterOrders();
     
     // Show success notification
-    // In a real app, this would use a notification system
-    console.log(`Order for "${orderToDelete.value.client}" deleted successfully`);
+    useToast().add({
+      title: 'Order deleted',
+      description: `Order for ${orderToDelete.value.client} has been deleted successfully.`,
+      color: 'green',
+    });
     
     // Close modal
     showDeleteModal.value = false;
     orderToDelete.value = null;
   } catch (error) {
     console.error('Error deleting order:', error);
-    // Show error notification
+    let errorMessage = 'Failed to delete order. Please try again.';
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red',
+    });
   } finally {
     isDeleting.value = false;
   }
@@ -627,22 +829,49 @@ const deleteOrder = async () => {
 // Update order status
 const updateOrderStatus = async (order, newStatus) => {
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
     
-    // Update order status
-    const orderIndex = orders.value.findIndex(o => o.id === order.id);
-    if (orderIndex !== -1) {
-      orders.value[orderIndex].status = newStatus;
-      filterOrders();
+    // Call the update endpoint
+    await $fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: {
+        status: newStatus
+      }
+    });
+    
+    // Update locally
+    const index = orders.value.findIndex(o => o.id === order.id);
+    if (index !== -1) {
+      orders.value[index].status = newStatus;
+      filterOrders(); // Refresh filtered list
     }
     
     // Show success notification
-    // In a real app, this would use a notification system
-    console.log(`Order status updated to "${newStatus}" successfully`);
+    useToast().add({
+      title: 'Status updated',
+      description: `Order for ${order.client} is now ${newStatus}`,
+      color: 'green',
+    });
   } catch (error) {
     console.error('Error updating order status:', error);
-    // Show error notification
+    let errorMessage = 'Failed to update order status. Please try again.';
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red',
+    });
   }
 };
 </script>

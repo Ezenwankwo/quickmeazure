@@ -8,7 +8,7 @@
         to="/measurements"
         class="mr-4"
       />
-      <h1 class="text-2xl font-bold">Add New Measurement</h1>
+      <h1 class="text-xl font-bold">Add New Measurement</h1>
     </div>
     
     <UCard class="bg-white">
@@ -230,47 +230,124 @@ useHead({
   title: 'Add New Measurement - QuickMeazure',
 });
 
-// Mock client data
-const clients = [
-  { id: '1', name: 'John Doe' },
-  { id: '2', name: 'Jane Smith' },
-  { id: '3', name: 'Robert Johnson' },
-  { id: '4', name: 'Sarah Williams' },
-  { id: '5', name: 'Michael Brown' },
-  { id: '6', name: 'Emily Davis' },
-  { id: '7', name: 'David Wilson' },
-  { id: '8', name: 'Olivia Taylor' },
-  { id: '9', name: 'James Anderson' },
-  { id: '10', name: 'Sophia Martinez' },
-];
-
-// Client options for select dropdown
-const clientOptions = clients.map(client => ({
-  label: client.name,
-  value: client.id,
-}));
-
-// Form data
+// State management
+const clients = ref([]);
+const isLoading = ref(true);
 const selectedClientId = ref('');
+
+// Form data for measurements
 const measurements = ref({
   bust: '',
   waist: '',
   hip: '',
   shoulder: '',
   sleeve: '',
-  back: '',
-  neck: '',
-  armhole: '',
-  wrist: '',
   inseam: '',
+  neck: '',
+  chest: '',
+  back: '',
   thigh: '',
   calf: '',
   ankle: '',
+  wrist: '',
+  armhole: '',
   notes: '',
 });
 
+// Custom measurements
 const customMeasurements = ref([]);
+
+// Client options for select dropdown
+const clientOptions = computed(() => {
+  return clients.value.map(client => ({
+    label: client.name,
+    value: client.id,
+  }));
+});
+
 const isSaving = ref(false);
+
+// Fetch clients for the dropdown
+const fetchClients = async () => {
+  isLoading.value = true;
+  
+  try {
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
+    
+    if (!token) {
+      // Redirect to login if not authenticated
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to add measurements',
+        color: 'orange'
+      });
+      navigateTo('/auth/login');
+      return;
+    }
+    
+    // Fetch clients from API
+    const data = await $fetch('/api/clients', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    clients.value = data;
+  } catch (error) {
+    console.error('Error fetching clients:', error);
+    let errorMessage = 'Failed to load clients. Please refresh the page.';
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red',
+    });
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Validate and parse numeric inputs
+const parseNumericInputs = () => {
+  const parsedMeasurements = {};
+  
+  // Parse each measurement field if it has a value
+  Object.keys(measurements.value).forEach(key => {
+    const value = measurements.value[key];
+    if (value === '' || value === null) {
+      parsedMeasurements[key] = null;
+    } else if (key !== 'notes') {
+      const parsed = parseFloat(value);
+      parsedMeasurements[key] = isNaN(parsed) ? null : parsed;
+    } else {
+      parsedMeasurements[key] = value;
+    }
+  });
+  
+  return parsedMeasurements;
+};
+
+// Format custom measurements for API
+const formatCustomMeasurements = () => {
+  // Filter out empty custom measurements
+  return customMeasurements.value
+    .filter(item => item.name.trim() !== '' && item.value.trim() !== '')
+    .reduce((acc, item) => {
+      // Parse the value as a number if possible
+      const value = parseFloat(item.value);
+      acc[item.name.trim()] = isNaN(value) ? item.value.trim() : value;
+      return acc;
+    }, {});
+};
 
 // Add custom measurement field
 const addCustomMeasurement = () => {
@@ -282,40 +359,110 @@ const removeCustomMeasurement = (index) => {
   customMeasurements.value.splice(index, 1);
 };
 
-// Save measurement function
+// Save measurement
 const saveMeasurement = async () => {
+  // Validate client selection
+  if (!selectedClientId.value) {
+    useToast().add({
+      title: 'Client required',
+      description: 'Please select a client for this measurement',
+      color: 'red'
+    });
+    return;
+  }
+  
+  // Check if at least one measurement is filled
+  const hasMeasurements = Object.keys(measurements.value).some(key => {
+    return key !== 'notes' && measurements.value[key] !== '' && measurements.value[key] !== null;
+  });
+  
+  const hasCustomMeasurements = customMeasurements.value.some(item => 
+    item.name.trim() !== '' && item.value.trim() !== ''
+  );
+  
+  if (!hasMeasurements && !hasCustomMeasurements) {
+    useToast().add({
+      title: 'No measurements',
+      description: 'Please add at least one measurement',
+      color: 'red'
+    });
+    return;
+  }
+  
   isSaving.value = true;
   
   try {
-    // Validate required fields
-    if (!selectedClientId.value) {
-      // Show error notification
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
+    
+    if (!token) {
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to save measurements',
+        color: 'orange'
+      });
+      navigateTo('/auth/login');
       return;
     }
     
-    // Prepare data for saving
+    // Prepare measurement data
+    const parsedMeasurements = parseNumericInputs();
+    const customData = formatCustomMeasurements();
+    
+    // Create final data object
     const measurementData = {
+      ...parsedMeasurements,
+      customMeasurements: Object.keys(customData).length > 0 ? customData : null,
       clientId: selectedClientId.value,
-      ...measurements.value,
-      customMeasurements: customMeasurements.value.reduce((acc, item) => {
-        if (item.name && item.value) {
-          acc[item.name] = item.value;
-        }
-        return acc;
-      }, {}),
     };
     
-    // Simulate API call to save measurements
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Call API to save measurement
+    await $fetch('/api/measurements', {
+      method: 'POST',
+      body: measurementData,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     
-    // In a real app, this would save to the database
-    // For now, we'll just redirect to the measurements page
+    // Show success notification
+    useToast().add({
+      title: 'Measurements saved',
+      description: 'Measurements have been saved successfully',
+      color: 'green'
+    });
+    
+    // Redirect to measurements list
     navigateTo('/measurements');
   } catch (error) {
     console.error('Failed to save measurements:', error);
-    // Show error notification
+    let errorMessage = 'An error occurred while saving measurements';
+    
+    // Get more specific error message if available
+    if (error.data?.statusMessage) {
+      errorMessage = error.data.statusMessage;
+    }
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red'
+    });
   } finally {
     isSaving.value = false;
   }
 };
+
+// Initialize
+onMounted(() => {
+  fetchClients();
+});
 </script>

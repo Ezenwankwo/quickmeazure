@@ -26,7 +26,7 @@
         </UButton>
       </div>
       <div class="mt-8">
-        <img src="https://placehold.co/1200x600/e2e8f0/475569?text=QuickMeazure+Dashboard" alt="QuickMeazure Dashboard" class="rounded-lg shadow-xl mx-auto" />
+        <img src="/dashboard.png" alt="QuickMeazure Dashboard" class="rounded-lg shadow-xl mx-auto" />
       </div>
     </section>
 

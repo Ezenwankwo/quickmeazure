@@ -6,6 +6,8 @@ import jwt from 'jsonwebtoken';
 
 // Define event handler for login
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  
   // Only allow POST requests
   if (getMethod(event) !== 'POST') {
     throw createError({
@@ -33,7 +35,7 @@ export default defineEventHandler(async (event) => {
 
     if (userResults.length === 0) {
       throw createError({
-        statusCode: 401,
+        statusCode: 400,
         statusMessage: 'Invalid email or password',
       });
     }
@@ -44,7 +46,7 @@ export default defineEventHandler(async (event) => {
     const isPasswordValid = await bcrypt.compare(body.password, user.password);
     if (!isPasswordValid) {
       throw createError({
-        statusCode: 401,
+        statusCode: 400,
         statusMessage: 'Invalid email or password',
       });
     }
@@ -52,7 +54,7 @@ export default defineEventHandler(async (event) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id },
-      process.env.JWT_SECRET || 'default-secret-key',
+      config.jwtSecret,
       { expiresIn: '7d' }
     );
 
@@ -67,7 +69,7 @@ export default defineEventHandler(async (event) => {
       },
       token,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
     if (error.statusCode) {
       throw error; // Re-throw validation errors

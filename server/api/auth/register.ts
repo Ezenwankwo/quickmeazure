@@ -26,6 +26,23 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(body.email)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Invalid email format',
+      });
+    }
+
+    // Validate password strength
+    if (body.password.length < 8) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Password must be at least 8 characters long',
+      });
+    }
+
     // Check if email already exists
     const existingUser = await db
       .select()
@@ -42,8 +59,11 @@ export default defineEventHandler(async (event) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(body.password, 10);
 
-    // Set subscription plan (default to free if not provided)
-    const subscriptionPlan = body.subscriptionPlan || 'free';
+    // Validate and set subscription plan
+    const validPlans = ['free', 'standard', 'premium'];
+    const subscriptionPlan = validPlans.includes(body.subscriptionPlan) 
+      ? body.subscriptionPlan 
+      : 'free';
     
     // Calculate subscription expiry for paid plans
     let subscriptionExpiry = null;
@@ -60,9 +80,9 @@ export default defineEventHandler(async (event) => {
       email: body.email.toLowerCase(),
       password: hashedPassword,
       subscriptionPlan,
-      subscriptionExpiry,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      subscriptionExpiry: subscriptionExpiry ? new Date(subscriptionExpiry) : null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     await db.insert(users).values(newUser);
@@ -70,7 +90,7 @@ export default defineEventHandler(async (event) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: newUser.id },
-      process.env.JWT_SECRET || 'default-secret-key',
+      process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
 
@@ -85,7 +105,7 @@ export default defineEventHandler(async (event) => {
       },
       token,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Registration error:', error);
     if (error.statusCode) {
       throw error; // Re-throw validation errors

@@ -1,15 +1,14 @@
 <template>
   <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">Clients</h1>
-      <UButton
-        to="/clients/new"
-        color="primary"
-        icon="i-heroicons-plus"
-      >
-        Add New Client
-      </UButton>
-    </div>
+    <PageHeader
+      title="Clients"
+      subtitle="Manage your customer database"
+      :primaryAction="{
+        label: 'Add New Client',
+        icon: 'i-heroicons-plus',
+        to: '/clients/new'
+      }"
+    />
     
     <!-- Search and Filter -->
     <div class="flex flex-col md:flex-row gap-4">
@@ -82,70 +81,210 @@
       </div>
     </UCard>
     
-    <!-- Clients Table -->
+    <!-- Clients Table (desktop) / Cards (mobile) -->
     <UCard class="bg-white">
-      <UTable 
-        :columns="columns" 
-        :rows="filteredClients" 
-        :loading="isLoading"
-        :empty-state="{
-          icon: 'i-heroicons-user-plus',
-          label: 'No clients found',
-          description: search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by adding your first client',
-          action: search || isFilterApplied ? { label: 'Reset filters', click: resetFilters } : { label: 'Add client', to: '/clients/new' }
-        }"
-      >
-        <template #name-data="{ row }">
-          <div class="flex items-center">
-            <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
-              <span class="text-primary-700 font-medium">{{ getInitials(row.name) }}</span>
+      <!-- Desktop Table View (hidden on mobile) -->
+      <div class="hidden sm:block">
+        <UTable 
+          :columns="columns" 
+          :rows="filteredClients" 
+          :loading="isLoading"
+          :empty-state="{
+            icon: 'i-heroicons-user-plus',
+            label: 'No clients found',
+            description: search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by adding your first client',
+            action: search || isFilterApplied ? { label: 'Reset filters', click: resetFilters } : { label: 'Add client', to: '/clients/new' }
+          }"
+        >
+          <template #name-data="{ row }">
+            <div class="flex items-center">
+              <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
+                <span class="text-primary-700 font-medium">{{ getInitials(row.name) }}</span>
+              </div>
+              <NuxtLink :to="`/clients/${row.id}`" class="font-medium text-primary-600 hover:underline">
+                {{ row.name }}
+              </NuxtLink>
             </div>
-            <NuxtLink :to="`/clients/${row.id}`" class="font-medium text-primary-600 hover:underline">
-              {{ row.name }}
-            </NuxtLink>
-          </div>
+          </template>
+          
+          <template #measurements-data="{ row }">
+            <UBadge v-if="row.hasMeasurements" color="green" variant="subtle" size="sm">
+              Yes
+            </UBadge>
+            <UBadge v-else color="gray" variant="subtle" size="sm">
+              No
+            </UBadge>
+          </template>
+          
+          <template #createdAt-data="{ row }">
+            {{ formatDate(row.createdAt) }}
+          </template>
+          
+          <template #actions-data="{ row }">
+            <div class="flex space-x-2">
+              <UButton
+                :to="`/clients/${row.id}`"
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-eye"
+                size="xs"
+              />
+              <UButton
+                :to="`/clients/${row.id}/edit`"
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-pencil-square"
+                size="xs"
+              />
+              <UButton
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-trash"
+                size="xs"
+                @click="confirmDelete(row)"
+              />
+            </div>
+          </template>
+        </UTable>
+      </div>
+      
+      <!-- Mobile Card View (shown only on mobile) -->
+      <div class="sm:hidden space-y-4">
+        <template v-if="!isLoading && filteredClients.length > 0">
+          <UCard 
+            v-for="client in filteredClients" 
+            :key="client.id"
+            class="border border-gray-200 shadow-sm"
+          >
+            <div class="flex items-center mb-3">
+              <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3">
+                <span class="text-primary-700 font-medium text-lg">{{ getInitials(client.name) }}</span>
+              </div>
+              <NuxtLink :to="`/clients/${client.id}`" class="font-semibold text-lg text-primary-600 hover:underline">
+                {{ client.name }}
+              </NuxtLink>
+            </div>
+            
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-gray-500">Phone</span>
+                <span>{{ client.phone }}</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-gray-500">Email</span>
+                <span class="text-right">{{ client.email }}</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-gray-500">Measurements</span>
+                <UBadge v-if="client.hasMeasurements" color="green" variant="subtle" size="sm">
+                  Yes
+                </UBadge>
+                <UBadge v-else color="gray" variant="subtle" size="sm">
+                  No
+                </UBadge>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <span class="text-gray-500">Date Added</span>
+                <span>{{ formatDate(client.createdAt) }}</span>
+              </div>
+            </div>
+            
+            <template #footer>
+              <div class="flex justify-between items-center">
+                <UButton
+                  :to="`/clients/${client.id}`"
+                  color="primary"
+                  variant="ghost"
+                  size="sm"
+                >
+                  View
+                </UButton>
+                
+                <div class="flex space-x-2">
+                  <UButton
+                    :to="`/clients/${client.id}/edit`"
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-pencil-square"
+                    size="sm"
+                  />
+                  <UButton
+                    color="red"
+                    variant="ghost"
+                    icon="i-heroicons-trash"
+                    size="sm"
+                    @click="confirmDelete(client)"
+                  />
+                </div>
+              </div>
+            </template>
+          </UCard>
         </template>
         
-        <template #measurements-data="{ row }">
-          <UBadge v-if="row.hasMeasurements" color="green" variant="subtle" size="sm">
-            Yes
-          </UBadge>
-          <UBadge v-else color="gray" variant="subtle" size="sm">
-            No
-          </UBadge>
-        </template>
+        <!-- Empty state for mobile -->
+        <div v-else-if="!isLoading && filteredClients.length === 0" class="text-center py-8">
+          <div class="bg-gray-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <UIcon name="i-heroicons-user-plus" class="text-gray-400 text-xl" />
+          </div>
+          <h3 class="text-lg font-medium text-gray-800 mb-1">No clients found</h3>
+          <p class="text-gray-500 text-sm mb-4">
+            {{ search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by adding your first client' }}
+          </p>
+          <UButton
+            v-if="!search && !isFilterApplied"
+            to="/clients/new"
+            color="primary"
+            size="sm"
+          >
+            Add client
+          </UButton>
+          <UButton
+            v-else
+            color="gray"
+            variant="outline"
+            size="sm"
+            @click="resetFilters"
+          >
+            Reset filters
+          </UButton>
+        </div>
         
-        <template #actions-data="{ row }">
-          <div class="flex space-x-2">
-            <UButton
-              :to="`/clients/${row.id}`"
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-eye"
-              size="xs"
-            />
-            <UButton
-              :to="`/clients/${row.id}/edit`"
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-pencil-square"
-              size="xs"
-            />
-            <UButton
-              color="gray"
-              variant="ghost"
-              icon="i-heroicons-trash"
-              size="xs"
-              @click="confirmDelete(row)"
-            />
+        <!-- Loading state for mobile -->
+        <template v-else>
+          <div v-for="i in 3" :key="i" class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-gray-200 animate-pulse mr-3"></div>
+              <div class="h-6 bg-gray-200 rounded animate-pulse w-1/2"></div>
+            </div>
+            <div class="space-y-2">
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-2/5"></div>
+              </div>
+              <div class="flex justify-between py-1 border-b border-gray-100">
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/6"></div>
+              </div>
+            </div>
+            <div class="flex justify-between items-center pt-2">
+              <div class="h-8 bg-gray-200 rounded animate-pulse w-1/4"></div>
+              <div class="flex space-x-2">
+                <div class="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                <div class="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
           </div>
         </template>
-      </UTable>
+      </div>
       
       <!-- Pagination -->
       <template #footer>
-        <div class="flex justify-between items-center">
-          <div class="text-sm text-gray-500">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div class="text-sm text-gray-500 order-2 sm:order-1">
             Showing {{ filteredClients.length }} of {{ clients.length }} clients
           </div>
           <UPagination
@@ -153,6 +292,7 @@
             :page-count="pageCount"
             :total="filteredClients.length"
             :ui="{ rounded: 'rounded-lg' }"
+            class="order-1 sm:order-2"
           />
         </div>
       </template>
@@ -199,6 +339,9 @@ useHead({
   title: 'Clients - QuickMeazure',
 });
 
+// Import auth composable
+import { useAuth } from '~/composables/useAuth';
+
 // Table configuration
 const columns = [
   {
@@ -233,142 +376,151 @@ const columns = [
   },
 ];
 
-// Mock data
-const clients = ref([
-  {
-    id: '1',
-    name: 'John Doe',
-    phone: '+234 801 234 5678',
-    email: 'john.doe@example.com',
-    hasMeasurements: true,
-    createdAt: '2023-11-15',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    phone: '+234 802 345 6789',
-    email: 'jane.smith@example.com',
-    hasMeasurements: true,
-    createdAt: '2023-11-10',
-  },
-  {
-    id: '3',
-    name: 'Robert Johnson',
-    phone: '+234 803 456 7890',
-    email: 'robert.johnson@example.com',
-    hasMeasurements: false,
-    createdAt: '2023-11-05',
-  },
-  {
-    id: '4',
-    name: 'Sarah Williams',
-    phone: '+234 804 567 8901',
-    email: 'sarah.williams@example.com',
-    hasMeasurements: true,
-    createdAt: '2023-10-28',
-  },
-  {
-    id: '5',
-    name: 'Michael Brown',
-    phone: '+234 805 678 9012',
-    email: 'michael.brown@example.com',
-    hasMeasurements: false,
-    createdAt: '2023-10-20',
-  },
-  {
-    id: '6',
-    name: 'Emily Davis',
-    phone: '+234 806 789 0123',
-    email: 'emily.davis@example.com',
-    hasMeasurements: true,
-    createdAt: '2023-10-15',
-  },
-  {
-    id: '7',
-    name: 'David Wilson',
-    phone: '+234 807 890 1234',
-    email: 'david.wilson@example.com',
-    hasMeasurements: false,
-    createdAt: '2023-10-10',
-  },
-  {
-    id: '8',
-    name: 'Olivia Taylor',
-    phone: '+234 808 901 2345',
-    email: 'olivia.taylor@example.com',
-    hasMeasurements: true,
-    createdAt: '2023-10-05',
-  },
-  {
-    id: '9',
-    name: 'James Anderson',
-    phone: '+234 809 012 3456',
-    email: 'james.anderson@example.com',
-    hasMeasurements: true,
-    createdAt: '2023-09-28',
-  },
-  {
-    id: '10',
-    name: 'Sophia Martinez',
-    phone: '+234 701 123 4567',
-    email: 'sophia.martinez@example.com',
-    hasMeasurements: false,
-    createdAt: '2023-09-20',
-  },
-]);
-
-// State variables
-const isLoading = ref(false);
+// State management
+const clients = ref([]);
+const isLoading = ref(true);
 const search = ref('');
-const sortBy = ref('name-asc');
 const isFilterOpen = ref(false);
+const filteredClients = ref([]);
 const currentPage = ref(1);
-const pageSize = 10;
-const filteredClients = ref([...clients.value]);
-
-// Filter options
-const sortOptions = [
-  { label: 'Name (A-Z)', value: 'name-asc' },
-  { label: 'Name (Z-A)', value: 'name-desc' },
-  { label: 'Date Added (Newest)', value: 'date-desc' },
-  { label: 'Date Added (Oldest)', value: 'date-asc' },
-];
-
-const dateOptions = [
-  { label: 'Any time', value: 'any' },
-  { label: 'Today', value: 'today' },
-  { label: 'This week', value: 'week' },
-  { label: 'This month', value: 'month' },
-  { label: 'This year', value: 'year' },
-];
-
-const booleanOptions = [
-  { label: 'All clients', value: 'any' },
-  { label: 'Yes', value: 'yes' },
-  { label: 'No', value: 'no' },
-];
-
-const filters = ref({
-  dateAdded: 'any',
-  hasMeasurements: 'any',
-  hasOrders: 'any',
-});
-
-// Computed properties
-const isFilterApplied = computed(() => {
-  return filters.value.dateAdded !== 'any' || 
-         filters.value.hasMeasurements !== 'any' || 
-         filters.value.hasOrders !== 'any';
-});
-
-const pageCount = computed(() => {
-  return Math.ceil(filteredClients.value.length / pageSize);
-});
-
-// Delete client functionality
 const isDeleteModalOpen = ref(false);
 const clientToDelete = ref(null);
 const isDeleting = ref(false);
+
+// Sort and filter options
+const sortBy = ref('name-asc');
+const sortOptions = [
+  { label: 'Name (A-Z)', value: 'name-asc' },
+  { label: 'Name (Z-A)', value: 'name-desc' },
+  { label: 'Newest First', value: 'date-desc' },
+  { label: 'Oldest First', value: 'date-asc' },
+];
+
+const filters = ref({
+  dateAdded: null,
+  hasMeasurements: null,
+  hasOrders: null,
+});
+
+const dateOptions = [
+  { label: 'Last 7 days', value: '7days' },
+  { label: 'Last 30 days', value: '30days' },
+  { label: 'Last 3 months', value: '3months' },
+  { label: 'Last year', value: '1year' },
+];
+
+const booleanOptions = [
+  { label: 'Yes', value: true },
+  { label: 'No', value: false },
+];
+
+// Computed properties
+const pageCount = computed(() => {
+  return Math.ceil(filteredClients.value.length / 10);
+});
+
+const isFilterApplied = computed(() => {
+  return filters.value.dateAdded !== null ||
+    filters.value.hasMeasurements !== null ||
+    filters.value.hasOrders !== null;
+});
+
+// Functions
+const getInitials = (name) => {
+  if (!name) return '';
+  return name.split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
+};
+
+const filterClients = () => {
+  let filtered = [...clients.value];
+  
+  // Apply search filter
+  if (search.value) {
+    const searchLower = search.value.toLowerCase();
+    filtered = filtered.filter(client => 
+      client.name.toLowerCase().includes(searchLower) ||
+      (client.phone && client.phone.toLowerCase().includes(searchLower)) ||
+      (client.email && client.email.toLowerCase().includes(searchLower))
+    );
+  }
+  
+  // Apply date filter
+  if (filters.value.dateAdded) {
+    const now = new Date();
+    let cutoffDate = new Date();
+    
+    switch (filters.value.dateAdded) {
+      case '7days':
+        cutoffDate.setDate(now.getDate() - 7);
+        break;
+      case '30days':
+        cutoffDate.setDate(now.getDate() - 30);
+        break;
+      case '3months':
+        cutoffDate.setMonth(now.getMonth() - 3);
+        break;
+      case '1year':
+        cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+    
+    filtered = filtered.filter(client => {
+      const clientDate = new Date(client.createdAt);
+      return clientDate >= cutoffDate;
+    });
+  }
+  
+  // Apply measurement filter
+  if (filters.value.hasMeasurements !== null) {
+    filtered = filtered.filter(client => 
+      client.hasMeasurements === filters.value.hasMeasurements
+    );
+  }
+  
+  // Apply orders filter
+  if (filters.value.hasOrders !== null) {
+    filtered = filtered.filter(client => 
+      client.hasOrders === filters.value.hasOrders
+    );
+  }
+  
+  // Apply sorting
+  if (sortBy.value) {
+    const [field, direction] = sortBy.value.split('-');
+    
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      if (field === 'name') {
+        comparison = a.name.localeCompare(b.name);
+      } else if (field === 'date') {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        comparison = dateA - dateB;
+      }
+      
+      return direction === 'desc' ? -comparison : comparison;
+    });
+  }
+  
+  filteredClients.value = filtered;
+};
+
+const resetFilters = () => {
+  search.value = '';
+  filters.value = {
+    dateAdded: null,
+    hasMeasurements: null,
+    hasOrders: null,
+  };
+  sortBy.value = 'name-asc';
+  isFilterOpen.value = false;
+  filterClients();
+};
 
 const confirmDelete = (client) => {
   clientToDelete.value = client;
@@ -376,121 +528,129 @@ const confirmDelete = (client) => {
 };
 
 const deleteClient = async () => {
+  if (!clientToDelete.value) return;
+  
   isDeleting.value = true;
   
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
     
-    // Remove client from list
-    clients.value = clients.value.filter(c => c.id !== clientToDelete.value.id);
-    filteredClients.value = filteredClients.value.filter(c => c.id !== clientToDelete.value.id);
+    // Call the delete endpoint
+    await $fetch(`/api/clients/${clientToDelete.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    // Remove from local array
+    const index = clients.value.findIndex(c => c.id === clientToDelete.value.id);
+    if (index !== -1) {
+      clients.value.splice(index, 1);
+    }
+    
+    // Update filtered clients
+    filterClients();
     
     // Show success notification
+    useToast().add({
+      title: 'Client deleted',
+      description: `${clientToDelete.value.name} has been deleted successfully.`,
+      color: 'green',
+    });
+    
+    // Close modal
     isDeleteModalOpen.value = false;
+    clientToDelete.value = null;
   } catch (error) {
-    console.error('Delete failed:', error);
-    // Show error notification
+    console.error('Error deleting client:', error);
+    let errorMessage = 'Failed to delete client. Please try again.';
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red',
+    });
   } finally {
     isDeleting.value = false;
   }
 };
 
-// Filter and sort clients
-const filterClients = () => {
+// Fetch clients data
+const fetchClients = async () => {
   isLoading.value = true;
   
-  // Simulate API delay
-  setTimeout(() => {
-    let result = [...clients.value];
+  try {
+    // Get auth token from the auth store
+    const auth = useAuth();
+    const token = auth.token.value;
     
-    // Apply search filter
-    if (search.value) {
-      const searchLower = search.value.toLowerCase();
-      result = result.filter(client => 
-        client.name.toLowerCase().includes(searchLower) ||
-        client.email.toLowerCase().includes(searchLower) ||
-        client.phone.includes(search.value)
-      );
-    }
-    
-    // Apply measurement filter
-    if (filters.value.hasMeasurements !== 'any') {
-      const hasMeasurements = filters.value.hasMeasurements === 'yes';
-      result = result.filter(client => client.hasMeasurements === hasMeasurements);
-    }
-    
-    // Apply date filter (simplified for demo)
-    if (filters.value.dateAdded !== 'any') {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      
-      result = result.filter(client => {
-        const clientDate = new Date(client.createdAt).getTime();
-        
-        switch (filters.value.dateAdded) {
-          case 'today':
-            return clientDate >= today;
-          case 'week':
-            const weekAgo = today - 7 * 24 * 60 * 60 * 1000;
-            return clientDate >= weekAgo;
-          case 'month':
-            const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).getTime();
-            return clientDate >= monthAgo;
-          case 'year':
-            const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).getTime();
-            return clientDate >= yearAgo;
-          default:
-            return true;
-        }
+    if (!token) {
+      // Redirect to login if not authenticated
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to view your clients',
+        color: 'orange'
       });
+      navigateTo('/auth/login');
+      return;
     }
     
-    // Apply sorting
-    result.sort((a, b) => {
-      switch (sortBy.value) {
-        case 'name-asc':
-          return a.name.localeCompare(b.name);
-        case 'name-desc':
-          return b.name.localeCompare(a.name);
-        case 'date-asc':
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        case 'date-desc':
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        default:
-          return 0;
+    const data = await $fetch('/api/clients', {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
     });
     
-    filteredClients.value = result;
+    // Process data to include measurement and order indicators
+    clients.value = data.map(client => ({
+      ...client,
+      createdAt: new Date(client.createdAt).toISOString(),
+    }));
+    
+    filterClients();
+  } catch (error) {
+    console.error('Error fetching clients:', error);
+    let errorMessage = 'Failed to load clients. Please refresh the page.';
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
+    useToast().add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red',
+    });
+    
+    clients.value = [];
+  } finally {
     isLoading.value = false;
-  }, 300);
+  }
 };
 
-// Reset all filters
-const resetFilters = () => {
-  search.value = '';
-  sortBy.value = 'name-asc';
-  filters.value = {
-    dateAdded: 'any',
-    hasMeasurements: 'any',
-    hasOrders: 'any',
-  };
-  filterClients();
-};
-
-// Helper function to get initials from name
-const getInitials = (name) => {
-  return name
-    .split(' ')
-    .map(part => part.charAt(0))
-    .join('')
-    .toUpperCase()
-    .substring(0, 2);
-};
-
-// Initialize
+// Initial fetch on component mount
 onMounted(() => {
-  filterClients();
+  fetchClients();
 });
+
+const formatDate = (timestamp) => {
+  const date = new Date(timestamp);
+  const month = date.toLocaleString('en-US', { month: 'short' });
+  const day = date.getDate().toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month} ${day}, ${year}`;
+};
 </script>

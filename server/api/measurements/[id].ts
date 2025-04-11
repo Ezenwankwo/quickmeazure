@@ -5,20 +5,36 @@ import { eq, and } from 'drizzle-orm';
 // Define event handler for measurement-specific operations
 export default defineEventHandler(async (event) => {
   const method = getMethod(event);
-  const userId = '1'; // In a real app, this would come from authentication
+  
+  // Get authenticated user from event context
+  const auth = event.context.auth;
+  if (!auth || !auth.userId) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+    });
+  }
+  
   const measurementId = getRouterParam(event, 'id');
+  if (!measurementId) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Measurement ID is required',
+    });
+  }
 
   // Verify measurement exists and belongs to user's client
   const measurementData = await db
     .select({
       measurement: measurements,
-      clientUserId: clients.userId
+      clientUserId: clients.userId,
+      clientName: clients.name
     })
     .from(measurements)
     .innerJoin(clients, eq(measurements.clientId, clients.id))
     .where(and(
       eq(measurements.id, measurementId),
-      eq(clients.userId, userId)
+      eq(clients.userId, auth.userId)
     ));
 
   if (measurementData.length === 0) {
@@ -29,11 +45,16 @@ export default defineEventHandler(async (event) => {
   }
 
   const existingMeasurement = measurementData[0].measurement;
+  const clientName = measurementData[0].clientName;
 
   // Handle GET request to fetch a specific measurement
   if (method === 'GET') {
     try {
-      return existingMeasurement;
+      // Add client name to the response
+      return {
+        ...existingMeasurement,
+        clientName
+      };
     } catch (error) {
       console.error('Error fetching measurement:', error);
       throw createError({
@@ -49,13 +70,13 @@ export default defineEventHandler(async (event) => {
       const body = await readBody(event);
       
       // Validate client ID if provided
-      if (body.clientId) {
+      if (body.clientId && body.clientId !== existingMeasurement.clientId) {
         // Verify client exists and belongs to user
         const clientExists = await db.select()
           .from(clients)
           .where(and(
             eq(clients.id, body.clientId),
-            eq(clients.userId, userId)
+            eq(clients.userId, auth.userId)
           ));
 
         if (clientExists.length === 0) {
@@ -84,15 +105,20 @@ export default defineEventHandler(async (event) => {
         wrist: body.wrist !== undefined ? body.wrist : existingMeasurement.wrist,
         armhole: body.armhole !== undefined ? body.armhole : existingMeasurement.armhole,
         customMeasurements: body.customMeasurements ? JSON.stringify(body.customMeasurements) : existingMeasurement.customMeasurements,
-        updatedAt: Date.now(),
+        notes: body.notes !== undefined ? body.notes : existingMeasurement.notes,
+        updatedAt: new Date(),
       };
 
       await db.update(measurements)
         .set(updatedMeasurement)
         .where(eq(measurements.id, measurementId));
 
-      return { ...existingMeasurement, ...updatedMeasurement };
-    } catch (error) {
+      return { 
+        ...existingMeasurement, 
+        ...updatedMeasurement,
+        clientName
+      };
+    } catch (error: any) {
       console.error('Error updating measurement:', error);
       if (error.statusCode) {
         throw error; // Re-throw validation errors

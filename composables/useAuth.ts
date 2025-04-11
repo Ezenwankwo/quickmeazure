@@ -6,7 +6,7 @@ interface User {
   name: string;
   email: string;
   subscriptionPlan: string;
-  subscriptionExpiry?: number;
+  subscriptionExpiry?: number | null;
 }
 
 // Define auth state
@@ -59,58 +59,85 @@ export function useAuth() {
     return false;
   });
 
+  // Handle session expiry - logs the user out and redirects to login page
+  const handleSessionExpiry = (showNotification = true) => {
+    const route = useRoute();
+    
+    // Don't redirect if we're already on an auth page to prevent loops
+    if (route.path.includes('/auth/')) {
+      // Just logout
+      logout();
+      return;
+    }
+    
+    // Clear auth state
+    logout();
+    
+    // Show notification
+    if (showNotification && process.client) {
+      const toast = useToast();
+      toast.add({
+        title: 'Session Expired',
+        description: 'Your session has expired. Please log in again.',
+        color: 'red'
+      });
+    }
+    
+    // Redirect to login page
+    navigateTo('/auth/login');
+  };
+
   // Login function
   async function login(email: string, password: string) {
     try {
-      // TODO: Replace with actual API call
-      // Mock successful login for now
-      const mockUser = {
-        id: '1',
-        name: 'Test User',
-        email,
-        subscriptionPlan: 'free'
-      };
+      // Clear any auth error state
+      if (process.client) {
+        localStorage.removeItem('isHandlingAuthError');
+      }
       
-      const mockToken = 'mock-jwt-token';
+      // Call the login API endpoint using $fetch
+      const data = await $fetch<{ user: User; token: string }>('/api/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      });
       
       // Update auth state
       authState.value = {
-        user: mockUser,
+        user: data.user,
         isLoggedIn: true,
-        token: mockToken
+        token: data.token
       };
       
-      // Save to localStorage
+      // Save to localStorage and mark login time
       if (process.client) {
         localStorage.setItem('auth', JSON.stringify(authState.value));
+        localStorage.setItem('lastLoginTime', Date.now().toString());
       }
       
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error);
-      return { success: false, error: 'Invalid email or password' };
+      return { 
+        success: false, 
+        error: error.data?.statusMessage || 'Invalid email or password' 
+      };
     }
   }
 
   // Register function
   async function register(name: string, email: string, password: string, plan: string = 'free') {
     try {
-      // TODO: Replace with actual API call
-      // Mock successful registration
-      const mockUser = {
-        id: '1',
-        name,
-        email,
-        subscriptionPlan: plan
-      };
-      
-      const mockToken = 'mock-jwt-token';
+      // Call the register API endpoint using $fetch
+      const data = await $fetch<{ user: User; token: string }>('/api/auth/register', {
+        method: 'POST',
+        body: { name, email, password, subscriptionPlan: plan },
+      });
       
       // Update auth state
       authState.value = {
-        user: mockUser,
+        user: data.user,
         isLoggedIn: true,
-        token: mockToken
+        token: data.token
       };
       
       // Save to localStorage
@@ -119,9 +146,12 @@ export function useAuth() {
       }
       
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed:', error);
-      return { success: false, error: 'Registration failed' };
+      return { 
+        success: false, 
+        error: error.data?.statusMessage || 'Registration failed' 
+      };
     }
   }
 
@@ -134,9 +164,11 @@ export function useAuth() {
       token: null
     };
     
-    // Remove from localStorage
+    // Remove from localStorage - clear all auth-related items
     if (process.client) {
       localStorage.removeItem('auth');
+      localStorage.removeItem('isHandlingAuthError');
+      localStorage.removeItem('lastLoginTime');
     }
   }
 
@@ -218,6 +250,7 @@ export function useAuth() {
     isLoggedIn,
     token,
     isSubscriptionActive,
+    handleSessionExpiry,
     login,
     register,
     logout,

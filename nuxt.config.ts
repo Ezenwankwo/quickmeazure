@@ -4,15 +4,16 @@ import { defineNuxtConfig } from 'nuxt/config'
 export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@nuxt/ui'],
-  ui: {
-    global: true
-  },
   css: ['~/assets/css/main.css'],
+  plugins: [
+    '~/plugins/auth-interceptor.ts'
+  ],
   runtimeConfig: {
     // Keys within public are also exposed client-side
     public: {
       appName: 'QuickMeazure'
-    }
+    },
+    jwtSecret: process.env.JWT_SECRET,
   },
   build: {
     transpile: ['@nuxt/ui']
@@ -20,10 +21,22 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: ['vue', '@nuxt/ui']
+    },
+    build: {
+      sourcemap: false
+    },
+    // Disable service worker registration
+    worker: {
+      plugins: () => []
     }
   },
-  compatibilityDate: '2025-04-08',
   nitro: {
-    preset: 'node-server'
-  }
+    preset: 'node-server',
+    sourceMap: false
+  },
+  sourcemap: false,
+  compatibilityDate: '2025-04-08',
+  components: [
+    { path: '~/components', pathPrefix: false }
+  ],
 })

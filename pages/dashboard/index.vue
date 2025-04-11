@@ -1,16 +1,15 @@
 <template>
   <div class="space-y-6">
     <!-- Page Header -->
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">Dashboard</h1>
-      <UButton
-        to="/clients/new"
-        color="primary"
-        icon="i-heroicons-plus"
-      >
-        New Client
-      </UButton>
-    </div>
+    <PageHeader
+      title="Dashboard"
+      subtitle="View your tailor business at a glance"
+      :primaryAction="{
+        label: 'New Client',
+        icon: 'i-heroicons-plus',
+        to: '/clients/new'
+      }"
+    />
     
     <!-- Stats Overview -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -163,11 +162,11 @@
           
           <template #actions-data="{ row }">
             <UButton
-              :to="`/orders/${row.id}`"
+              icon="i-heroicons-eye"
               color="gray"
               variant="ghost"
-              icon="i-heroicons-eye"
               size="xs"
+              :to="`/orders/${row.id}/detail`"
             />
           </template>
         </UTable>
@@ -342,6 +341,15 @@ const formatDueDate = (date) => {
   } else {
     return `Due in ${diffDays} days`;
   }
+};
+
+// Add standard date formatting function for consistency
+const formatDate = (timestamp) => {
+  return new Date(timestamp).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: '2-digit', 
+    year: 'numeric' 
+  });
 };
 
 const getDueDateColor = (date) => {

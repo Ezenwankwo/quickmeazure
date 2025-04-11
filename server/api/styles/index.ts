@@ -1,18 +1,36 @@
+import { createError, getMethod } from 'h3';
+import { v4 as uuidv4 } from 'uuid';
+import { and, eq } from 'drizzle-orm';
 import { db } from '~/server/database';
 import { styles } from '~/server/database/schema';
-import { v4 as uuidv4 } from 'uuid';
-import { eq } from 'drizzle-orm';
+import { extractFileFromMultipart, extractFieldsFromMultipart } from '~/server/utils/multipart';
+import { uploadFileToS3, getFileExtension, getContentType } from '~/server/utils/s3';
 
 // Define event handler for styles API
 export default defineEventHandler(async (event) => {
   const method = getMethod(event);
-  const userId = '1'; // In a real app, this would come from authentication
+  
+  // Get user ID from auth context
+  const auth = event.context.auth;
+  const userId = auth?.userId;
 
-  // Handle GET request to fetch all styles
+  if (!userId) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+    });
+  }
+
+  // Handle GET request to get all styles
   if (method === 'GET') {
     try {
-      const allStyles = await db.select().from(styles).where(eq(styles.userId, userId));
-      return allStyles;
+      const userStyles = await db
+        .select()
+        .from(styles)
+        .where(eq(styles.userId, userId))
+        .orderBy(styles.createdAt);
+      
+      return userStyles;
     } catch (error) {
       console.error('Error fetching styles:', error);
       throw createError({
@@ -25,34 +43,82 @@ export default defineEventHandler(async (event) => {
   // Handle POST request to create a new style
   if (method === 'POST') {
     try {
-      const body = await readBody(event);
+      // Check if content type is multipart/form-data
+      const contentType = event.node.req.headers['content-type'] || '';
+      const isMultipart = contentType.includes('multipart/form-data');
+      
+      let styleName = '';
+      let styleDescription = null;
+      let imageUrl = null;
+      
+      if (isMultipart) {
+        // Parse multipart form data
+        const fields = await extractFieldsFromMultipart(event);
+        const file = await extractFileFromMultipart(event);
+        
+        styleName = fields.name || '';
+        styleDescription = fields.description || null;
+        
+        // Handle file upload to S3 if a file was provided
+        if (file) {
+          const fileExt = getFileExtension(file.filename);
+          const contentType = getContentType(fileExt);
+          
+          // Upload to S3
+          imageUrl = await uploadFileToS3(
+            file.buffer,
+            file.filename,
+            contentType
+          );
+        }
+      } else {
+        // Regular JSON body
+        const body = await readBody(event);
+        styleName = body.name;
+        styleDescription = body.description || null;
+        
+        // If there's a base64 image, handle it
+        if (body.imageBase64) {
+          // Decode base64
+          const matches = body.imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+          
+          if (matches && matches.length === 3) {
+            const contentType = matches[1];
+            const buffer = Buffer.from(matches[2], 'base64');
+            const fileExt = contentType.split('/')[1] || 'jpg';
+            
+            // Upload to S3
+            imageUrl = await uploadFileToS3(
+              buffer,
+              `image.${fileExt}`,
+              contentType
+            );
+          }
+        }
+      }
       
       // Validate required fields
-      if (!body.name) {
+      if (!styleName) {
         throw createError({
           statusCode: 400,
           statusMessage: 'Style name is required',
         });
       }
 
-      // Check if user's subscription plan allows style catalog
-      // For demo purposes, we'll assume all plans allow styles
-      // In a real app, this would check the user's subscription plan
-
       // Create new style
       const newStyle = {
         id: uuidv4(),
         userId,
-        name: body.name,
-        description: body.description || null,
-        imageUrl: body.imageUrl || null,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        name: styleName,
+        description: styleDescription,
+        imageUrl: imageUrl,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       await db.insert(styles).values(newStyle);
       return newStyle;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating style:', error);
       if (error.statusCode) {
         throw error; // Re-throw validation errors
