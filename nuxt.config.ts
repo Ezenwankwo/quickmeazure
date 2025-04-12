@@ -11,9 +11,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Keys within public are also exposed client-side
     public: {
-      appName: 'QuickMeazure'
+      appName: 'QuickMeazure',
+      appUrl: process.env.APP_URL || 'http://localhost:3000'
     },
     jwtSecret: process.env.JWT_SECRET,
+    brevoApiKey: process.env.BREVO_API_KEY,
   },
   build: {
     transpile: ['@nuxt/ui']

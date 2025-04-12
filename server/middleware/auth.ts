@@ -18,6 +18,13 @@ export default defineEventHandler(async (event) => {
   ];
   
   const path = getRequestURL(event).pathname;
+  
+  // Skip auth check for development test routes
+  if (process.env.NODE_ENV === 'development' && path.startsWith('/api/test/')) {
+    console.log('Skipping auth check for development test endpoint:', path);
+    return;
+  }
+  
   if (publicRoutes.includes(path) || !path.startsWith('/api/')) {
     return;
   }

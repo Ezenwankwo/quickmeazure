@@ -1,7 +1,7 @@
 import { db } from '~/server/database';
 import { measurements, clients, orders } from '~/server/database/schema';
 import { v4 as uuidv4 } from 'uuid';
-import { eq, and, exists } from 'drizzle-orm';
+import { eq, and, exists, desc, asc, sql } from 'drizzle-orm';
 import { SQL } from 'drizzle-orm';
 
 // Define event handler for GET requests
@@ -20,9 +20,17 @@ export default defineEventHandler(async (event) => {
   // Handle GET request to fetch all measurements
   if (method === 'GET') {
     try {
-      // Get the clientId from query parameters if provided
+      // Get the query parameters
       const query = getQuery(event);
       const clientId = query.clientId as string | undefined;
+      const page = parseInt(query.page as string || '1');
+      const limit = parseInt(query.limit as string || '10');
+      const sortField = (query.sortField as string) || 'updatedAt';
+      const sortOrder = (query.sortOrder as string) || 'desc';
+      const search = query.search as string | undefined;
+      
+      // Calculate offset for pagination
+      const offset = (page - 1) * limit;
       
       // Build query based on whether clientId is provided
       let measurementsQuery;
@@ -98,8 +106,104 @@ export default defineEventHandler(async (event) => {
           .where(eq(clients.userId, auth.userId));
       }
       
-      const allMeasurements = await measurementsQuery;
-      return allMeasurements;
+      // Apply search filter if provided
+      if (search && search.trim() !== '') {
+        // Use and() to add conditions to existing where clause instead of chaining
+        measurementsQuery = db
+          .select({
+            id: measurements.id,
+            clientId: measurements.clientId,
+            clientName: clients.name,
+            bust: measurements.bust,
+            waist: measurements.waist,
+            hip: measurements.hip,
+            shoulder: measurements.shoulder,
+            sleeve: measurements.sleeve,
+            inseam: measurements.inseam,
+            neck: measurements.neck,
+            chest: measurements.chest,
+            back: measurements.back,
+            thigh: measurements.thigh,
+            calf: measurements.calf,
+            ankle: measurements.ankle,
+            wrist: measurements.wrist,
+            armhole: measurements.armhole,
+            customMeasurements: measurements.customMeasurements,
+            notes: measurements.notes,
+            createdAt: measurements.createdAt,
+            updatedAt: measurements.updatedAt,
+            hasOrders: exists(
+              db.select().from(orders).where(eq(orders.clientId, measurements.clientId))
+            ),
+          })
+          .from(measurements)
+          .innerJoin(clients, eq(measurements.clientId, clients.id))
+          .where(
+            and(
+              eq(clients.userId, auth.userId),
+              clientId ? eq(measurements.clientId, clientId) : undefined,
+              sql`lower(${clients.name}) like ${`%${search.toLowerCase()}%`}`
+            )
+          );
+      }
+      
+      // Build count query to get total records (before pagination)
+      const countQuery = db.select({
+        count: sql<number>`count(*)`
+      })
+      .from(measurements)
+      .innerJoin(clients, eq(measurements.clientId, clients.id))
+      .where(
+        and(
+          eq(clients.userId, auth.userId),
+          clientId ? eq(measurements.clientId, clientId) : undefined,
+          search && search.trim() !== '' ? sql`lower(${clients.name}) like ${`%${search.toLowerCase()}%`}` : undefined
+        )
+      );
+      
+      // Determine sort direction
+      const sortDirection = sortOrder === 'asc' ? asc : desc;
+      
+      // Apply sorting
+      let orderByClause;
+      switch (sortField) {
+        case 'client':
+          orderByClause = sortDirection(clients.name);
+          break;
+        case 'createdAt':
+          orderByClause = sortDirection(measurements.createdAt);
+          break;
+        case 'updatedAt':
+        default:
+          orderByClause = sortDirection(measurements.updatedAt);
+          break;
+      }
+      
+      // Apply sorting, pagination, and execute query
+      const measurementsData = await measurementsQuery
+        .orderBy(orderByClause)
+        .limit(limit)
+        .offset(offset);
+      
+      // Get total count
+      const countResult = await countQuery;
+      const total = countResult[0]?.count || 0;
+      
+      // Calculate total pages
+      const totalPages = Math.ceil(total / limit);
+      
+      // Return data with pagination info
+      return {
+        data: measurementsData,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      };
     } catch (error) {
       console.error('Error fetching measurements:', error);
       throw createError({

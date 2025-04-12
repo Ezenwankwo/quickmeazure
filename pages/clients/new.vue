@@ -135,7 +135,7 @@ const saveClient = async () => {
     }
     
     // Call API to save client
-    await $fetch('/api/clients', {
+    const newClient = await $fetch('/api/clients', {
       method: 'POST',
       body: client.value,
       headers: {
@@ -150,8 +150,8 @@ const saveClient = async () => {
       color: 'green'
     });
     
-    // Redirect to clients page
-    navigateTo('/clients');
+    // Redirect to client detail page
+    navigateTo(`/clients/${newClient.id}`);
   } catch (error) {
     console.error('Failed to save client:', error);
     let errorMessage = 'An error occurred while saving the client';

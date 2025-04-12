@@ -3,6 +3,7 @@ import { users } from '~/server/database/schema';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
+import { sendPasswordResetEmail } from '~/utils/email';
 
 // Define a map to store reset tokens (in a real app, you would use a database table)
 export const passwordResetTokens = new Map();
@@ -37,6 +38,7 @@ export default defineEventHandler(async (event) => {
 
     // Don't reveal if a user exists for security reasons
     if (userResults.length === 0) {
+      console.log(`No user found with email: ${body.email}`);
       // Return success even if no user found (to prevent email enumeration)
       return {
         success: true,
@@ -44,6 +46,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const user = userResults[0];
+    console.log(`User found: ${user.id} (${user.email})`);
 
     // Generate a reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -55,17 +58,39 @@ export default defineEventHandler(async (event) => {
       expiry: tokenExpiry
     });
 
-    // In a real application, you would send an email with the reset link
-    const resetUrl = `${process.env.APP_URL}/auth/reset-password/${resetToken}`;
-    console.log(`Password reset link: ${resetUrl}`);
+    // Create the reset URL
+    const config = useRuntimeConfig();
+    const resetUrl = `${config.public.appUrl}/auth/reset-password/${resetToken}`;
+    
+    console.log(`Generated reset URL: ${resetUrl}`);
+    console.log(`Brevo API key available: ${!!config.brevoApiKey}`);
+    
+    // Send the password reset email
+    try {
+      const emailResult = await sendPasswordResetEmail(user.email, resetUrl);
+      
+      // Check if email was sent successfully
+      if (!emailResult || !emailResult.success) {
+        console.error('Failed to send password reset email:', emailResult?.error || 'Unknown error');
+        // Don't expose the error to the client but log it for troubleshooting
+      } else {
+        console.log(`Password reset email sent to ${user.email} with messageId: ${emailResult.messageId}`);
+      }
+    } catch (emailError) {
+      console.error('Exception when sending password reset email:', emailError);
+      // Don't fail the request if email sending fails
+    }
 
-    // Return success
-    return {
-      success: true,
-      // Include the reset URL in the response for development/testing
-      // In production, you would NOT include this in the response
-      resetUrl: `${useRuntimeConfig().public.appUrl || 'http://localhost:3000'}/auth/reset-password/${resetToken}`
-    };
+    // Return success response with reset URL in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Including reset URL in response (development mode only)');
+      return {
+        success: true,
+        resetUrl: resetUrl
+      };
+    } else {
+      return { success: true };
+    }
   } catch (error: any) {
     console.error('Forgot password error:', error);
     if (error.statusCode) {

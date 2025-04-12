@@ -1,6 +1,6 @@
 import { createError, getMethod } from 'h3';
 import { v4 as uuidv4 } from 'uuid';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, desc, asc, sql } from 'drizzle-orm';
 import { db } from '~/server/database';
 import { styles } from '~/server/database/schema';
 import { extractFileFromMultipart, extractFieldsFromMultipart } from '~/server/utils/multipart';
@@ -24,13 +24,89 @@ export default defineEventHandler(async (event) => {
   // Handle GET request to get all styles
   if (method === 'GET') {
     try {
-      const userStyles = await db
+      // Get the query parameters
+      const query = getQuery(event);
+      const page = parseInt(query.page as string || '1');
+      const limit = parseInt(query.limit as string || '12');
+      const sortField = (query.sortField as string) || 'createdAt';
+      const sortOrder = (query.sortOrder as string) || 'desc';
+      const search = query.search as string | undefined;
+      
+      // Calculate offset for pagination
+      const offset = (page - 1) * limit;
+      
+      // Build query based on search parameter
+      let stylesQuery = db
         .select()
         .from(styles)
-        .where(eq(styles.userId, userId))
-        .orderBy(styles.createdAt);
+        .where(eq(styles.userId, userId));
       
-      return userStyles;
+      // Apply search filter if provided
+      if (search && search.trim() !== '') {
+        stylesQuery = db
+          .select()
+          .from(styles)
+          .where(
+            and(
+              eq(styles.userId, userId),
+              sql`lower(${styles.name}) like ${`%${search.toLowerCase()}%`}`
+            )
+          );
+      }
+      
+      // Build count query to get total records (before pagination)
+      const countQuery = db
+        .select({
+          count: sql<number>`count(*)`
+        })
+        .from(styles)
+        .where(
+          and(
+            eq(styles.userId, userId),
+            search && search.trim() !== '' ? sql`lower(${styles.name}) like ${`%${search.toLowerCase()}%`}` : undefined
+          )
+        );
+      
+      // Determine sort direction
+      const sortDirection = sortOrder === 'asc' ? asc : desc;
+      
+      // Apply sorting
+      let orderByClause;
+      switch (sortField) {
+        case 'name':
+          orderByClause = sortDirection(styles.name);
+          break;
+        case 'createdAt':
+        default:
+          orderByClause = sortDirection(styles.createdAt);
+          break;
+      }
+      
+      // Apply sorting, pagination, and execute query
+      const stylesData = await stylesQuery
+        .orderBy(orderByClause)
+        .limit(limit)
+        .offset(offset);
+      
+      // Get total count
+      const countResult = await countQuery;
+      const total = countResult[0]?.count || 0;
+      
+      // Calculate total pages
+      const totalPages = Math.ceil(total / limit);
+      
+      // Return data with pagination info
+      return {
+        data: stylesData,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1
+        }
+      };
     } catch (error) {
       console.error('Error fetching styles:', error);
       throw createError({

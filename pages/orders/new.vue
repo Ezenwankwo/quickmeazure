@@ -295,7 +295,7 @@ const saveOrder = async () => {
     }
     
     // Call the create order API
-    await $fetch('/api/orders', {
+    const newOrder = await $fetch('/api/orders', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -319,8 +319,8 @@ const saveOrder = async () => {
       color: 'green',
     });
     
-    // Redirect to orders list
-    navigateTo('/orders');
+    // Redirect to order detail page
+    navigateTo(`/orders/${newOrder.id}/detail`);
   } catch (error) {
     console.error('Error creating order:', error);
     let errorMessage = 'Failed to create order. Please try again.';

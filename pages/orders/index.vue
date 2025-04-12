@@ -10,43 +10,54 @@
       }"
     />
     
-    <!-- Search and Filter -->
-    <div class="flex flex-col md:flex-row gap-4">
-      <UInput
-        v-model="search"
-        placeholder="Search client name..."
-        icon="i-heroicons-magnifying-glass"
-        class="md:w-80"
-        @input="filterOrders"
-      />
-      
-      <div class="flex gap-2 ml-auto">
-        <USelect
-          v-model="sortBy"
-          :options="sortOptions"
-          placeholder="Sort by"
-          @update:model-value="filterOrders"
-        />
+    <!-- Search and Filter with glassy effect -->
+    <UCard class="bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm">
+      <div class="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:gap-4 items-center">
+        <div class="relative w-full sm:w-80 group">
+          <UInput
+            v-model="search"
+            placeholder="Search client name..."
+            icon="i-heroicons-magnifying-glass"
+            class="w-full focus-within:ring-2 ring-primary-200"
+            @input="filterOrders"
+          />
+          <span v-if="search" class="absolute right-2 top-2.5 cursor-pointer text-gray-400 hover:text-gray-600" @click="resetSearch">
+            <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+          </span>
+        </div>
         
-        <UButton
-          color="gray"
-          variant="ghost"
-          icon="i-heroicons-funnel"
-          @click="isFilterOpen = !isFilterOpen"
-        >
-          Filter
-        </UButton>
+        <div class="flex gap-2 w-full sm:w-auto sm:ml-auto">
+          <USelect
+            v-model="sortBy"
+            :options="sortOptions"
+            placeholder="Sort by"
+            class="w-full sm:w-52 focus-within:ring-2 ring-primary-200"
+            @update:model-value="filterOrders"
+          />
+          
+          <UButton
+            color="gray"
+            variant="ghost"
+            icon="i-heroicons-funnel"
+            class="flex-shrink-0"
+            :class="{'text-primary-600 bg-primary-50': isFilterOpen}"
+            @click="isFilterOpen = !isFilterOpen"
+          >
+            <span class="hidden sm:inline">Filter</span>
+          </UButton>
+        </div>
       </div>
-    </div>
+    </UCard>
     
     <!-- Filter Panel -->
-    <UCard v-if="isFilterOpen" class="bg-white mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <UCard v-if="isFilterOpen" class="bg-white/95 backdrop-blur-sm border border-gray-100 shadow-sm mt-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <UFormGroup label="Status">
           <USelect
             v-model="filters.status"
             :options="statusOptions"
             placeholder="All statuses"
+            class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterOrders"
           />
         </UFormGroup>
@@ -56,6 +67,7 @@
             v-model="filters.dueDate"
             :options="dueDateOptions"
             placeholder="Any time"
+            class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterOrders"
           />
         </UFormGroup>
@@ -65,6 +77,7 @@
             v-model="filters.paymentStatus"
             :options="paymentStatusOptions"
             placeholder="All payment statuses"
+            class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterOrders"
           />
         </UFormGroup>
@@ -74,6 +87,7 @@
         <UButton
           color="gray"
           variant="outline"
+          icon="i-heroicons-arrow-path"
           @click="resetFilters"
         >
           Reset Filters
@@ -87,7 +101,7 @@
       <div class="hidden md:block">
         <UTable 
           :columns="columns" 
-          :rows="filteredOrders" 
+          :rows="paginatedOrders" 
           :loading="isLoading"
           :empty-state="{
             icon: 'i-heroicons-shopping-bag',
@@ -239,8 +253,8 @@
         </template>
 
         <!-- Orders list for mobile -->
-        <template v-else-if="filteredOrders.length > 0">
-          <div v-for="order in filteredOrders" :key="order.id" class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+        <template v-else-if="paginatedOrders.length > 0">
+          <div v-for="order in paginatedOrders" :key="order.id" class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
             <div class="flex items-start mb-3">
               <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3 flex-shrink-0">
                 <span class="text-primary-700 font-medium text-lg">{{ getInitials(order.client) }}</span>
@@ -367,7 +381,7 @@
         </template>
 
         <!-- Empty state for mobile -->
-        <div v-else class="py-12 flex flex-col items-center">
+        <div v-else-if="filteredOrders.length === 0" class="py-12 flex flex-col items-center">
           <UIcon name="i-heroicons-shopping-bag" class="text-gray-400 mb-4" size="xl" />
           <h3 class="font-medium text-lg text-gray-900">No orders found</h3>
           <p class="text-gray-500 text-center mt-1">
@@ -396,17 +410,80 @@
       
       <!-- Pagination -->
       <template #footer>
-        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4" v-if="filteredOrders.length > 0">
           <div class="text-sm text-gray-500 order-2 sm:order-1">
-            Showing {{ filteredOrders.length }} of {{ orders.length }} orders
+            Showing {{ Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalItems) }}-{{ Math.min(currentPage * ITEMS_PER_PAGE, totalItems) }} of {{ totalItems }} orders
           </div>
-          <UPagination
-            v-model="currentPage"
-            :page-count="pageCount"
-            :total="filteredOrders.length"
-            :ui="{ rounded: 'rounded-lg' }"
-            class="order-1 sm:order-2"
-          />
+          
+          <!-- Pagination -->
+          <div v-if="showPagination" class="flex items-center space-x-1 order-1 sm:order-2">
+            <!-- Previous button -->
+            <UButton
+              variant="ghost" 
+              color="gray"
+              :disabled="currentPage === 1"
+              @click="currentPage > 1 && (currentPage--, fetchOrders())"
+              size="sm"
+              icon="i-heroicons-chevron-left"
+              class="rounded-lg"
+            />
+            
+            <!-- First page -->
+            <UButton
+              variant="ghost" 
+              color="gray"
+              :class="currentPage === 1 ? 'bg-primary-50 text-primary-700' : ''"
+              @click="currentPage = 1, fetchOrders()"
+              size="sm"
+              class="rounded-lg"
+            >
+              1
+            </UButton>
+            
+            <!-- Ellipsis if needed -->
+            <span v-if="currentPage > 3 && pageCount > 5" class="px-1">...</span>
+            
+            <!-- Pages before current -->
+            <UButton
+              v-for="page in getVisiblePageNumbers()"
+              :key="page"
+              variant="ghost" 
+              color="gray"
+              :class="currentPage === page ? 'bg-primary-50 text-primary-700' : ''"
+              @click="currentPage = page, fetchOrders()"
+              size="sm"
+              class="rounded-lg"
+            >
+              {{ page }}
+            </UButton>
+            
+            <!-- Ellipsis if needed -->
+            <span v-if="currentPage < pageCount - 2 && pageCount > 5" class="px-1">...</span>
+            
+            <!-- Last page if not already shown -->
+            <UButton
+              v-if="pageCount > 1 && !getVisiblePageNumbers().includes(pageCount)"
+              variant="ghost" 
+              color="gray"
+              :class="currentPage === pageCount ? 'bg-primary-50 text-primary-700' : ''"
+              @click="currentPage = pageCount, fetchOrders()"
+              size="sm"
+              class="rounded-lg"
+            >
+              {{ pageCount }}
+            </UButton>
+            
+            <!-- Next button -->
+            <UButton
+              variant="ghost" 
+              color="gray"
+              :disabled="currentPage === pageCount"
+              @click="currentPage < pageCount && (currentPage++, fetchOrders())"
+              size="sm"
+              icon="i-heroicons-chevron-right"
+              class="rounded-lg"
+            />
+          </div>
         </div>
       </template>
     </UCard>
@@ -463,17 +540,19 @@ const showDeleteModal = ref(false);
 const orderToDelete = ref(null);
 const isDeleting = ref(false);
 const currentPage = ref(1);
+const totalItems = ref(0);
+const totalPages = ref(0);
 
 // Filters
 const filters = ref({
-  status: 'any',
-  dueDate: 'any',
+  status: 'all',
+  dueDate: 'all',
   paymentStatus: 'any',
 });
 
 // Options for filters
 const statusOptions = [
-  { label: 'All statuses', value: 'any' },
+  { label: 'All statuses', value: 'all' },
   { label: 'Pending', value: 'Pending' },
   { label: 'In Progress', value: 'In Progress' },
   { label: 'Ready for Pickup', value: 'Ready for Pickup' },
@@ -482,7 +561,7 @@ const statusOptions = [
 ];
 
 const dueDateOptions = [
-  { label: 'Any time', value: 'any' },
+  { label: 'Any time', value: 'all' },
   { label: 'Overdue', value: 'overdue' },
   { label: 'Due today', value: 'today' },
   { label: 'Due this week', value: 'thisWeek' },
@@ -537,6 +616,22 @@ const columns = [
   },
 ];
 
+// Constants
+const ITEMS_PER_PAGE = 10;
+
+// Computed properties
+const pageCount = computed(() => {
+  return totalPages.value;
+});
+
+const paginatedOrders = computed(() => {
+  return filteredOrders.value;
+});
+
+const showPagination = computed(() => {
+  return totalPages.value > 1;
+});
+
 // Fetch orders from API
 const fetchOrders = async () => {
   isLoading.value = true;
@@ -550,48 +645,128 @@ const fetchOrders = async () => {
       // Redirect to login if not authenticated
       useToast().add({
         title: 'Authentication required',
-        description: 'Please log in to view your orders',
+        description: 'Please log in to view orders',
         color: 'orange'
       });
       navigateTo('/auth/login');
       return;
     }
     
-    // Fetch orders from API
-    const data = await $fetch('/api/orders', {
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('page', currentPage.value.toString());
+    params.append('limit', ITEMS_PER_PAGE.toString());
+    
+    // Add search parameter if provided
+    if (search.value.trim()) {
+      params.append('search', search.value);
+    }
+    
+    // Add sort parameters
+    if (sortBy.value) {
+      const [field, direction] = sortBy.value.split('-');
+      params.append('sortField', field);
+      params.append('sortOrder', direction);
+    }
+    
+    // Add status filter if provided
+    if (filters.value.status !== 'all') {
+      params.append('status', filters.value.status);
+    }
+    
+    // Add due date filters
+    if (filters.value.dueDate !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      switch (filters.value.dueDate) {
+        case 'overdue':
+          params.append('dueDateEnd', today.toISOString().split('T')[0]);
+          break;
+        case 'today':
+          params.append('dueDateStart', today.toISOString().split('T')[0]);
+          params.append('dueDateEnd', today.toISOString().split('T')[0]);
+          break;
+        case 'this-week': {
+          const endOfWeek = new Date(today);
+          endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
+          params.append('dueDateStart', today.toISOString().split('T')[0]);
+          params.append('dueDateEnd', endOfWeek.toISOString().split('T')[0]);
+          break;
+        }
+        case 'this-month': {
+          const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          params.append('dueDateStart', today.toISOString().split('T')[0]);
+          params.append('dueDateEnd', endOfMonth.toISOString().split('T')[0]);
+          break;
+        }
+      }
+    }
+    
+    // Make API request with all parameters
+    const response = await $fetch(`/api/orders?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
     
-    // Map data to our format
-    orders.value = data.map(order => ({
-      id: order.id,
-      clientId: order.clientId,
-      client: order.clientName,
-      style: order.styleName,
-      styleId: order.styleId,
-      styleImageUrl: order.styleImageUrl,
-      status: order.status,
-      dueDate: order.dueDate,
-      totalAmount: order.totalAmount,
-      depositAmount: order.depositAmount,
-      balanceAmount: order.balanceAmount,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt,
-    }));
+    // Format the orders data for display
+    orders.value = response.data.map(order => formatOrderData(order));
     
-    filterOrders();
+    // Update pagination data from server response
+    filteredOrders.value = orders.value;
+    
+    // Update pagination from server response
+    if (response.pagination) {
+      currentPage.value = response.pagination.page;
+      totalItems.value = response.pagination.total;
+      totalPages.value = response.pagination.totalPages;
+    }
   } catch (error) {
-    console.error('Error loading orders:', error);
+    console.error('Error fetching orders:', error);
+    let errorMessage = 'Failed to load orders. Please refresh the page.';
+    
+    // Handle unauthorized errors
+    if (error.response?.status === 401) {
+      errorMessage = 'Your session has expired. Please log in again.';
+      // Redirect to login
+      navigateTo('/auth/login');
+    }
+    
     useToast().add({
       title: 'Error',
-      description: 'Failed to load orders. Please try again.',
+      description: errorMessage,
       color: 'red',
     });
+    
+    orders.value = [];
+    filteredOrders.value = [];
   } finally {
     isLoading.value = false;
   }
+};
+
+// Helper function to format order data
+const formatOrderData = (order) => {
+  const dueDate = order.dueDate ? new Date(order.dueDate) : null;
+  
+  return {
+    id: order.id,
+    client: order.clientName,
+    clientId: order.clientId,
+    status: order.status,
+    dueDate: dueDate,
+    isOverdue: dueDate ? isOverdue(dueDate) : false,
+    isDueSoon: dueDate ? isDueSoon(dueDate) : false,
+    totalAmount: order.totalAmount,
+    balanceAmount: order.balanceAmount,
+    paymentStatus: order.balanceAmount > 0 ? 'partial' : 'paid',
+    createdAt: new Date(order.createdAt).toISOString(),
+    updatedAt: new Date(order.updatedAt).toISOString(),
+    styleImageUrl: order.styleImageUrl,
+    // Include all original data
+    originalData: order
+  };
 };
 
 // Call fetchOrders on component mount
@@ -601,106 +776,33 @@ onMounted(() => {
 
 // Computed property to check if any filter is applied
 const isFilterApplied = computed(() => {
-  return filters.value.status !== 'any' || 
-         filters.value.dueDate !== 'any' || 
+  return filters.value.status !== 'all' || 
+         filters.value.dueDate !== 'all' || 
          filters.value.paymentStatus !== 'any';
-});
-
-const pageCount = computed(() => {
-  return Math.ceil(filteredOrders.value.length / 10);
 });
 
 // Filter and sort orders
 const filterOrders = () => {
-  // Filter by search term
-  let result = orders.value;
-  
-  if (search.value) {
-    const searchLower = search.value.toLowerCase();
-    result = result.filter(order => 
-      order.client.toLowerCase().includes(searchLower) ||
-      (order.style && order.style.toLowerCase().includes(searchLower))
-    );
-  }
-  
-  // Apply filters
-  if (filters.value.status !== 'any') {
-    result = result.filter(order => order.status === filters.value.status);
-  }
-  
-  if (filters.value.dueDate !== 'any') {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const tomorrow = today + 24 * 60 * 60 * 1000;
-    const nextWeek = today + 7 * 24 * 60 * 60 * 1000;
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
-    
-    switch (filters.value.dueDate) {
-      case 'overdue':
-        result = result.filter(order => order.dueDate < today);
-        break;
-      case 'today':
-        result = result.filter(order => order.dueDate >= today && order.dueDate < tomorrow);
-        break;
-      case 'thisWeek':
-        result = result.filter(order => order.dueDate >= today && order.dueDate < nextWeek);
-        break;
-      case 'nextWeek':
-        result = result.filter(order => order.dueDate >= nextWeek && order.dueDate < (nextWeek + 7 * 24 * 60 * 60 * 1000));
-        break;
-      case 'thisMonth':
-        result = result.filter(order => order.dueDate >= today && order.dueDate < nextMonth);
-        break;
-    }
-  }
-  
-  if (filters.value.paymentStatus !== 'any') {
-    switch (filters.value.paymentStatus) {
-      case 'paid':
-        result = result.filter(order => order.balanceAmount <= 0);
-        break;
-      case 'partial':
-        result = result.filter(order => order.depositAmount > 0 && order.balanceAmount > 0);
-        break;
-      case 'none':
-        result = result.filter(order => order.depositAmount <= 0);
-        break;
-    }
-  }
-  
-  // Sort results
-  result = [...result].sort((a, b) => {
-    switch (sortBy.value) {
-      case 'dueDate-asc':
-        return a.dueDate - b.dueDate;
-      case 'dueDate-desc':
-        return b.dueDate - a.dueDate;
-      case 'client-asc':
-        return a.client.localeCompare(b.client);
-      case 'client-desc':
-        return b.client.localeCompare(a.client);
-      case 'amount-desc':
-        return b.totalAmount - a.totalAmount;
-      case 'amount-asc':
-        return a.totalAmount - b.totalAmount;
-      case 'created-desc':
-        return b.createdAt - a.createdAt;
-      default:
-        return 0;
-    }
-  });
-  
-  filteredOrders.value = result;
+  // Reset to first page when filter changes
+  currentPage.value = 1;
+  // Fetch data with new filters
+  fetchOrders();
 };
 
-// Reset filters
 const resetFilters = () => {
   search.value = '';
+  sortBy.value = 'dueDate-asc';
   filters.value = {
-    status: 'any',
-    dueDate: 'any',
+    status: 'all',
+    dueDate: 'all',
     paymentStatus: 'any',
   };
+  filterOrders();
+};
+
+// Reset search
+const resetSearch = () => {
+  search.value = '';
   filterOrders();
 };
 
@@ -873,5 +975,34 @@ const updateOrderStatus = async (order, newStatus) => {
       color: 'red',
     });
   }
+};
+
+// Helper function to get visible page numbers
+const getVisiblePageNumbers = () => {
+  const visiblePages = [];
+  const totalPages = pageCount.value;
+  const current = currentPage.value;
+
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) {
+      visiblePages.push(i);
+    }
+  } else {
+    if (current <= 3) {
+      for (let i = 2; i <= 4; i++) {
+        visiblePages.push(i);
+      }
+    } else if (current >= totalPages - 2) {
+      for (let i = totalPages - 3; i <= totalPages - 1; i++) {
+        visiblePages.push(i);
+      }
+    } else {
+      for (let i = current - 1; i <= current + 1; i++) {
+        visiblePages.push(i);
+      }
+    }
+  }
+
+  return visiblePages;
 };
 </script>

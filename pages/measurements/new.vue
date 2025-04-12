@@ -418,7 +418,7 @@ const saveMeasurement = async () => {
     };
     
     // Call API to save measurement
-    await $fetch('/api/measurements', {
+    const newMeasurement = await $fetch('/api/measurements', {
       method: 'POST',
       body: measurementData,
       headers: {
@@ -433,8 +433,8 @@ const saveMeasurement = async () => {
       color: 'green'
     });
     
-    // Redirect to measurements list
-    navigateTo('/measurements');
+    // Redirect to measurement detail page
+    navigateTo(`/measurements/${newMeasurement.id}`);
   } catch (error) {
     console.error('Failed to save measurements:', error);
     let errorMessage = 'An error occurred while saving measurements';

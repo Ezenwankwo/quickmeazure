@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { sendWelcomeEmail } from '~/utils/email';
 
 // Define event handler for registration
 export default defineEventHandler(async (event) => {
@@ -93,6 +94,15 @@ export default defineEventHandler(async (event) => {
       process.env.JWT_SECRET as string,
       { expiresIn: '7d' }
     );
+
+    // Send welcome email in the background
+    try {
+      await sendWelcomeEmail(newUser.name, newUser.email);
+      console.log(`Welcome email sent to ${newUser.email}`);
+    } catch (emailError) {
+      console.error('Failed to send welcome email:', emailError);
+      // Don't fail registration if email sending fails
+    }
 
     // Return user data and token (excluding password)
     return {

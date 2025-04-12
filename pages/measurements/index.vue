@@ -10,43 +10,54 @@
       }"
     />
     
-    <!-- Search and Filter -->
-    <div class="flex flex-col md:flex-row gap-4">
-      <UInput
-        v-model="search"
-        placeholder="Search client name..."
-        icon="i-heroicons-magnifying-glass"
-        class="md:w-80"
-        @input="filterMeasurements"
-      />
-      
-      <div class="flex gap-2 ml-auto">
-        <USelect
-          v-model="sortBy"
-          :options="sortOptions"
-          placeholder="Sort by"
-          @update:model-value="filterMeasurements"
-        />
+    <!-- Search and Filter with glassy effect -->
+    <UCard class="bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm">
+      <div class="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:gap-4 items-center">
+        <div class="relative w-full sm:w-80 group">
+          <UInput
+            v-model="search"
+            placeholder="Search client name..."
+            icon="i-heroicons-magnifying-glass"
+            class="w-full focus-within:ring-2 ring-primary-200"
+            @input="filterMeasurements"
+          />
+          <span v-if="search" class="absolute right-2 top-2.5 cursor-pointer text-gray-400 hover:text-gray-600" @click="resetSearch">
+            <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
+          </span>
+        </div>
         
-        <UButton
-          color="gray"
-          variant="ghost"
-          icon="i-heroicons-funnel"
-          @click="isFilterOpen = !isFilterOpen"
-        >
-          Filter
-        </UButton>
+        <div class="flex gap-2 w-full sm:w-auto sm:ml-auto">
+          <USelect
+            v-model="sortBy"
+            :options="sortOptions"
+            placeholder="Sort by"
+            class="w-full sm:w-52 focus-within:ring-2 ring-primary-200"
+            @update:model-value="filterMeasurements"
+          />
+          
+          <UButton
+            color="gray"
+            variant="ghost"
+            icon="i-heroicons-funnel"
+            class="flex-shrink-0"
+            :class="{'text-primary-600 bg-primary-50': isFilterOpen}"
+            @click="isFilterOpen = !isFilterOpen"
+          >
+            <span class="hidden sm:inline">Filter</span>
+          </UButton>
+        </div>
       </div>
-    </div>
+    </UCard>
     
     <!-- Filter Panel -->
-    <UCard v-if="isFilterOpen" class="bg-white mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <UCard v-if="isFilterOpen" class="bg-white/95 backdrop-blur-sm border border-gray-100 shadow-sm mt-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <UFormGroup label="Date Added">
           <USelect
             v-model="filters.dateAdded"
             :options="dateOptions"
             placeholder="Any time"
+            class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterMeasurements"
           />
         </UFormGroup>
@@ -56,6 +67,7 @@
             v-model="filters.hasOrders"
             :options="booleanOptions"
             placeholder="All clients"
+            class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterMeasurements"
           />
         </UFormGroup>
@@ -65,6 +77,7 @@
         <UButton
           color="gray"
           variant="outline"
+          icon="i-heroicons-arrow-path"
           @click="resetFilters"
         >
           Reset Filters
@@ -78,7 +91,7 @@
       <div class="hidden sm:block">
         <UTable 
           :columns="columns" 
-          :rows="filteredMeasurements" 
+          :rows="paginatedMeasurements" 
           :loading="isLoading"
           :empty-state="{
             icon: 'i-heroicons-variable',
@@ -140,9 +153,9 @@
       
       <!-- Mobile Card View (shown only on mobile) -->
       <div class="sm:hidden space-y-4">
-        <template v-if="!isLoading && filteredMeasurements.length > 0">
+        <template v-if="!isLoading && paginatedMeasurements.length > 0">
           <UCard 
-            v-for="measurement in filteredMeasurements" 
+            v-for="measurement in paginatedMeasurements" 
             :key="measurement.id"
             class="border border-gray-200 shadow-sm"
           >
@@ -272,17 +285,80 @@
       
       <!-- Pagination -->
       <template #footer>
-        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4" v-if="filteredMeasurements.length > 0">
           <div class="text-sm text-gray-500 order-2 sm:order-1">
-            Showing {{ filteredMeasurements.length }} of {{ measurements.length }} measurements
+            Showing {{ Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalItems) }}-{{ Math.min(currentPage * ITEMS_PER_PAGE, totalItems) }} of {{ totalItems }} measurements
           </div>
-          <UPagination
-            v-model="currentPage"
-            :page-count="pageCount"
-            :total="filteredMeasurements.length"
-            :ui="{ rounded: 'rounded-lg' }"
-            class="order-1 sm:order-2"
-          />
+          
+          <!-- Custom pagination -->
+          <div v-if="showPagination" class="flex items-center space-x-1 order-1 sm:order-2">
+            <!-- Previous button -->
+            <UButton
+              variant="ghost" 
+              color="gray"
+              :disabled="currentPage === 1"
+              @click="currentPage > 1 && (currentPage--, fetchMeasurements())"
+              size="sm"
+              icon="i-heroicons-chevron-left"
+              class="rounded-lg"
+            />
+            
+            <!-- First page -->
+            <UButton
+              variant="ghost" 
+              color="gray"
+              :class="currentPage === 1 ? 'bg-primary-50 text-primary-700' : ''"
+              @click="currentPage = 1, fetchMeasurements()"
+              size="sm"
+              class="rounded-lg"
+            >
+              1
+            </UButton>
+            
+            <!-- Ellipsis if needed -->
+            <span v-if="currentPage > 3 && pageCount > 5" class="px-1">...</span>
+            
+            <!-- Pages before current -->
+            <UButton
+              v-for="page in getVisiblePageNumbers()"
+              :key="page"
+              variant="ghost" 
+              color="gray"
+              :class="currentPage === page ? 'bg-primary-50 text-primary-700' : ''"
+              @click="currentPage = page, fetchMeasurements()"
+              size="sm"
+              class="rounded-lg"
+            >
+              {{ page }}
+            </UButton>
+            
+            <!-- Ellipsis if needed -->
+            <span v-if="currentPage < pageCount - 2 && pageCount > 5" class="px-1">...</span>
+            
+            <!-- Last page if not already shown -->
+            <UButton
+              v-if="pageCount > 1 && !getVisiblePageNumbers().includes(pageCount)"
+              variant="ghost" 
+              color="gray"
+              :class="currentPage === pageCount ? 'bg-primary-50 text-primary-700' : ''"
+              @click="currentPage = pageCount, fetchMeasurements()"
+              size="sm"
+              class="rounded-lg"
+            >
+              {{ pageCount }}
+            </UButton>
+            
+            <!-- Next button -->
+            <UButton
+              variant="ghost" 
+              color="gray"
+              :disabled="currentPage === pageCount"
+              @click="currentPage < pageCount && (currentPage++, fetchMeasurements())"
+              size="sm"
+              icon="i-heroicons-chevron-right"
+              class="rounded-lg"
+            />
+          </div>
         </div>
       </template>
     </UCard>
@@ -365,6 +441,8 @@ const currentPage = ref(1);
 const isDeleteModalOpen = ref(false);
 const measurementToDelete = ref(null);
 const isDeleting = ref(false);
+const totalItems = ref(0);
+const totalPages = ref(0);
 
 // Sort and filter options
 const sortBy = ref('client-asc');
@@ -393,8 +471,18 @@ const booleanOptions = [
 ];
 
 // Computed properties
+const ITEMS_PER_PAGE = 10;
+
 const pageCount = computed(() => {
-  return Math.ceil(filteredMeasurements.value.length / 10);
+  return totalPages.value;
+});
+
+const paginatedMeasurements = computed(() => {
+  return filteredMeasurements.value;
+});
+
+const showPagination = computed(() => {
+  return totalPages.value > 1;
 });
 
 const isFilterApplied = computed(() => {
@@ -441,69 +529,15 @@ const formatMeasurement = (value) => {
 };
 
 const filterMeasurements = () => {
-  let filtered = [...measurements.value];
-  
-  // Apply search filter
-  if (search.value) {
-    const searchLower = search.value.toLowerCase();
-    filtered = filtered.filter(measurement => 
-      measurement.client.toLowerCase().includes(searchLower)
-    );
-  }
-  
-  // Apply date filter
-  if (filters.value.dateAdded) {
-    const now = new Date();
-    let cutoffDate = new Date();
-    
-    switch (filters.value.dateAdded) {
-      case '7days':
-        cutoffDate.setDate(now.getDate() - 7);
-        break;
-      case '30days':
-        cutoffDate.setDate(now.getDate() - 30);
-        break;
-      case '3months':
-        cutoffDate.setMonth(now.getMonth() - 3);
-        break;
-      case '1year':
-        cutoffDate.setFullYear(now.getFullYear() - 1);
-        break;
-    }
-    
-    filtered = filtered.filter(measurement => {
-      const measurementDate = new Date(measurement.lastUpdated);
-      return measurementDate >= cutoffDate;
-    });
-  }
-  
-  // Apply orders filter
-  if (filters.value.hasOrders !== null) {
-    filtered = filtered.filter(measurement => 
-      measurement.hasOrders === filters.value.hasOrders
-    );
-  }
-  
-  // Apply sorting
-  if (sortBy.value) {
-    const [field, direction] = sortBy.value.split('-');
-    
-    filtered.sort((a, b) => {
-      let comparison = 0;
-      
-      if (field === 'client') {
-        comparison = a.client.localeCompare(b.client);
-      } else if (field === 'date') {
-        const dateA = new Date(a.lastUpdated).getTime();
-        const dateB = new Date(b.lastUpdated).getTime();
-        comparison = dateA - dateB;
-      }
-      
-      return direction === 'desc' ? -comparison : comparison;
-    });
-  }
-  
-  filteredMeasurements.value = filtered;
+  // Reset to first page when filter changes
+  currentPage.value = 1;
+  // Fetch data with new filters
+  fetchMeasurements();
+};
+
+const resetSearch = () => {
+  search.value = '';
+  filterMeasurements();
 };
 
 const resetFilters = () => {
@@ -611,16 +645,51 @@ const fetchMeasurements = async () => {
       return;
     }
     
-    const data = await $fetch('/api/measurements', {
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('page', currentPage.value.toString());
+    params.append('limit', ITEMS_PER_PAGE.toString());
+    
+    // Add search parameter if provided
+    if (search.value.trim()) {
+      params.append('search', search.value);
+    }
+    
+    // Add sort parameters
+    if (sortBy.value) {
+      const [field, direction] = sortBy.value.split('-');
+      params.append('sortField', field);
+      params.append('sortOrder', direction);
+    }
+    
+    // Add filter parameters
+    if (filters.value.dateAdded) {
+      params.append('dateFilter', filters.value.dateAdded);
+    }
+    
+    if (filters.value.hasOrders !== null) {
+      params.append('hasOrders', filters.value.hasOrders.toString());
+    }
+    
+    // Make API request with all parameters
+    const response = await $fetch(`/api/measurements?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
     
     // Format the measurements data for display
-    measurements.value = data.map(measurement => formatMeasurements(measurement));
+    measurements.value = response.data.map(measurement => formatMeasurements(measurement));
     
-    filterMeasurements();
+    // Update pagination data from server response
+    filteredMeasurements.value = measurements.value;
+    
+    // Update pagination from server response
+    if (response.pagination) {
+      currentPage.value = response.pagination.page;
+      totalItems.value = response.pagination.total;
+      totalPages.value = response.pagination.totalPages;
+    }
   } catch (error) {
     console.error('Error fetching measurements:', error);
     let errorMessage = 'Failed to load measurements. Please refresh the page.';
@@ -639,6 +708,7 @@ const fetchMeasurements = async () => {
     });
     
     measurements.value = [];
+    filteredMeasurements.value = [];
   } finally {
     isLoading.value = false;
   }
@@ -655,5 +725,33 @@ const formatDate = (timestamp) => {
   const day = date.getDate().toString().padStart(2, '0');
   const year = date.getFullYear();
   return `${month} ${day}, ${year}`;
+};
+
+const getVisiblePageNumbers = () => {
+  const visiblePages = [];
+  const totalPages = pageCount.value;
+  const current = currentPage.value;
+
+  if (totalPages <= 5) {
+    for (let i = 2; i <= totalPages - 1; i++) {
+      visiblePages.push(i);
+    }
+  } else {
+    if (current <= 3) {
+      for (let i = 2; i <= 4; i++) {
+        visiblePages.push(i);
+      }
+    } else if (current >= totalPages - 2) {
+      for (let i = totalPages - 3; i <= totalPages - 1; i++) {
+        visiblePages.push(i);
+      }
+    } else {
+      for (let i = current - 1; i <= current + 1; i++) {
+        visiblePages.push(i);
+      }
+    }
+  }
+
+  return visiblePages;
 };
 </script>

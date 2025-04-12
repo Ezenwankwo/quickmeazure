@@ -192,8 +192,8 @@ const saveStyle = async () => {
       color: 'green'
     });
     
-    // Navigate to the styles page
-    navigateTo('/styles');
+    // Navigate to the style detail page
+    navigateTo(`/styles/${newStyle.id}/detail`);
   } catch (error) {
     console.error('Error creating style:', error);
     

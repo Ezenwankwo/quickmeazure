@@ -97,8 +97,10 @@ export default defineNuxtPlugin((nuxtApp) => {
         // Skip for auth endpoints
         const fullUrl = url.toString();
         const isAuthEndpoint = fullUrl.includes('/api/auth/');
+        // Skip for test endpoints in development
+        const isTestEndpoint = process.env.NODE_ENV === 'development' && fullUrl.includes('/api/test/');
         
-        if (!isAuthEndpoint) {
+        if (!isAuthEndpoint && !isTestEndpoint) {
           // Get auth token
           const auth = useAuth();
           if (auth.token.value) {
@@ -125,6 +127,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           // Skip handling for auth endpoints to prevent loops
           const requestUrl = fetchError.request?.toString() || '';
           const isAuthEndpoint = requestUrl.includes('/api/auth/');
+          const isTestEndpoint = process.env.NODE_ENV === 'development' && requestUrl.includes('/api/test/');
           
           // Skip if this is immediately after login
           if (isRecentLogin()) {
@@ -133,7 +136,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           }
           
           // Check for 401 Unauthorized error
-          if (fetchError.response.status === 401 && !isAuthEndpoint && !isHandlingAuthError()) {
+          if (fetchError.response.status === 401 && !isAuthEndpoint && !isTestEndpoint && !isHandlingAuthError()) {
             // Set auth flag to prevent multiple redirects
             setHandlingAuthError(true);
             
