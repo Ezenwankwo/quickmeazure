@@ -67,9 +67,16 @@
         </div>
         
         <div class="flex items-center">
-          <UCheckbox v-model="agreeToTerms" name="terms" required>
-            I agree to the <a href="#" class="text-primary-600 hover:text-primary-500">Terms of Service</a> and <a href="#" class="text-primary-600 hover:text-primary-500">Privacy Policy</a>
-          </UCheckbox>
+          <div class="flex items-center">
+            <UCheckbox 
+              v-model="agreeToTerms" 
+              name="terms" 
+              required
+            />
+            <label for="terms" class="ml-2 block text-sm text-gray-700">
+              I agree to the <NuxtLink to="/legal/terms" class="text-primary-600 hover:text-primary-500">Terms of Service</NuxtLink> and <NuxtLink to="/legal/privacy" class="text-primary-600 hover:text-primary-500">Privacy Policy</NuxtLink>
+            </label>
+          </div>
         </div>
         
         <div>
@@ -84,15 +91,6 @@
           </UButton>
         </div>
       </form>
-      
-      <div class="text-center mt-4">
-        <p class="text-sm text-gray-600">
-          Already have an account?
-          <NuxtLink to="/auth/login" class="font-medium text-primary-600 hover:text-primary-500">
-            Sign in
-          </NuxtLink>
-        </p>
-      </div>
     </div>
   </div>
 </template>
@@ -101,6 +99,11 @@
 // Set page metadata
 useHead({
   title: 'Register - QuickMeazure',
+});
+
+// Set layout for this page
+definePageMeta({
+  layout: 'auth'
 });
 
 // Form data

@@ -14,6 +14,7 @@ interface AuthState {
   user: User | null;
   isLoggedIn: boolean;
   token: string | null;
+  sessionExpiry?: number | null;
 }
 
 // Create a reactive auth state
@@ -39,6 +40,27 @@ if (process.client) {
 }
 
 export function useAuth() {
+  // Check for session expiry on initialization
+  if (process.client) {
+    const authData = localStorage.getItem('auth');
+    if (authData) {
+      const parsedData = JSON.parse(authData);
+      if (parsedData.sessionExpiry && Date.now() > parsedData.sessionExpiry) {
+        // Session has expired, clear auth data
+        localStorage.removeItem('auth');
+        localStorage.removeItem('isHandlingAuthError');
+        localStorage.removeItem('lastLoginTime');
+        
+        // Reset auth state
+        authState.value = {
+          user: null,
+          isLoggedIn: false,
+          token: null
+        };
+      }
+    }
+  }
+
   // Computed properties
   const isLoggedIn = computed(() => authState.value.isLoggedIn);
   const user = computed(() => authState.value.user);
@@ -88,7 +110,7 @@ export function useAuth() {
   };
 
   // Login function
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string, remember: boolean = false) {
     try {
       // Clear any auth error state
       if (process.client) {
@@ -101,17 +123,24 @@ export function useAuth() {
         body: { email, password },
       });
       
+      // Calculate session expiry based on remember setting
+      const now = Date.now();
+      const sessionExpiry = remember 
+        ? now + (30 * 24 * 60 * 60 * 1000) // 30 days if remember me is checked
+        : now + (8 * 60 * 60 * 1000);      // 8 hours for normal session
+      
       // Update auth state
       authState.value = {
         user: data.user,
         isLoggedIn: true,
-        token: data.token
+        token: data.token,
+        sessionExpiry
       };
       
       // Save to localStorage and mark login time
       if (process.client) {
         localStorage.setItem('auth', JSON.stringify(authState.value));
-        localStorage.setItem('lastLoginTime', Date.now().toString());
+        localStorage.setItem('lastLoginTime', now.toString());
       }
       
       return { success: true };

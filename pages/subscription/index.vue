@@ -1,8 +1,9 @@
 <template>
   <div class="space-y-6">
-    <div class="flex justify-between items-center">
-      <h1 class="text-2xl font-bold">Subscription</h1>
-    </div>
+    <PageHeader
+      title="Subscription"
+      subtitle="Manage your subscription plan and view payment history"
+    />
     
     <!-- Current Plan -->
     <UCard class="bg-white">
@@ -18,8 +19,11 @@
           </div>
           <p class="text-gray-600 mt-1">{{ currentPlan.description }}</p>
           <div class="mt-2 flex flex-wrap gap-2">
-            <UBadge v-for="feature in currentPlan.features" :key="feature" color="gray" variant="subtle">
+            <UBadge v-for="feature in currentPlan.features.slice(0, 3)" :key="feature" color="gray" variant="subtle">
               {{ feature }}
+            </UBadge>
+            <UBadge v-if="currentPlan.features.length > 3" color="gray" variant="subtle">
+              +{{ currentPlan.features.length - 3 }} more
             </UBadge>
           </div>
         </div>
@@ -31,8 +35,8 @@
       </div>
       
       <template #footer>
-        <div class="flex justify-between items-center">
-          <div>
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <div class="w-full sm:w-2/3">
             <p class="text-sm text-gray-600">
               <span class="font-medium">{{ clientCount }}</span> clients used out of 
               <span class="font-medium">{{ currentPlan.clientLimit ? currentPlan.clientLimit : 'Unlimited' }}</span>
@@ -45,14 +49,106 @@
             </div>
           </div>
           
-          <UButton
-            v-if="currentPlan.id !== 'premium'"
-            color="primary"
-            @click="showUpgradeModal = true"
-          >
-            Upgrade Plan
+          <div class="w-full sm:w-auto">
+            <UButton
+              v-if="currentPlan.id !== 'premium'"
+              color="primary"
+              block
+              @click="showUpgradeModal = true"
+            >
+              Upgrade Plan
+            </UButton>
+          </div>
+        </div>
+      </template>
+    </UCard>
+    
+    <!-- Payment History -->
+    <UCard class="bg-white">
+      <template #header>
+        <div class="flex justify-between items-center">
+          <h2 class="text-lg font-medium">Payment History</h2>
+          <UButton v-if="paymentHistory.length > 0" color="gray" variant="ghost" size="xs" class="hidden sm:flex" icon="i-heroicons-document-arrow-down">
+            Download All
           </UButton>
         </div>
+      </template>
+      
+      <!-- Desktop Payment History Table -->
+      <div class="hidden sm:block">
+        <UTable 
+          :columns="paymentColumns" 
+          :rows="paymentHistory" 
+          :ui="{ 
+            td: { 
+              padding: 'py-3 px-4' 
+            } 
+          }"
+        >
+          <template #amount-data="{ row }">
+            <span class="font-medium">{{ formatPrice(row.amount) }}</span>
+          </template>
+          
+          <template #status-data="{ row }">
+            <UBadge
+              :color="row.status === 'Paid' ? 'green' : 'yellow'"
+              variant="subtle"
+              size="sm"
+            >
+              {{ row.status }}
+            </UBadge>
+          </template>
+          
+          <template #actions-data="{ row }">
+            <UButton
+              color="gray"
+              variant="ghost"
+              icon="i-heroicons-document-text"
+              size="xs"
+              @click="downloadInvoice(row)"
+            >
+              Invoice
+            </UButton>
+          </template>
+        </UTable>
+      </div>
+      
+      <!-- Mobile Payment History -->
+      <div class="sm:hidden space-y-4">
+        <div v-for="payment in paymentHistory" :key="`mobile-payment-${payment.id}`" class="border-b border-gray-200 pb-4 last:border-0">
+          <div class="flex justify-between">
+            <span class="text-sm font-medium">{{ payment.date }}</span>
+            <UBadge
+              :color="payment.status === 'Paid' ? 'green' : 'yellow'"
+              variant="subtle"
+              size="sm"
+            >
+              {{ payment.status }}
+            </UBadge>
+          </div>
+          <div class="mt-1 text-sm">{{ payment.description }}</div>
+          <div class="mt-2 flex justify-between items-center">
+            <span class="font-medium">{{ formatPrice(payment.amount) }}</span>
+            <UButton
+              color="gray"
+              variant="ghost"
+              icon="i-heroicons-document-text"
+              size="xs"
+              @click="downloadInvoice(payment)"
+            >
+              Invoice
+            </UButton>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div v-if="paymentHistory.length === 0" class="text-center py-4">
+          <p class="text-gray-500">No payment history available</p>
+        </div>
+        <UButton v-else color="gray" variant="ghost" block class="sm:hidden mt-2" size="sm" icon="i-heroicons-document-arrow-down">
+          Download All Invoices
+        </UButton>
       </template>
     </UCard>
     
@@ -62,7 +158,8 @@
         <h2 class="text-lg font-medium">Compare Plans</h2>
       </template>
       
-      <div class="overflow-x-auto">
+      <!-- Desktop Plan Comparison Table (hidden on small screens) -->
+      <div class="hidden sm:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
           <thead>
             <tr>
@@ -108,59 +205,49 @@
           </tbody>
         </table>
       </div>
-    </UCard>
-    
-    <!-- Payment History -->
-    <UCard class="bg-white">
-      <template #header>
-        <h2 class="text-lg font-medium">Payment History</h2>
-      </template>
       
-      <UTable 
-        :columns="paymentColumns" 
-        :rows="paymentHistory" 
-        :ui="{ 
-          td: { 
-            padding: 'py-3 px-4' 
-          } 
-        }"
-      >
-        <template #amount-data="{ row }">
-          <span class="font-medium">{{ formatPrice(row.amount) }}</span>
-        </template>
-        
-        <template #status-data="{ row }">
-          <UBadge
-            :color="row.status === 'Paid' ? 'green' : 'yellow'"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.status }}
-          </UBadge>
-        </template>
-        
-        <template #actions-data="{ row }">
-          <UButton
-            color="gray"
-            variant="ghost"
-            icon="i-heroicons-document-text"
-            size="xs"
-            @click="downloadInvoice(row)"
-          >
-            Invoice
-          </UButton>
-        </template>
-      </UTable>
-      
-      <template #footer>
-        <div v-if="paymentHistory.length === 0" class="text-center py-4">
-          <p class="text-gray-500">No payment history available</p>
+      <!-- Mobile Plan Cards (shown only on small screens) -->
+      <div class="sm:hidden space-y-6">
+        <div v-for="plan in plans" :key="`mobile-${plan.id}`" class="border border-gray-200 rounded-lg p-4">
+          <div class="flex justify-between items-center border-b border-gray-200 pb-3 mb-3">
+            <h3 class="font-medium">{{ plan.name }}</h3>
+            <UBadge v-if="plan.id === 'standard'" color="primary">POPULAR</UBadge>
+          </div>
+          
+          <div class="mb-4">
+            <div class="text-xl font-bold">{{ formatPrice(plan.price) }}<span class="text-sm font-normal text-gray-500">/month</span></div>
+            <div class="text-sm text-gray-600 mt-1">{{ plan.clientLimit ? `Up to ${plan.clientLimit} clients` : 'Unlimited clients' }}</div>
+          </div>
+          
+          <div class="space-y-2">
+            <div v-for="(feature, index) in allFeatures" :key="`mobile-feature-${index}`" class="flex items-center">
+              <UIcon 
+                :name="planHasFeature(plan, feature) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'" 
+                :class="planHasFeature(plan, feature) ? 'text-green-500' : 'text-gray-300'"
+                class="mr-2 flex-shrink-0" 
+              />
+              <span class="text-sm">{{ feature }}</span>
+            </div>
+          </div>
+          
+          <div class="mt-4">
+            <UButton 
+              v-if="plan.id !== currentPlan.value?.id" 
+              color="primary" 
+              size="sm" 
+              block
+              @click="handleMobileUpgrade(plan.id)"
+            >
+              {{ plan.price > (currentPlan.value?.price || 0) ? 'Upgrade' : 'Downgrade' }}
+            </UButton>
+            <UBadge v-else color="gray" variant="subtle" class="w-full py-1 justify-center">Current Plan</UBadge>
+          </div>
         </div>
-      </template>
+      </div>
     </UCard>
     
     <!-- Upgrade Plan Modal -->
-    <UModal v-model="showUpgradeModal">
+    <UModal v-model="showUpgradeModal" :ui="{ width: 'sm:max-w-md' }">
       <UCard>
         <template #header>
           <h3 class="text-lg font-medium">Upgrade Your Plan</h3>
@@ -177,12 +264,12 @@
               :value="plan.id"
               :name="`plan-${plan.id}`"
             >
-              <div class="flex justify-between w-full">
+              <div class="flex flex-col sm:flex-row sm:justify-between w-full">
                 <div>
                   <span class="font-medium">{{ plan.name }}</span>
                   <p class="text-sm text-gray-500">{{ plan.description }}</p>
                 </div>
-                <span class="font-medium">{{ formatPrice(plan.price) }}/month</span>
+                <span class="font-medium mt-1 sm:mt-0">{{ formatPrice(plan.price) }}/month</span>
               </div>
             </URadio>
           </div>
@@ -201,16 +288,20 @@
         </div>
         
         <template #footer>
-          <div class="flex justify-end space-x-4">
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:space-x-4">
             <UButton
               color="gray"
               variant="outline"
+              block
+              class="sm:block"
               @click="showUpgradeModal = false"
             >
               Cancel
             </UButton>
             <UButton
               color="primary"
+              block
+              class="sm:block"
               @click="upgradePlan"
               :loading="isUpgrading"
             >
@@ -272,7 +363,14 @@ const plans = [
 ];
 
 // Current plan (mock data)
-const currentPlan = ref(plans[1]); // Standard plan
+const currentPlan = ref(plans.length > 0 ? plans[1] || plans[0] : {
+  id: 'free',
+  name: 'Free Plan',
+  description: 'Basic plan for small tailoring businesses',
+  price: 0,
+  clientLimit: 100,
+  features: ['Up to 100 clients', 'Basic measurements', 'Payment tracking'],
+}); // Default to Standard plan if available, otherwise first plan, or fallback
 const clientCount = ref(87);
 const nextBillingDate = ref('December 15, 2023');
 
@@ -332,6 +430,7 @@ const isUpgrading = ref(false);
 
 // Get upgrade plans (plans higher than current)
 const upgradePlans = computed(() => {
+  if (!currentPlan.value) return plans.filter(plan => plan.price > 0);
   return plans.filter(plan => plan.price > currentPlan.value.price);
 });
 
@@ -354,7 +453,8 @@ const planHasFeature = (plan, feature) => {
 };
 
 const getSelectedPlan = (planId) => {
-  return plans.find(plan => plan.id === planId);
+  if (!planId) return plans[0] || null; // Return first plan or null if no plans exist
+  return plans.find(plan => plan.id === planId) || plans[0] || null;
 };
 
 const downloadInvoice = (payment) => {
@@ -392,4 +492,11 @@ const upgradePlan = async () => {
     isUpgrading.value = false;
   }
 };
+
+const handleMobileUpgrade = (planId) => {
+  selectedUpgradePlan.value = planId;
+  showUpgradeModal.value = true;
+};
+
+import PageHeader from '~/components/PageHeader.vue';
 </script>

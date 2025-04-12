@@ -29,14 +29,16 @@
           </UFormGroup>
         </div>
         
-        <div class="flex items-center justify-between">
-          <UCheckbox v-model="rememberMe" name="remember-me">
-            Remember me
-          </UCheckbox>
-          
-          <NuxtLink to="/auth/forgot-password" class="text-sm text-primary-600 hover:text-primary-500">
-            Forgot your password?
-          </NuxtLink>
+        <div class="flex items-center">
+          <div class="flex items-center">
+            <UCheckbox 
+              v-model="rememberMe" 
+              name="remember-me"
+            />
+            <label for="remember-me" class="ml-2 block text-sm text-gray-700">
+              Remember me
+            </label>
+          </div>
         </div>
         
         <div>
@@ -48,17 +50,16 @@
           >
             Sign in
           </UButton>
+          
+          <div class="text-center mt-3">
+            <NuxtLink to="/auth/forgot-password" class="text-sm text-primary-600 hover:text-primary-500">
+              Forgot your password?
+            </NuxtLink>
+          </div>
         </div>
       </form>
       
-      <div class="text-center mt-4">
-        <p class="text-sm text-gray-600">
-          Don't have an account?
-          <NuxtLink to="/auth/register" class="font-medium text-primary-600 hover:text-primary-500">
-            Sign up
-          </NuxtLink>
-        </p>
-      </div>
+      
     </div>
   </div>
 </template>
@@ -67,6 +68,11 @@
 // Set page metadata
 useHead({
   title: 'Login - QuickMeazure',
+});
+
+// Set layout for this page
+definePageMeta({
+  layout: 'auth'
 });
 
 // Form data
@@ -117,7 +123,7 @@ const handleLogin = async () => {
       localStorage.removeItem('isHandlingAuthError');
     }
     
-    const result = await login(email.value, password.value);
+    const result = await login(email.value, password.value, rememberMe.value);
     
     if (result.success) {
       // Set login time marker to prevent immediate logout

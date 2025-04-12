@@ -1,20 +1,9 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50 py-4">
     <!-- Top Navigation Bar -->
-    <header class="bg-white shadow-sm">
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
       <div class="container mx-auto px-4 py-3 flex justify-between items-center">
         <div class="flex items-center">
-          <!-- Mobile Menu Button (only for authenticated users) -->
-          <UButton
-            v-if="isLoggedIn"
-            color="gray"
-            variant="ghost"
-            icon="i-heroicons-bars-3"
-            class="mr-2 md:hidden"
-            @click="isMobileMenuOpen = !isMobileMenuOpen"
-            aria-label="Toggle menu"
-          />
-          
           <NuxtLink to="/" class="flex items-center space-x-2">
             <UIcon name="i-heroicons-scissors" class="text-primary-600 text-2xl" />
             <span class="text-xl font-bold text-primary-600">QuickMeazure</span>
@@ -46,15 +35,17 @@
         <!-- Navigation for guests -->
         <div v-else class="flex items-center space-x-2 sm:space-x-4">
           <UButton
+            v-if="route.path !== '/auth/login'"
             to="/auth/login"
             color="gray"
-            variant="ghost"
+            variant="outline"
             size="sm"
             class="sm:text-base"
           >
             Login
           </UButton>
           <UButton
+            v-if="route.path !== '/auth/register'"
             to="/auth/register"
             color="primary"
             size="sm"
@@ -66,120 +57,8 @@
       </div>
     </header>
     
-    <!-- Mobile sidebar overlay -->
-    <div 
-      v-if="isMobileMenuOpen && isLoggedIn" 
-      class="fixed inset-0 bg-black/30 z-40 md:hidden"
-      @click="isMobileMenuOpen = false"
-    ></div>
-    
-    <!-- Mobile sidebar -->
-    <aside
-      v-if="isLoggedIn"
-      :class="[
-        'fixed top-0 left-0 h-full bg-white shadow-lg z-50 transform transition-transform duration-300 w-64',
-        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
-        'md:hidden'
-      ]"
-    >
-      <div class="p-4 border-b flex justify-between items-center">
-        <div class="flex items-center space-x-2">
-          <UIcon name="i-heroicons-scissors" class="text-primary-600 text-xl" />
-          <span class="font-bold text-primary-600">QuickMeazure</span>
-        </div>
-        <UButton
-          color="gray"
-          variant="ghost"
-          icon="i-heroicons-x-mark"
-          @click="isMobileMenuOpen = false"
-          aria-label="Close menu"
-        />
-      </div>
-      
-      <nav class="p-2 space-y-1">
-        <UButton
-          block
-          to="/dashboard"
-          color="gray"
-          :variant="route.path.startsWith('/dashboard') ? 'solid' : 'ghost'"
-          class="justify-start"
-          :ui="{ rounded: 'rounded-lg' }"
-          :trailing="false"
-          icon="i-heroicons-home"
-          @click="isMobileMenuOpen = false"
-        >
-          Dashboard
-        </UButton>
-        <UButton
-          block
-          to="/clients"
-          color="gray"
-          :variant="route.path.startsWith('/clients') ? 'solid' : 'ghost'"
-          class="justify-start"
-          :ui="{ rounded: 'rounded-lg' }"
-          :trailing="false"
-          icon="i-heroicons-users"
-          @click="isMobileMenuOpen = false"
-        >
-          Clients
-        </UButton>
-        <UButton
-          block
-          to="/measurements"
-          color="gray"
-          :variant="route.path.startsWith('/measurements') ? 'solid' : 'ghost'"
-          class="justify-start"
-          :ui="{ rounded: 'rounded-lg' }"
-          :trailing="false"
-          icon="i-heroicons-variable"
-          @click="isMobileMenuOpen = false"
-        >
-          Measurements
-        </UButton>
-        <UButton
-          block
-          to="/styles"
-          color="gray"
-          :variant="route.path.startsWith('/styles') ? 'solid' : 'ghost'"
-          class="justify-start"
-          :ui="{ rounded: 'rounded-lg' }"
-          :trailing="false"
-          icon="i-heroicons-swatch"
-          @click="isMobileMenuOpen = false"
-        >
-          Styles
-        </UButton>
-        <UButton
-          block
-          to="/orders"
-          color="gray"
-          :variant="route.path.startsWith('/orders') ? 'solid' : 'ghost'"
-          class="justify-start"
-          :ui="{ rounded: 'rounded-lg' }"
-          :trailing="false"
-          icon="i-heroicons-shopping-bag"
-          @click="isMobileMenuOpen = false"
-        >
-          Orders
-        </UButton>
-        <UButton
-          block
-          to="/subscription"
-          color="gray"
-          :variant="route.path.startsWith('/subscription') ? 'solid' : 'ghost'"
-          class="justify-start"
-          :ui="{ rounded: 'rounded-lg' }"
-          :trailing="false"
-          icon="i-heroicons-credit-card"
-          @click="isMobileMenuOpen = false"
-        >
-          Subscription
-        </UButton>
-      </nav>
-    </aside>
-    
     <!-- Main content wrapper -->
-    <div class="container mx-auto px-4 py-4 sm:py-6">
+    <div class="container mx-auto px-4 pt-16 pb-20 sm:pb-6">
       <div class="flex">
         <!-- Desktop sidebar -->
         <aside
@@ -247,18 +126,6 @@
             >
               Orders
             </UButton>
-            <UButton
-              block
-              to="/subscription"
-              color="gray"
-              :variant="route.path.startsWith('/subscription') ? 'solid' : 'ghost'"
-              class="justify-start"
-              :ui="{ rounded: 'rounded-lg' }"
-              :trailing="false"
-              icon="i-heroicons-credit-card"
-            >
-              Subscription
-            </UButton>
           </nav>
         </aside>
         
@@ -269,6 +136,73 @@
       </div>
     </div>
 
+    <!-- Footer - only show on public pages -->
+    <footer v-if="!isLoggedIn" class="bg-white border-t border-gray-200 py-6 mt-8">
+      <div class="container mx-auto px-4 text-center text-sm text-gray-600">
+        <p>© {{ new Date().getFullYear() }} QuickMeazure. All rights reserved.</p>
+        <div class="flex justify-center space-x-4 mt-2">
+          <NuxtLink to="/legal/terms" class="hover:text-primary-600">Terms of Service</NuxtLink>
+          <NuxtLink to="/legal/privacy" class="hover:text-primary-600">Privacy Policy</NuxtLink>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Mobile Footer Navigation -->
+    <footer v-if="isLoggedIn" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
+      <nav class="grid grid-cols-5 gap-1 p-2">
+        <UButton
+          to="/dashboard"
+          color="gray"
+          :variant="route.path.startsWith('/dashboard') ? 'solid' : 'ghost'"
+          class="flex-col h-auto py-2"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-home"
+        >
+          <span class="text-xs mt-1">Dashboard</span>
+        </UButton>
+        <UButton
+          to="/clients"
+          color="gray"
+          :variant="route.path.startsWith('/clients') ? 'solid' : 'ghost'"
+          class="flex-col h-auto py-2"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-users"
+        >
+          <span class="text-xs mt-1">Clients</span>
+        </UButton>
+        <UButton
+          to="/measurements"
+          color="gray"
+          :variant="route.path.startsWith('/measurements') ? 'solid' : 'ghost'"
+          class="flex-col h-auto py-2"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-variable"
+        >
+          <span class="text-xs mt-1">Measure</span>
+        </UButton>
+        <UButton
+          to="/styles"
+          color="gray"
+          :variant="route.path.startsWith('/styles') ? 'solid' : 'ghost'"
+          class="flex-col h-auto py-2"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-swatch"
+        >
+          <span class="text-xs mt-1">Styles</span>
+        </UButton>
+        <UButton
+          to="/orders"
+          color="gray"
+          :variant="route.path.startsWith('/orders') ? 'solid' : 'ghost'"
+          class="flex-col h-auto py-2"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-shopping-bag"
+        >
+          <span class="text-xs mt-1">Orders</span>
+        </UButton>
+      </nav>
+    </footer>
+
     <!-- Notifications -->
     <UNotifications :ui="{ position: 'top-0 bottom-[unset]' }" />
   </div>
@@ -277,14 +211,6 @@
 <script setup>
 // Import auth composable
 const { user, isLoggedIn, logout } = useAuth();
-
-// Mobile menu state
-const isMobileMenuOpen = ref(false);
-
-// Close mobile menu when route changes
-watch(() => useRoute().fullPath, () => {
-  isMobileMenuOpen.value = false;
-});
 
 // Determine if sidebar should be shown (based on route)
 const route = useRoute();
@@ -305,6 +231,11 @@ const userMenuItems = [
       label: 'Settings',
       icon: 'i-heroicons-cog-6-tooth',
       to: '/settings'
+    },
+    {
+      label: 'Subscription',
+      icon: 'i-heroicons-credit-card',
+      to: '/subscription'
     }
   ],
   [
@@ -313,7 +244,7 @@ const userMenuItems = [
       icon: 'i-heroicons-arrow-right-on-rectangle',
       click: () => {
         logout();
-        navigateTo('/');
+        navigateTo('/auth/login');
       }
     }
   ]

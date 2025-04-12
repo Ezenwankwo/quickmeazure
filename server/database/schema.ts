@@ -10,7 +10,25 @@ export const users = sqliteTable('users', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
   subscriptionPlan: text('subscription_plan').notNull().default('free'),
-  subscriptionExpiry: integer('subscription_expiry', { mode: 'timestamp' }),
+  subscriptionExpiry: integer('subscription_expiry', { mode: 'timestamp' })
+});
+
+// Business Profiles table
+export const businessProfiles = sqliteTable('business_profiles', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  shopName: text('shop_name').notNull(),
+  businessType: text('business_type').notNull(),
+  yearsInBusiness: integer('years_in_business'),
+  businessDescription: text('business_description'),
+  phone: text('phone'),
+  address: text('address'),
+  city: text('city'),
+  state: text('state'),
+  specializations: text('specializations', { mode: 'json' }),
+  services: text('services', { mode: 'json' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`)
 });
 
 // Clients table to store client information

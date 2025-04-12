@@ -13,6 +13,8 @@ export default defineEventHandler(async (event) => {
   const publicRoutes = [
     '/api/auth/login',
     '/api/auth/register',
+    '/api/auth/forgot-password',
+    '/api/auth/reset-password',
   ];
   
   const path = getRequestURL(event).pathname;
