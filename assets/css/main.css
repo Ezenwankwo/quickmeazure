@@ -1,27 +1,2 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root {
-  --primary-color: #4f46e5;
-  --secondary-color: #10b981;
-  --accent-color: #f59e0b;
-  --background-color: #f9fafb;
-  --text-color: #1f2937;
-}
-
-body {
-  font-family: 'Inter', sans-serif;
-  color: var(--text-color);
-  background-color: var(--background-color);
-}
-
-.page-enter-active,
-.page-leave-active {
-  transition: all 0.3s;
-}
-.page-enter-from,
-.page-leave-to {
-  opacity: 0;
-  transform: translateY(10px);
-}
+@import "tailwindcss";
+@import "@nuxt/ui";

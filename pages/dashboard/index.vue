@@ -343,15 +343,7 @@ const formatDueDate = (date) => {
   }
 };
 
-// Add standard date formatting function for consistency
-const formatDate = (timestamp) => {
-  return new Date(timestamp).toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: '2-digit', 
-    year: 'numeric' 
-  });
-};
-
+// Get color for due date badge
 const getDueDateColor = (date) => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -362,25 +354,36 @@ const getDueDateColor = (date) => {
   
   if (diffDays < 0) {
     return 'red';
-  } else if (diffDays <= 2) {
+  } else if (diffDays === 0) {
     return 'orange';
+  } else if (diffDays <= 2) {
+    return 'yellow';
   } else {
     return 'green';
   }
 };
 
+// Get color for status badge
 const getStatusColor = (status) => {
-  switch (status) {
-    case 'Completed':
-      return 'green';
-    case 'In Progress':
-      return 'blue';
-    case 'Pending Payment':
-      return 'yellow';
-    case 'Overdue':
-      return 'red';
-    default:
-      return 'gray';
+  if (status === 'Completed') {
+    return 'green';
+  } else if (status === 'In Progress') {
+    return 'blue';
+  } else if (status === 'Pending Payment') {
+    return 'yellow';
+  } else if (status === 'Overdue') {
+    return 'red';
+  } else {
+    return 'gray';
   }
+};
+
+// Add standard date formatting function for consistency
+const formatDate = (timestamp) => {
+  return new Date(timestamp).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric'
+  });
 };
 </script>

@@ -1,65 +1,90 @@
 <template>
-  <div class="min-h-[calc(100vh-80px)] flex items-center justify-center py-12 px-4">
-    <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-md">
+  <div class="flex min-h-screen items-center justify-center bg-gray-50">
+    <div class="w-full max-w-md space-y-8 p-10 bg-white rounded-xl shadow">
       <div class="text-center">
-        <h2 class="text-3xl font-bold text-gray-900">Welcome back</h2>
-        <p class="mt-2 text-gray-600">Sign in to your QuickMeazure account</p>
+        <h2 class="text-2xl md:text-3xl font-bold">Sign in to your account</h2>
+        <p class="mt-2 text-sm text-gray-600">
+          to start managing your clients and orders
+        </p>
       </div>
       
-      <form @submit.prevent="handleLogin" class="mt-8 space-y-6">
-        <div class="space-y-4">
-          <UFormGroup label="Email" name="email">
+      <!-- Google Sign In Button -->
+      <div class="mt-8">
+        <UButton
+          block
+          size="lg"
+          variant="outline"
+          @click="handleGoogleLogin"
+          class="flex items-center justify-center"
+        >
+          <UIcon name="i-simple-icons-google" class="mr-2 text-lg" />
+          Sign in with Google
+        </UButton>
+      </div>
+      
+      <!-- Divider -->
+      <div class="relative my-4">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-gray-300"></div>
+        </div>
+        <div class="relative flex justify-center text-sm">
+          <span class="px-2 bg-white text-gray-500">or continue with email</span>
+        </div>
+      </div>
+      
+      <form class="space-y-6" @submit.prevent="handleLogin">
+        <div class="space-y-4 flex flex-col">
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-700">Email address</label>
             <UInput
               v-model="email"
               type="email"
-              placeholder="your@email.com"
-              autocomplete="email"
+              placeholder="Email address"
               required
+              class="w-full"
+              size="lg"
             />
-          </UFormGroup>
+          </div>
           
-          <UFormGroup label="Password" name="password">
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-gray-700">Password</label>
             <UInput
               v-model="password"
-              type="password"
-              placeholder="••••••••"
-              autocomplete="current-password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="Password"
               required
-            />
-          </UFormGroup>
-        </div>
-        
-        <div class="flex items-center">
-          <div class="flex items-center">
-            <UCheckbox 
-              v-model="rememberMe" 
-              name="remember-me"
-            />
-            <label for="remember-me" class="ml-2 block text-sm text-gray-700">
-              Remember me
-            </label>
+              class="w-full"
+              size="lg"
+            >
+              <template #trailing>
+                <UButton
+                  color="gray"
+                  variant="ghost"
+                  icon
+                  @click="showPassword = !showPassword"
+                >
+                  <UIcon :name="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" />
+                </UButton>
+              </template>
+            </UInput>
+            <div class="flex justify-end mt-1">
+              <NuxtLink to="/auth/forgot-password" class="text-sm font-medium text-primary hover:text-primary">
+                Forgot your password?
+              </NuxtLink>
+            </div>
           </div>
         </div>
         
-        <div>
-          <UButton
-            type="submit"
-            color="primary"
-            block
-            :loading="isLoading"
-          >
-            Sign in
-          </UButton>
-          
-          <div class="text-center mt-3">
-            <NuxtLink to="/auth/forgot-password" class="text-sm text-primary-600 hover:text-primary-500">
-              Forgot your password?
-            </NuxtLink>
-          </div>
-        </div>
+        <UButton
+          type="submit"
+          block
+          size="lg"
+          :loading="loading"
+          :disabled="!email || !password"
+        >
+          Sign in with Email
+        </UButton>
       </form>
-      
-      
     </div>
   </div>
 </template>
@@ -75,89 +100,72 @@ definePageMeta({
   layout: 'auth'
 });
 
-// Form data
-const email = ref('');
-const password = ref('');
-const rememberMe = ref(false);
-const isLoading = ref(false);
+// Explicitly import UI components 
+import { UInput, UButton, UIcon } from '#components'
 
-// Import auth composable
-const { login, isLoggedIn } = useAuth();
-const router = useRouter();
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const error = ref('')
+const showPassword = ref(false)
+// Add toast composable
+const toast = useToast()
 
-// Reset auth interceptor flag on login page load
-onMounted(() => {
-  // Reset any previous error states when visiting the login page
-  // This is done here rather than in the plugin to ensure a clean login state
-  if (process.client) {
-    // Clear all auth-related error flags to ensure clean login
-    localStorage.removeItem('isHandlingAuthError');
-    localStorage.removeItem('lastLoginTime');
-  }
-});
+// Use Auth Utils
+const { signIn } = useAuth()
 
-// Redirect if already logged in
-watchEffect(() => {
-  if (isLoggedIn.value) {
-    router.push('/dashboard');
-  }
-});
-
-// Handle login form submission
-const handleLogin = async () => {
-  if (!email.value || !password.value) {
-    useToast().add({
-      title: 'Error',
-      description: 'Please enter both email and password',
-      color: 'red',
-      icon: 'i-heroicons-exclamation-circle',
-    });
-    return;
-  }
-  
-  isLoading.value = true;
-  
+async function handleLogin() {
   try {
-    // Clear any pending auth errors before login attempt
-    if (process.client) {
-      localStorage.removeItem('isHandlingAuthError');
-    }
+    error.value = ''
+    loading.value = true
     
-    const result = await login(email.value, password.value, rememberMe.value);
+    // Sign in using Auth Utils
+    await signIn('credentials', {
+      email: email.value,
+      password: password.value,
+      redirect: true
+    })
+  } catch (e) {
+    const errorMessage = 'Invalid email or password'
+    error.value = errorMessage
+    console.error('Login error:', e)
     
-    if (result.success) {
-      // Set login time marker to prevent immediate logout
-      if (process.client) {
-        localStorage.setItem('lastLoginTime', Date.now().toString());
-      }
-      
-      useToast().add({
-        title: 'Success',
-        description: 'You have been logged in successfully',
-        color: 'green',
-        icon: 'i-heroicons-check-circle',
-      });
-      
-      // Redirect to dashboard on successful login
-      router.push('/dashboard');
-    } else {
-      useToast().add({
-        title: 'Error',
-        description: result.error || 'Login failed. Please try again.',
-        color: 'red',
-        icon: 'i-heroicons-exclamation-circle',
-      });
-    }
-  } catch (error) {
-    console.error('Login error:', error);
-    useToast().add({
-      title: 'Error',
-      description: 'An unexpected error occurred. Please try again.',
+    // Show error toast notification (red for errors)
+    toast.add({
+      title: 'Login Error',
+      description: errorMessage,
       color: 'red',
-      icon: 'i-heroicons-exclamation-circle',
-    });
+      icon: 'i-heroicons-exclamation-triangle'
+    })
   } finally {
-    isLoading.value = false;
+    loading.value = false
   }
-};
+}
+
+async function handleGoogleLogin() {
+  try {
+    error.value = ''
+    loading.value = true
+    
+    // Sign in with Google
+    await signIn('google', {
+      redirect: true,
+      callbackUrl: '/dashboard'
+    })
+  } catch (e) {
+    const errorMessage = 'Google login failed'
+    error.value = errorMessage
+    console.error('Google login error:', e)
+    
+    // Show error toast notification (red for errors)
+    toast.add({
+      title: 'Login Error',
+      description: errorMessage,
+      color: 'red',
+      icon: 'i-heroicons-exclamation-triangle'
+    })
+    
+    loading.value = false
+  }
+}
 </script>

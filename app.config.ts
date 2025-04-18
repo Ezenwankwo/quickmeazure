@@ -1,7 +1,30 @@
 export default defineAppConfig({
   ui: {
+    // colors: {
+    //   primary: 'green',
+    //   secondary: 'green',
+    //   success: 'sky',
+    //   info: 'blue',
+    //   warning: 'yellow',
+    //   error: 'red'
+    // },
     notifications: {
       position: 'top-0 bottom-[unset]'
+    },
+    button: {
+      default: {
+        color: 'primary',
+        variant: 'solid'
+      },
+      variants: {
+        outline: {
+          gray: {
+            color: 'gray',
+            border: 'border border-gray-500',
+            ring: 'ring-gray-500'
+          }
+        }
+      }
     },
     // card: {
     //   base: 'overflow-hidden',

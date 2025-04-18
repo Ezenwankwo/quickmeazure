@@ -324,7 +324,7 @@ useHead({
 const plans = [
   {
     id: 'free',
-    name: 'Free Plan',
+    name: 'Growth',
     description: 'Basic plan for small tailoring businesses',
     price: 0,
     clientLimit: 100,
@@ -332,7 +332,7 @@ const plans = [
   },
   {
     id: 'standard',
-    name: 'Standard Plan',
+    name: 'Professional',
     description: 'Standard plan for growing tailoring businesses',
     price: 5000,
     clientLimit: 500,
@@ -346,7 +346,7 @@ const plans = [
   },
   {
     id: 'premium',
-    name: 'Premium Plan',
+    name: 'Enterprise',
     description: 'Premium plan for established tailoring businesses',
     price: 10000,
     clientLimit: null, // Unlimited
@@ -365,7 +365,7 @@ const plans = [
 // Current plan (mock data)
 const currentPlan = ref(plans.length > 0 ? plans[1] || plans[0] : {
   id: 'free',
-  name: 'Free Plan',
+  name: 'Growth',
   description: 'Basic plan for small tailoring businesses',
   price: 0,
   clientLimit: 100,
@@ -403,21 +403,21 @@ const paymentHistory = ref([
   {
     id: '1',
     date: 'Nov 15, 2023',
-    description: 'Standard Plan - Monthly',
+    description: 'Professional - Monthly',
     amount: 5000,
     status: 'Paid',
   },
   {
     id: '2',
     date: 'Oct 15, 2023',
-    description: 'Standard Plan - Monthly',
+    description: 'Professional - Monthly',
     amount: 5000,
     status: 'Paid',
   },
   {
     id: '3',
     date: 'Sep 15, 2023',
-    description: 'Standard Plan - Monthly',
+    description: 'Professional - Monthly',
     amount: 5000,
     status: 'Paid',
   },

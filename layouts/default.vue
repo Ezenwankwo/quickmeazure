@@ -4,10 +4,10 @@
     <header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
       <div class="container mx-auto px-4 py-3 flex justify-between items-center">
         <div class="flex items-center">
-          <NuxtLink to="/" class="flex items-center space-x-2">
+          <ULink to="/" class="flex items-center space-x-2">
             <UIcon name="i-heroicons-scissors" class="text-primary-600 text-2xl" />
             <span class="text-xl font-bold text-primary-600">QuickMeazure</span>
-          </NuxtLink>
+          </ULink>
         </div>
         
         <!-- Navigation for authenticated users -->
@@ -19,7 +19,7 @@
             aria-label="Notifications"
             class="hidden sm:flex"
           />
-          <UDropdown :items="userMenuItems">
+          <UDropdownMenu :items="userMenuItems">
             <UButton
               color="gray"
               variant="ghost"
@@ -29,7 +29,7 @@
               <span class="hidden sm:inline">{{ user?.name || 'User' }}</span>
               <UIcon name="i-heroicons-user-circle" class="sm:hidden text-lg" />
             </UButton>
-          </UDropdown>
+          </UDropdownMenu>
         </div>
         
         <!-- Navigation for guests -->
@@ -40,7 +40,7 @@
             color="gray"
             variant="outline"
             size="sm"
-            class="sm:text-base"
+            class="sm:text-base border border-gray-400 hover:border-gray-600"
           >
             Login
           </UButton>
@@ -74,6 +74,7 @@
               class="justify-start"
               :ui="{ rounded: 'rounded-lg' }"
               :trailing="false"
+              size="lg"
               icon="i-heroicons-home"
             >
               Dashboard
@@ -86,6 +87,7 @@
               class="justify-start"
               :ui="{ rounded: 'rounded-lg' }"
               :trailing="false"
+              size="lg"
               icon="i-heroicons-users"
             >
               Clients
@@ -98,6 +100,7 @@
               class="justify-start"
               :ui="{ rounded: 'rounded-lg' }"
               :trailing="false"
+              size="lg"
               icon="i-heroicons-variable"
             >
               Measurements
@@ -110,6 +113,7 @@
               class="justify-start"
               :ui="{ rounded: 'rounded-lg' }"
               :trailing="false"
+              size="lg"
               icon="i-heroicons-swatch"
             >
               Styles
@@ -122,6 +126,7 @@
               class="justify-start"
               :ui="{ rounded: 'rounded-lg' }"
               :trailing="false"
+              size="lg"
               icon="i-heroicons-shopping-bag"
             >
               Orders
@@ -141,8 +146,8 @@
       <div class="container mx-auto px-4 text-center text-sm text-gray-600">
         <p>© {{ new Date().getFullYear() }} QuickMeazure. All rights reserved.</p>
         <div class="flex justify-center space-x-4 mt-2">
-          <NuxtLink to="/legal/terms" class="hover:text-primary-600">Terms of Service</NuxtLink>
-          <NuxtLink to="/legal/privacy" class="hover:text-primary-600">Privacy Policy</NuxtLink>
+          <ULink to="/legal/terms" class="hover:text-primary-600">Terms of Service</ULink>
+          <ULink to="/legal/privacy" class="hover:text-primary-600">Privacy Policy</ULink>
         </div>
       </div>
     </footer>
@@ -155,6 +160,7 @@
           color="gray"
           :variant="route.path.startsWith('/dashboard') ? 'solid' : 'ghost'"
           class="flex-col h-auto py-2"
+          size="lg"
           :ui="{ rounded: 'rounded-lg' }"
           icon="i-heroicons-home"
         >
@@ -165,6 +171,7 @@
           color="gray"
           :variant="route.path.startsWith('/clients') ? 'solid' : 'ghost'"
           class="flex-col h-auto py-2"
+          size="lg"
           :ui="{ rounded: 'rounded-lg' }"
           icon="i-heroicons-users"
         >
@@ -175,6 +182,7 @@
           color="gray"
           :variant="route.path.startsWith('/measurements') ? 'solid' : 'ghost'"
           class="flex-col h-auto py-2"
+          size="lg"
           :ui="{ rounded: 'rounded-lg' }"
           icon="i-heroicons-variable"
         >
@@ -185,6 +193,7 @@
           color="gray"
           :variant="route.path.startsWith('/styles') ? 'solid' : 'ghost'"
           class="flex-col h-auto py-2"
+          size="lg"
           :ui="{ rounded: 'rounded-lg' }"
           icon="i-heroicons-swatch"
         >
@@ -195,6 +204,7 @@
           color="gray"
           :variant="route.path.startsWith('/orders') ? 'solid' : 'ghost'"
           class="flex-col h-auto py-2"
+          size="lg"
           :ui="{ rounded: 'rounded-lg' }"
           icon="i-heroicons-shopping-bag"
         >
@@ -202,51 +212,44 @@
         </UButton>
       </nav>
     </footer>
-
-    <!-- Notifications -->
-    <UNotifications :ui="{ position: 'top-0 bottom-[unset]' }" />
   </div>
 </template>
 
 <script setup>
-// Import auth composable
-const { user, isLoggedIn, logout } = useAuth();
-
-// Determine if sidebar should be shown (based on route)
+// Get authenticated user with useAuth composable
+const { isLoggedIn, user, logout } = useAuth();
 const route = useRoute();
+const router = useRouter();
+
+// Control sidebar visibility
 const showSidebar = computed(() => {
-  // Don't show sidebar on auth pages
-  return !route.path.startsWith('/auth/');
+  // Hide sidebar on landing page and auth pages
+  return !route.path.startsWith('/auth') && route.path !== '/';
 });
 
-// User dropdown menu items
-const userMenuItems = [
+// User menu dropdown items
+const userMenuItems = computed(() => [
   [
     {
       label: 'Profile',
-      icon: 'i-heroicons-user-circle',
-      to: '/profile'
+      icon: 'i-heroicons-user',
+      to: '/profile',
     },
     {
       label: 'Settings',
       icon: 'i-heroicons-cog-6-tooth',
-      to: '/settings'
+      to: '/settings',
     },
-    {
-      label: 'Subscription',
-      icon: 'i-heroicons-credit-card',
-      to: '/subscription'
-    }
   ],
   [
     {
       label: 'Logout',
       icon: 'i-heroicons-arrow-right-on-rectangle',
-      click: () => {
-        logout();
-        navigateTo('/auth/login');
-      }
-    }
-  ]
-];
+      click: async () => {
+        await logout();
+        await router.push('/auth/login');
+      },
+    },
+  ],
+]);
 </script>

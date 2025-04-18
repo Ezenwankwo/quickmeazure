@@ -1,121 +1,149 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
-import { sql } from 'drizzle-orm';
+import { pgTable, serial, text, timestamp, integer, real, jsonb, date, unique, boolean } from 'drizzle-orm/pg-core'
 
-// Users table to store tailor information
-export const users = sqliteTable('users', {
-  id: text('id').primaryKey(),
-  email: text('email').notNull().unique(),
+// Users table
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
   name: text('name').notNull(),
+  email: text('email').notNull().unique(),
   password: text('password').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  subscriptionPlan: text('subscription_plan').notNull().default('free'),
-  subscriptionExpiry: integer('subscription_expiry', { mode: 'timestamp' })
-});
+  avatar: text('avatar'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
 
-// Business Profiles table
-export const businessProfiles = sqliteTable('business_profiles', {
+// Plans table
+export const plans = pgTable('plans', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull(),
+  price: real('price').notNull(),
+  interval: text('interval').notNull(), // 'monthly', 'annual', etc.
+  features: jsonb('features'), // Array of features included in the plan
+  isActive: boolean('is_active').notNull().default(true),
+  isFeatured: boolean('is_featured').notNull().default(false),
+  maxClients: integer('max_clients'), // Max number of clients allowed
+  maxStyles: integer('max_styles'), // Max number of styles allowed
+  maxStorage: integer('max_storage'), // Storage limit in MB
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// Business table (one-to-one with users)
+export const businesses = pgTable('businesses', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  name: text('name').notNull(),
+  logo: text('logo'),
+  address: text('address'),
+  city: text('city'),
+  state: text('state'),
+  country: text('country'),
+  zipCode: text('zip_code'),
+  phone: text('phone'),
+  email: text('email'),
+  website: text('website'),
+  taxId: text('tax_id'),
+  businessType: text('business_type'),
+  description: text('description'),
+  socialMedia: jsonb('social_media'), // Store social media links as JSON
+  operatingHours: jsonb('operating_hours'), // Store hours as JSON
+  settings: jsonb('settings'), // Store business settings as JSON
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => {
+  return {
+    // Ensure one-to-one relationship with user
+    userIdUnique: unique().on(table.userId),
+  }
+})
+
+// Business profiles table
+export const businessProfiles = pgTable('business_profiles', {
   id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  shopName: text('shop_name').notNull(),
-  businessType: text('business_type').notNull(),
+  userId: text('user_id').notNull(),
+  shopName: text('shop_name'),
+  businessType: text('business_type'),
   yearsInBusiness: integer('years_in_business'),
   businessDescription: text('business_description'),
   phone: text('phone'),
   address: text('address'),
   city: text('city'),
   state: text('state'),
-  specializations: text('specializations', { mode: 'json' }),
-  services: text('services', { mode: 'json' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`)
-});
+  specializations: jsonb('specializations'),
+  services: jsonb('services'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
 
-// Clients table to store client information
-export const clients = sqliteTable('clients', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+// Clients table
+export const clients = pgTable('clients', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
   name: text('name').notNull(),
   email: text('email'),
   phone: text('phone'),
   address: text('address'),
   notes: text('notes'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
 
-// Measurements table to store client measurements
-export const measurements = sqliteTable('measurements', {
-  id: text('id').primaryKey(),
-  clientId: text('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  // Common measurements
-  bust: real('bust'),
-  waist: real('waist'),
-  hip: real('hip'),
-  shoulder: real('shoulder'),
-  sleeve: real('sleeve'),
-  inseam: real('inseam'),
-  neck: real('neck'),
-  chest: real('chest'),
-  back: real('back'),
-  thigh: real('thigh'),
-  calf: real('calf'),
-  ankle: real('ankle'),
-  wrist: real('wrist'),
-  armhole: real('armhole'),
-  // Additional custom measurements as JSON
-  customMeasurements: text('custom_measurements', { mode: 'json' }),
-  notes: text('notes'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+// Orders table
+export const orders = pgTable('orders', {
+  id: serial('id').primaryKey(),
+  clientId: integer('client_id').notNull().references(() => clients.id),
+  dueDate: date('due_date'),
+  totalAmount: real('total_amount').notNull().default(0),
+  status: text('status').notNull().default('Pending'),
+  description: text('description'),
+  details: jsonb('details'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
 
-// Styles table to store style information
-export const styles = sqliteTable('styles', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+// Styles table
+export const styles = pgTable('styles', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
   name: text('name').notNull(),
   description: text('description'),
   imageUrl: text('image_url'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+  details: jsonb('details'),
+  category: text('category'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
 
-// Orders table to store order information
-export const orders = sqliteTable('orders', {
-  id: text('id').primaryKey(),
-  clientId: text('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  measurementId: text('measurement_id').notNull().references(() => measurements.id, { onDelete: 'cascade' }),
-  styleId: text('style_id').references(() => styles.id),
-  status: text('status').notNull().default('pending'),
-  dueDate: integer('due_date', { mode: 'timestamp' }),
-  totalAmount: real('total_amount').notNull().default(0),
-  depositAmount: real('deposit_amount').default(0),
-  balanceAmount: real('balance_amount').default(0),
+// Measurements table (one-to-one with clients)
+export const measurements = pgTable('measurements', {
+  id: serial('id').primaryKey(),
+  clientId: integer('client_id').notNull().references(() => clients.id),
+  height: real('height'), // in cm
+  weight: real('weight'), // in kg
+  bust: real('bust'), // in cm
+  waist: real('waist'), // in cm
+  hip: real('hip'), // in cm
+  inseam: real('inseam'), // in cm
+  shoulder: real('shoulder'), // in cm
+  sleeve: real('sleeve'), // in cm
+  neck: real('neck'), // in cm
+  chest: real('chest'), // in cm
+  thigh: real('thigh'), // in cm
+  additionalMeasurements: jsonb('additional_measurements'),
   notes: text('notes'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+  lastUpdated: timestamp('last_updated').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => {
+  return {
+    // Ensure one-to-one relationship with client
+    clientIdUnique: unique().on(table.clientId),
+  }
+})
 
-// Payments table to store payment information
-export const payments = sqliteTable('payments', {
-  id: text('id').primaryKey(),
-  orderId: text('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  amount: real('amount').notNull(),
-  paymentMethod: text('payment_method'),
-  paymentDate: integer('payment_date', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  notes: text('notes'),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-// Subscription plans table
-export const subscriptionPlans = sqliteTable('subscription_plans', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  description: text('description').notNull(),
-  price: real('price').notNull(),
-  clientLimit: integer('client_limit'),
-  features: text('features', { mode: 'json' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+// Export types
+export type User = typeof users.$inferSelect
+export type Plan = typeof plans.$inferSelect
+export type Business = typeof businesses.$inferSelect
+export type BusinessProfile = typeof businessProfiles.$inferSelect
+export type Client = typeof clients.$inferSelect
+export type Order = typeof orders.$inferSelect
+export type Style = typeof styles.$inferSelect
+export type Measurement = typeof measurements.$inferSelect 

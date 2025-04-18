@@ -22,7 +22,7 @@ export function useSubscription() {
   const subscriptionPlans = ref<SubscriptionPlan[]>([
     {
       value: 'free',
-      label: 'Free Plan',
+      label: 'Growth',
       description: 'Basic plan for small tailoring businesses',
       price: '₦0/month',
       numericPrice: 0,
@@ -35,7 +35,7 @@ export function useSubscription() {
     },
     {
       value: 'standard',
-      label: 'Standard Plan',
+      label: 'Professional',
       description: 'Standard plan for growing tailoring businesses',
       price: '₦5,000/month',
       numericPrice: 5000,
@@ -50,7 +50,7 @@ export function useSubscription() {
     },
     {
       value: 'premium',
-      label: 'Premium Plan',
+      label: 'Enterprise',
       description: 'Premium plan for established tailoring businesses',
       price: '₦10,000/month',
       numericPrice: 10000,

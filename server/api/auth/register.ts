@@ -1,128 +1,191 @@
-import { db } from '~/server/database';
-import { users } from '~/server/database/schema';
-import { eq } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { sendWelcomeEmail } from '~/utils/email';
+import bcrypt from 'bcryptjs'
+import { useDrizzle, tables, eq } from '~/server/utils/drizzle'
+import jwt from 'jsonwebtoken'
 
-// Define event handler for registration
 export default defineEventHandler(async (event) => {
-  // Only allow POST requests
-  if (getMethod(event) !== 'POST') {
-    throw createError({
-      statusCode: 405,
-      statusMessage: 'Method not allowed',
-    });
-  }
-
   try {
-    const body = await readBody(event);
+    // Get request body
+    const { name, email, password, subscriptionPlan = 'free' } = await readBody(event)
     
     // Validate required fields
-    if (!body.name || !body.email || !body.password) {
+    if (!name || !email || !password) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'Name, email, and password are required',
-      });
+        message: 'Name, email, and password are required'
+      })
     }
 
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.email)) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'Invalid email format',
-      });
+        message: 'Invalid email format'
+      })
     }
 
-    // Validate password strength
-    if (body.password.length < 8) {
+    // Validate password strength (minimum 8 characters)
+    if (password.length < 8) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'Password must be at least 8 characters long',
-      });
+        message: 'Password must be at least 8 characters long'
+      })
     }
 
-    // Check if email already exists
-    const existingUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, body.email.toLowerCase()));
-
-    if (existingUser.length > 0) {
-      throw createError({
-        statusCode: 409,
-        statusMessage: 'Email already in use',
-      });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(body.password, 10);
-
-    // Validate and set subscription plan
-    const validPlans = ['free', 'standard', 'premium'];
-    const subscriptionPlan = validPlans.includes(body.subscriptionPlan) 
-      ? body.subscriptionPlan 
-      : 'free';
+    // Get database connection
+    const db = useDrizzle()
     
-    // Calculate subscription expiry for paid plans
-    let subscriptionExpiry = null;
-    if (subscriptionPlan !== 'free') {
-      const expiryDate = new Date();
-      expiryDate.setMonth(expiryDate.getMonth() + 1); // 1 month from now
-      subscriptionExpiry = expiryDate.getTime();
-    }
-
-    // Create new user
-    const newUser = {
-      id: uuidv4(),
-      name: body.name,
-      email: body.email.toLowerCase(),
-      password: hashedPassword,
-      subscriptionPlan,
-      subscriptionExpiry: subscriptionExpiry ? new Date(subscriptionExpiry) : null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await db.insert(users).values(newUser);
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: newUser.id },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '7d' }
-    );
-
-    // Send welcome email in the background
+    // Check if user with this email already exists
     try {
-      await sendWelcomeEmail(newUser.name, newUser.email);
-      console.log(`Welcome email sent to ${newUser.email}`);
-    } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
-      // Don't fail registration if email sending fails
+      const existingUsers = await db
+        .select()
+        .from(tables.users)
+        .where(eq(tables.users.email, email.toLowerCase()))
+        .limit(1)
+      
+      if (existingUsers.length > 0) {
+        throw createError({
+          statusCode: 409,
+          message: 'Email is already registered'
+        })
+      }
+    } catch (dbError: any) {
+      console.error('Database error checking for existing user:', dbError)
+      // In development with SKIP_MIGRATIONS=true, we'll mock the registration process
+      if (process.env.SKIP_MIGRATIONS === 'true' && process.env.NODE_ENV === 'development') {
+        console.log('Running in mock mode due to SKIP_MIGRATIONS=true')
+        
+        // Create a mock user object
+        const mockUser = {
+          id: Math.floor(Math.random() * 1000).toString(),
+          name,
+          email: email.toLowerCase(),
+        }
+        
+        // Set mock user session
+        await setUserSession(event, {
+          user: {
+            ...mockUser,
+            subscriptionPlan
+          },
+          loggedInAt: new Date()
+        })
+        
+        // Generate JWT token
+        const config = useRuntimeConfig()
+        const token = jwt.sign(
+          { 
+            ...mockUser,
+            subscriptionPlan
+          },
+          config.jwtSecret,
+          { expiresIn: '7d' }
+        )
+        
+        // Return mock response
+        return {
+          user: {
+            ...mockUser,
+            subscriptionPlan
+          },
+          token
+        }
+      } else {
+        // In production or if not skipping migrations, throw the original error
+        throw createError({
+          statusCode: 500,
+          message: 'Database error: ' + (dbError.message || 'Unknown database error')
+        })
+      }
+    }
+    
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10)
+    
+    // Create the new user
+    const newUser = {
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      createdAt: new Date()
+    }
+    
+    // Insert user into database
+    let user;
+    try {
+      const result = await db
+        .insert(tables.users)
+        .values(newUser)
+        .returning({
+          id: tables.users.id,
+          name: tables.users.name,
+          email: tables.users.email,
+          createdAt: tables.users.createdAt
+        })
+      
+      user = result[0]
+    } catch (dbError: any) {
+      console.error('Database error inserting new user:', dbError)
+      // In development with SKIP_MIGRATIONS=true, we'll mock the registration process
+      if (process.env.SKIP_MIGRATIONS === 'true' && process.env.NODE_ENV === 'development') {
+        console.log('Running in mock mode due to SKIP_MIGRATIONS=true')
+        
+        // Create a mock user object
+        user = {
+          id: Math.floor(Math.random() * 1000).toString(),
+          name,
+          email: email.toLowerCase(),
+          createdAt: new Date()
+        }
+      } else {
+        // In production or if not skipping migrations, throw the original error
+        throw createError({
+          statusCode: 500,
+          message: 'Database error: ' + (dbError.message || 'Unknown database error')
+        })
+      }
     }
 
-    // Return user data and token (excluding password)
+    // Set user session with nuxt-auth-utils
+    await setUserSession(event, {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        subscriptionPlan
+      },
+      // Add any additional session data here
+      loggedInAt: new Date()
+    })
+
+    // Generate JWT token for the client
+    const config = useRuntimeConfig()
+    const token = jwt.sign(
+      { 
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        subscriptionPlan
+      },
+      config.jwtSecret,
+      { expiresIn: '7d' }
+    )
+
+    // Return user data and token without sensitive fields
     return {
       user: {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        subscriptionPlan: newUser.subscriptionPlan,
-        subscriptionExpiry: newUser.subscriptionExpiry,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        subscriptionPlan
       },
-      token,
-    };
-  } catch (error: any) {
-    console.error('Registration error:', error);
-    if (error.statusCode) {
-      throw error; // Re-throw validation errors
+      token
     }
+  } catch (error: any) {
+    console.error('Registration error:', error)
     throw createError({
-      statusCode: 500,
-      statusMessage: 'An error occurred during registration',
-    });
+      statusCode: error.statusCode || 500,
+      message: error.message || 'Registration failed'
+    })
   }
-});
+}) 

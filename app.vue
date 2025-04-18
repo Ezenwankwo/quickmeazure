@@ -1,13 +1,15 @@
 <template>
-  <NuxtLayout>
-    <NuxtPage />
-  </NuxtLayout>
+  <UApp>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+  </UApp>
 </template>
 
 <script setup>
 // Set page metadata
 useHead({
-  title: 'QuickMeazure - Tailor Measurement Management',
+  title: 'QuickMeazure - Tailor business Management',
   meta: [
     { name: 'description', content: 'Easily manage your clients\'s measurements, styles, and payments with QuickMeazure.' }
   ],

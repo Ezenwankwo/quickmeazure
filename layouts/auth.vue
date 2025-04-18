@@ -4,10 +4,10 @@
     <header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
       <div class="container mx-auto px-4 py-3 flex justify-between items-center">
         <div class="flex items-center">
-          <NuxtLink to="/" class="flex items-center space-x-2">
+          <ULink to="/" class="flex items-center space-x-2">
             <UIcon name="i-heroicons-scissors" class="text-primary-600 text-2xl" />
             <span class="text-xl font-bold text-primary-600">QuickMeazure</span>
-          </NuxtLink>
+          </ULink>
         </div>
         
         <!-- Navigation for guests -->
@@ -16,9 +16,9 @@
             v-if="route.path !== '/auth/login'"
             to="/auth/login"
             color="gray"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            class="sm:text-base"
+            class="sm:text-base border border-gray-400 hover:border-gray-600"
           >
             Login
           </UButton>
@@ -41,9 +41,6 @@
         <slot />
       </main>
     </div>
-
-    <!-- Notifications -->
-    <UNotifications :ui="{ position: 'top-0 bottom-[unset]' }" />
   </div>
 </template>
 

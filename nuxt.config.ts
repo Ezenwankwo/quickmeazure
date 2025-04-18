@@ -3,17 +3,18 @@ import { defineNuxtConfig } from 'nuxt/config'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', 'nuxt-auth-utils', '@nuxt/image'],
   css: ['~/assets/css/main.css'],
-  plugins: [
-    '~/plugins/auth-interceptor.ts'
-  ],
   runtimeConfig: {
     // Keys within public are also exposed client-side
     public: {
       appName: 'QuickMeazure',
-      appUrl: process.env.APP_URL || 'http://localhost:3000'
+      appUrl: process.env.APP_URL || 'http://localhost:3000',
+      supabaseUrl: process.env.SUPABASE_URL,
+      supabaseKey: process.env.SUPABASE_KEY
     },
+    // Add auth secret for nuxt-auth-utils
+    authSecret: process.env.AUTH_SECRET || 'your-secret-key',
     jwtSecret: process.env.JWT_SECRET,
     brevoApiKey: process.env.BREVO_API_KEY,
   },

@@ -1,0 +1,72 @@
+import { useDrizzle, tables, eq, and, inArray, sql } from '~/server/utils/drizzle'
+import { H3Event, EventHandlerRequest, createError } from 'h3'
+
+interface Order {
+  id: number;
+  client: string;
+  dueDate: Date | string | null;
+  amount: number;
+  status: string;
+}
+
+export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) => {
+  try {
+    // Get authenticated user from event context
+    const auth = event.context.auth
+    if (!auth || !auth.userId) {
+      throw createError({
+        statusCode: 401,
+        message: 'Unauthorized'
+      })
+    }
+
+    const userId = auth.userId
+    
+    // Get today's date and format for SQL
+    const today = new Date()
+    const sevenDaysLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const formattedDate = sevenDaysLater.toISOString().split('T')[0] // Format as YYYY-MM-DD
+    
+    // Get database connection
+    const db = useDrizzle()
+    
+    // Get orders due within the next 7 days
+    const dueOrders = await db
+      .select({
+        id: tables.orders.id,
+        dueDate: tables.orders.dueDate,
+        totalAmount: tables.orders.totalAmount,
+        status: tables.orders.status,
+        clientName: tables.clients.name,
+        clientId: tables.clients.id
+      })
+      .from(tables.orders)
+      .innerJoin(tables.clients, eq(tables.orders.clientId, tables.clients.id))
+      .where(
+        and(
+          eq(tables.clients.userId, userId),
+          inArray(tables.orders.status, ['Pending', 'In Progress']),
+          sql`${tables.orders.dueDate} <= ${formattedDate}`
+        )
+      )
+      .orderBy(tables.orders.dueDate)
+      .limit(5)
+
+    // Format orders for the dashboard
+    const formattedOrders: Order[] = dueOrders.map(order => ({
+      id: order.id,
+      client: order.clientName,
+      dueDate: order.dueDate,
+      amount: order.totalAmount,
+      status: order.status
+    }))
+
+    return formattedOrders
+  } catch (error: any) {
+    console.error('Dashboard orders due soon API error:', error)
+    throw createError({
+      statusCode: error.statusCode || 500,
+      message: error.message || 'Failed to fetch orders due soon'
+    })
+  }
+}) 

@@ -1,82 +1,90 @@
-import { db } from '~/server/database';
-import { users } from '~/server/database/schema';
-import { eq } from 'drizzle-orm';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs'
+import { useDrizzle, tables, eq } from '~/server/utils/drizzle'
+import jwt from 'jsonwebtoken'
 
-// Define event handler for login
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig();
-  
-  // Only allow POST requests
-  if (getMethod(event) !== 'POST') {
-    throw createError({
-      statusCode: 405,
-      statusMessage: 'Method not allowed',
-    });
-  }
-
   try {
-    const body = await readBody(event);
+    // Get request body
+    const { email, password, remember = false } = await readBody(event)
     
     // Validate required fields
-    if (!body.email || !body.password) {
+    if (!email || !password) {
       throw createError({
         statusCode: 400,
-        statusMessage: 'Email and password are required',
-      });
+        message: 'Email and password are required'
+      })
     }
 
+    // Get database connection
+    const db = useDrizzle()
+    
     // Find user by email
-    const userResults = await db
+    const users = await db
       .select()
-      .from(users)
-      .where(eq(users.email, body.email.toLowerCase()));
-
-    if (userResults.length === 0) {
+      .from(tables.users)
+      .where(eq(tables.users.email, email.toLowerCase()))
+      .limit(1)
+    
+    // Check if user exists
+    const user = users[0]
+    if (!user) {
       throw createError({
-        statusCode: 400,
-        statusMessage: 'Invalid email or password',
-      });
+        statusCode: 401,
+        message: 'Invalid credentials'
+      })
     }
-
-    const user = userResults[0];
-
+    
     // Verify password
-    const isPasswordValid = await bcrypt.compare(body.password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
       throw createError({
-        statusCode: 400,
-        statusMessage: 'Invalid email or password',
-      });
+        statusCode: 401,
+        message: 'Invalid credentials'
+      })
     }
+    
+    // Set user session with nuxt-auth-utils
+    await setUserSession(event, {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        subscriptionPlan: 'free' // Default to free plan if not specified in user record
+      },
+      // Add any additional session data here
+      loggedInAt: new Date()
+    })
 
-    // Generate JWT token
+    // Generate JWT token for the client
+    const config = useRuntimeConfig()
     const token = jwt.sign(
-      { userId: user.id },
+      { 
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        subscriptionPlan: 'free' // Default to free plan if not specified in user record
+      },
       config.jwtSecret,
-      { expiresIn: '7d' }
-    );
+      { 
+        expiresIn: remember ? '30d' : '7d' 
+      }
+    )
 
-    // Return user data and token (excluding password)
+    // Return user data and token without sensitive fields
     return {
       user: {
         id: user.id,
-        name: user.name,
         email: user.email,
-        subscriptionPlan: user.subscriptionPlan,
-        subscriptionExpiry: user.subscriptionExpiry,
+        name: user.name,
+        subscriptionPlan: 'free' // Default to free plan if not specified in user record
       },
-      token,
-    };
-  } catch (error: any) {
-    console.error('Login error:', error);
-    if (error.statusCode) {
-      throw error; // Re-throw validation errors
+      token
     }
+  } catch (error: any) {
+    console.error('Login error:', error)
     throw createError({
-      statusCode: 500,
-      statusMessage: 'An error occurred during login',
-    });
+      statusCode: error.statusCode || 500,
+      message: error.message || 'Login failed'
+    })
   }
-});
+}) 
