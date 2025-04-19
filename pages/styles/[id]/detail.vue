@@ -119,10 +119,10 @@
           <div v-if="relatedOrders && relatedOrders.length > 0">
             <UTable 
               :columns="[
-                { key: 'client', label: 'Client' },
-                { key: 'date', label: 'Order Date' },
-                { key: 'status', label: 'Status' },
-                { key: 'actions', label: '' }
+                { key: 'client', label: 'Client', id: 'client' },
+                { key: 'date', label: 'Order Date', id: 'date' },
+                { key: 'status', label: 'Status', id: 'status' },
+                { key: 'actions', label: '', id: 'actions' }
               ]"
               :rows="relatedOrders"
               :ui="{ 

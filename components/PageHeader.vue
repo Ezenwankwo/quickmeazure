@@ -13,8 +13,7 @@
           v-if="primaryAction"
           :to="primaryAction.to"
           :icon="primaryAction.icon"
-          color="primary"
-          size="sm" 
+          color="primary" 
           class="self-start sm:self-auto px-3 sm:px-4 py-1.5 sm:py-2 shadow-sm hover:shadow-md transition-shadow"
           @click="primaryAction.onClick && primaryAction.onClick()"
         >

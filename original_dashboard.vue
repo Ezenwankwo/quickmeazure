@@ -204,16 +204,10 @@
 </template>
 
 <script setup>
-// Import the API auth composable
-import { useApiAuth } from '~/composables/useApiAuth';
-
 // Set page metadata
 useHead({
   title: 'Dashboard - QuickMeazure',
 });
-
-// Set up auth composable for API calls
-const { authFetch } = useApiAuth();
 
 // Mock data for dashboard
 const stats = {
@@ -266,27 +260,22 @@ const orderColumns = [
   {
     key: 'client',
     label: 'Client',
-    id: 'client'
   },
   {
     key: 'dueDate',
     label: 'Due Date',
-    id: 'dueDate'
   },
   {
     key: 'amount',
     label: 'Amount',
-    id: 'amount'
   },
   {
     key: 'status',
     label: 'Status',
-    id: 'status'
   },
   {
     key: 'actions',
     label: '',
-    id: 'actions'
   },
 ];
 
@@ -354,7 +343,15 @@ const formatDueDate = (date) => {
   }
 };
 
-// Get color for due date badge
+// Add standard date formatting function for consistency
+const formatDate = (timestamp) => {
+  return new Date(timestamp).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: '2-digit', 
+    year: 'numeric' 
+  });
+};
+
 const getDueDateColor = (date) => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -365,79 +362,25 @@ const getDueDateColor = (date) => {
   
   if (diffDays < 0) {
     return 'red';
-  } else if (diffDays === 0) {
-    return 'orange';
   } else if (diffDays <= 2) {
-    return 'yellow';
+    return 'orange';
   } else {
     return 'green';
   }
 };
 
-// Get color for status badge
 const getStatusColor = (status) => {
-  if (status === 'Completed') {
-    return 'green';
-  } else if (status === 'In Progress') {
-    return 'blue';
-  } else if (status === 'Pending Payment') {
-    return 'yellow';
-  } else if (status === 'Overdue') {
-    return 'red';
-  } else {
-    return 'gray';
-  }
-};
-
-// Add standard date formatting function for consistency
-const formatDate = (timestamp) => {
-  return new Date(timestamp).toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    year: 'numeric'
-  });
-};
-
-// Add layout for dashboard pages
-definePageMeta({
-  layout: 'dashboard'
-});
-
-// Update fetch functions to use authFetch
-const fetchStats = async () => {
-  isLoading.value = true;
-  try {
-    const data = await authFetch('/api/dashboard/stats');
-    stats.value = data;
-  } catch (error) {
-    console.error('Error loading dashboard stats:', error);
-    useToast().add({
-      title: 'Error',
-      description: 'Failed to load dashboard statistics',
-      color: 'red'
-    });
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const fetchRecentClients = async () => {
-  try {
-    const data = await authFetch('/api/clients?limit=5&sortField=date&sortOrder=desc');
-    recentClients.value = data.data || [];
-  } catch (error) {
-    console.error('Error loading recent clients:', error);
-    recentClients.value = [];
-  }
-};
-
-const fetchRecentMeasurements = async () => {
-  try {
-    const data = await authFetch('/api/measurements?limit=5&sortField=date&sortOrder=desc');
-    recentMeasurements.value = data.data || [];
-  } catch (error) {
-    console.error('Error loading recent measurements:', error);
-    recentMeasurements.value = [];
+  switch (status) {
+    case 'Completed':
+      return 'green';
+    case 'In Progress':
+      return 'blue';
+    case 'Pending Payment':
+      return 'yellow';
+    case 'Overdue':
+      return 'red';
+    default:
+      return 'gray';
   }
 };
 </script>

@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
 
     // Create a test reset URL
     const config = useRuntimeConfig();
-    const testResetUrl = `${config.public.appUrl}/auth/reset-password/test-token-12345`;
+    const testResetUrl = `${config.public.appUrl}/auth/reset-password?token=test-token-12345`;
     
     // Log the config to help with debugging
     console.log('Runtime config:', {

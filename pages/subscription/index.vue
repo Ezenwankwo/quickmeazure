@@ -379,22 +379,27 @@ const paymentColumns = [
   {
     key: 'date',
     label: 'Date',
+    id: 'date'
   },
   {
     key: 'description',
     label: 'Description',
+    id: 'description'
   },
   {
     key: 'amount',
     label: 'Amount',
+    id: 'amount'
   },
   {
     key: 'status',
     label: 'Status',
+    id: 'status'
   },
   {
     key: 'actions',
     label: '',
+    id: 'actions'
   },
 ];
 

@@ -41,6 +41,7 @@
               required
               class="w-full"
             />
+            <p v-if="formErrors.name" class="mt-1 text-sm text-red-600">{{ formErrors.name }}</p>
           </div>
           
           <div class="space-y-2">
@@ -53,6 +54,7 @@
               required
               class="w-full"
             />
+            <p v-if="formErrors.email" class="mt-1 text-sm text-red-600">{{ formErrors.email }}</p>
           </div>
           
           <div class="space-y-2">
@@ -77,6 +79,30 @@
                 />
               </template>
             </UInput>
+            <div v-if="password" class="mt-2">
+              <div class="flex items-center gap-2">
+                <div 
+                  class="h-1 flex-grow rounded-full" 
+                  :class="[passwordStrength >= 1 ? 'bg-green-500' : 'bg-gray-200']"
+                ></div>
+                <div 
+                  class="h-1 flex-grow rounded-full" 
+                  :class="[passwordStrength >= 2 ? 'bg-green-500' : 'bg-gray-200']"
+                ></div>
+                <div 
+                  class="h-1 flex-grow rounded-full" 
+                  :class="[passwordStrength >= 3 ? 'bg-green-500' : 'bg-gray-200']"
+                ></div>
+                <div 
+                  class="h-1 flex-grow rounded-full" 
+                  :class="[passwordStrength >= 4 ? 'bg-green-500' : 'bg-gray-200']"
+                ></div>
+              </div>
+              <p class="text-xs mt-1 text-gray-600">
+                Password should be at least 8 characters with uppercase, lowercase, number and special character
+              </p>
+            </div>
+            <p v-if="formErrors.password" class="mt-1 text-sm text-red-600">{{ formErrors.password }}</p>
           </div>
           
           <div class="space-y-2">
@@ -101,6 +127,7 @@
                 />
               </template>
             </UInput>
+            <p v-if="formErrors.confirmPassword" class="mt-1 text-sm text-red-600">{{ formErrors.confirmPassword }}</p>
           </div>
         </div>
         
@@ -116,6 +143,7 @@
             </label>
           </div>
         </div>
+        <p v-if="formErrors.terms" class="mt-1 text-sm text-red-600">{{ formErrors.terms }}</p>
         
         <div>
           <UButton
@@ -123,10 +151,16 @@
             color="primary"
             block
             :loading="isLoading"
-            :disabled="!agreeToTerms || !isFormValid"
+            :disabled="!isFormValid"
           >
             Create Account with Email
           </UButton>
+        </div>
+        
+        <div class="text-center mt-4">
+          <p class="text-sm text-gray-600">
+            Already have an account? <ULink to="/auth/login" class="font-medium">Sign in</ULink>
+          </p>
         </div>
       </form>
     </div>
@@ -146,6 +180,8 @@ definePageMeta({
 
 // Import route composable
 const route = useRoute();
+const router = useRouter();
+const toast = useToast();
 
 // Form data
 const name = ref('');
@@ -156,9 +192,28 @@ const agreeToTerms = ref(false);
 const isLoading = ref(false);
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
+const formErrors = ref({});
 
-// Use Auth Utils
-const { signIn } = useAuth();
+// Use Auth composable
+const { register } = useAuth();
+
+// Password validation
+const hasLowerCase = (str) => /[a-z]/.test(str);
+const hasUpperCase = (str) => /[A-Z]/.test(str);
+const hasNumber = (str) => /\d/.test(str);
+const hasSpecialChar = (str) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(str);
+
+const passwordStrength = computed(() => {
+  if (!password.value) return 0;
+  
+  let strength = 0;
+  if (password.value.length >= 8) strength++;
+  if (hasLowerCase(password.value) && hasUpperCase(password.value)) strength++;
+  if (hasNumber(password.value)) strength++;
+  if (hasSpecialChar(password.value)) strength++;
+  
+  return strength;
+});
 
 // Form validation
 const isFormValid = computed(() => {
@@ -166,74 +221,116 @@ const isFormValid = computed(() => {
     name.value.trim() !== '' &&
     email.value.trim() !== '' &&
     password.value.length >= 8 &&
-    password.value === confirmPassword.value
+    password.value === confirmPassword.value &&
+    agreeToTerms.value &&
+    passwordStrength.value >= 3
   );
 });
 
-const handleRegister = async () => {
-  if (!isFormValid.value) return;
+// Handle registration
+async function handleRegister() {
+  // Reset form errors
+  formErrors.value = {};
   
+  // Validate form
+  if (!name.value.trim()) {
+    formErrors.value.name = 'Name is required';
+    return;
+  }
+  
+  // Simple email validation
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email.value)) {
+    formErrors.value.email = 'Please enter a valid email address';
+    return;
+  }
+  
+  // Password validation
+  if (password.value.length < 8) {
+    formErrors.value.password = 'Password must be at least 8 characters long';
+    return;
+  }
+  
+  if (passwordStrength.value < 3) {
+    formErrors.value.password = 'Password is too weak';
+    return;
+  }
+  
+  // Confirm password validation
+  if (password.value !== confirmPassword.value) {
+    formErrors.value.confirmPassword = 'Passwords do not match';
+    return;
+  }
+  
+  // Terms validation
+  if (!agreeToTerms.value) {
+    formErrors.value.terms = 'You must agree to the terms and privacy policy';
+    return;
+  }
+  
+  // Submit the form
   isLoading.value = true;
   
   try {
-    // Use the register function from useAuth composable
-    const auth = useAuth();
-    const result = await auth.register(
-      name.value,
-      email.value,
-      password.value
-    );
-
-    if (!result.success) {
-      throw new Error(result.error || 'Registration failed');
+    // Register using the auth composable
+    const result = await register(name.value, email.value, password.value);
+    
+    if (result.success) {
+      // Show success toast
+      toast.add({
+        title: 'Registration Successful',
+        description: 'Your account has been created!',
+        color: 'green'
+      });
+      
+      // Navigate to dashboard
+      router.push('/dashboard');
+    } else {
+      // Handle registration failure
+      const errorMessage = result.error || 'Registration failed';
+      
+      // Determine which field has the error
+      if (errorMessage.includes('email')) {
+        formErrors.value.email = errorMessage;
+      } else if (errorMessage.includes('password')) {
+        formErrors.value.password = errorMessage;
+      } else {
+        // Show general error toast
+        toast.add({
+          title: 'Registration Error',
+          description: errorMessage,
+          color: 'red',
+          icon: 'i-heroicons-exclamation-triangle'
+        });
+      }
     }
-
-    // Show success message
-    useToast().add({
-      title: 'Registration successful',
-      description: 'Welcome to QuickMeazure!',
-      color: 'green'
-    });
-
-    // Get plan from URL query params if any
-    const plan = route.query.plan || 'free';
-    const billing = route.query.billing || 'monthly';
-
-    // Redirect to plan confirmation page
-    navigateTo(`/subscription/confirm?plan=${plan}&billing=${billing}`);
   } catch (error) {
-    console.error('Registration failed:', error);
-    useToast().add({
-      title: 'Registration failed',
-      description: error.message || 'An error occurred during registration',
-      color: 'red'
+    console.error('Registration error:', error);
+    
+    // Show error toast
+    toast.add({
+      title: 'Registration Error',
+      description: 'An unexpected error occurred. Please try again.',
+      color: 'red',
+      icon: 'i-heroicons-exclamation-triangle'
     });
   } finally {
     isLoading.value = false;
   }
-};
+}
 
-const handleGoogleRegister = async () => {
-  isLoading.value = true;
-  
+// Handle Google registration (same as login)
+async function handleGoogleRegister() {
   try {
-    // Get plan from URL query params if any
-    const plan = route.query.plan || 'free';
-    const billing = route.query.billing || 'monthly';
-    
-    // Sign in with Google
-    await signIn('google', {
-      redirect: true,
-      callbackUrl: `/subscription/confirm?plan=${plan}&billing=${billing}`
+    // Show notification that Google sign-up is not currently available
+    toast.add({
+      title: 'Google Sign-up',
+      description: 'Google sign-up is currently not available. Please use email and password.',
+      color: 'blue',
+      icon: 'i-heroicons-information-circle'
     });
   } catch (error) {
-    console.error('Google registration failed:', error);
-    useToast().add({
-      title: 'Registration failed',
-      description: 'An error occurred during Google registration',
-      color: 'red'
-    });
-    isLoading.value = false;
+    console.error('Google registration error:', error);
   }
-};
+}
 </script>

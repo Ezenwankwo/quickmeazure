@@ -406,22 +406,27 @@ const measurementColumns = [
   {
     key: 'date',
     label: 'Date',
+    id: 'date'
   },
   {
     key: 'bust',
     label: 'Bust',
+    id: 'bust'
   },
   {
     key: 'waist',
     label: 'Waist',
+    id: 'waist'
   },
   {
     key: 'hip',
     label: 'Hip',
+    id: 'hip'
   },
   {
     key: 'actions',
     label: '',
+    id: 'actions'
   },
 ];
 
@@ -430,18 +435,22 @@ const orderColumns = [
   {
     key: 'status',
     label: 'Status',
+    id: 'status'
   },
   {
     key: 'dueDate',
     label: 'Due Date',
+    id: 'dueDate'
   },
   {
     key: 'payment',
     label: 'Payment',
+    id: 'payment'
   },
   {
     key: 'actions',
     label: '',
+    id: 'actions'
   },
 ];
 

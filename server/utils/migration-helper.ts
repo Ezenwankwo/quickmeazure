@@ -1,10 +1,10 @@
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import { useDrizzle, sql } from './drizzle'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const MIGRATIONS_DIR = path.resolve(__dirname, '../database/migrations')
+// Fix the path resolution to use the process.cwd() approach
+const projectRoot = process.cwd()
+const MIGRATIONS_DIR = path.resolve(projectRoot, 'server/database/migrations')
 
 /**
  * Apply database migrations programmatically
@@ -12,6 +12,7 @@ const MIGRATIONS_DIR = path.resolve(__dirname, '../database/migrations')
 export async function applyMigrations() {
   try {
     console.log('🔄 Checking for database migrations...')
+    console.log(`Using migrations directory: ${MIGRATIONS_DIR}`)
     
     // Get database connection
     const db = useDrizzle()

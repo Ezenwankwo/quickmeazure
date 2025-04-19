@@ -33,11 +33,16 @@
       </div>
       
       <form class="space-y-6" @submit.prevent="handleLogin">
+        <!-- Error Message -->
+        <UAlert v-if="error" color="red" variant="soft" icon="i-heroicons-exclamation-triangle" class="mb-4">
+          {{ error }}
+        </UAlert>
+        
         <div class="space-y-4 flex flex-col">
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700">Email address</label>
             <UInput
-              v-model="email"
+              v-model="form.email"
               type="email"
               placeholder="Email address"
               required
@@ -49,7 +54,7 @@
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700">Password</label>
             <UInput
-              v-model="password"
+              v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
               placeholder="Password"
               required
@@ -67,7 +72,11 @@
                 </UButton>
               </template>
             </UInput>
-            <div class="flex justify-end mt-1">
+            <div class="flex justify-between mt-1">
+              <div class="flex items-center">
+                <UCheckbox v-model="form.rememberMe" name="remember" color="primary" />
+                <label for="remember" class="ml-2 text-sm text-gray-600">Remember me</label>
+              </div>
               <NuxtLink to="/auth/forgot-password" class="text-sm font-medium text-primary hover:text-primary">
                 Forgot your password?
               </NuxtLink>
@@ -78,12 +87,20 @@
         <UButton
           type="submit"
           block
+          color="primary"
+          @click.prevent="handleLogin"
           size="lg"
-          :loading="loading"
-          :disabled="!email || !password"
+          :loading="isSubmitting"
+          :disabled="!form.email || !form.password"
         >
           Sign in with Email
         </UButton>
+        
+        <div class="text-center mt-4">
+          <p class="text-sm text-gray-600">
+            Don't have an account? <ULink to="/auth/register" class="font-medium">Sign up</ULink>
+          </p>
+        </div>
       </form>
     </div>
   </div>
@@ -101,71 +118,93 @@ definePageMeta({
 });
 
 // Explicitly import UI components 
-import { UInput, UButton, UIcon } from '#components'
+import { UInput, UButton, UIcon, ULink, UCheckbox } from '#components'
+import { useSessionAuth } from '~/composables/useSessionAuth';
 
-const email = ref('')
-const password = ref('')
-const loading = ref(false)
-const error = ref('')
-const showPassword = ref(false)
+const router = useRouter();
+const route = useRoute();
+const form = ref({
+  email: '',
+  password: '',
+  rememberMe: false
+});
+const isSubmitting = ref(false);
+const errorMessage = ref('');
+const loading = ref(false);
+const error = ref('');
+const showPassword = ref(false);
 // Add toast composable
 const toast = useToast()
 
-// Use Auth Utils
-const { signIn } = useAuth()
+// Use Auth composable
+const { login } = useAuth()
 
-async function handleLogin() {
+// Form submission handler
+const handleLogin = async () => {
+  isSubmitting.value = true;
+  errorMessage.value = '';
+  
   try {
-    error.value = ''
-    loading.value = true
+    // Call the login function from our auth composable
+    const auth = useSessionAuth();
+    const result = await auth.login(
+      form.value.email,
+      form.value.password,
+      form.value.rememberMe
+    );
     
-    // Sign in using Auth Utils
-    await signIn('credentials', {
-      email: email.value,
-      password: password.value,
-      redirect: true
-    })
-  } catch (e) {
-    const errorMessage = 'Invalid email or password'
-    error.value = errorMessage
-    console.error('Login error:', e)
-    
-    // Show error toast notification (red for errors)
-    toast.add({
-      title: 'Login Error',
-      description: errorMessage,
-      color: 'red',
-      icon: 'i-heroicons-exclamation-triangle'
-    })
+    if (result.success) {
+      // Show success notification
+      useToast().add({
+        title: 'Welcome back!',
+        description: 'You have been logged in successfully.',
+        color: 'green'
+      });
+      
+      // Redirect to the intended destination or dashboard
+      if (route.query.redirect) {
+        navigateTo(decodeURIComponent(route.query.redirect.toString()));
+      } else {
+        navigateTo('/dashboard');
+      }
+    } else {
+      // Show error message
+      errorMessage.value = result.error || 'Invalid email or password';
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    errorMessage.value = 'An error occurred. Please try again.';
   } finally {
-    loading.value = false
+    isSubmitting.value = false;
   }
-}
+};
 
 async function handleGoogleLogin() {
   try {
-    error.value = ''
-    loading.value = true
+    error.value = '';
+    loading.value = true;
     
-    // Sign in with Google
-    await signIn('google', {
-      redirect: true,
-      callbackUrl: '/dashboard'
-    })
+    // Show notification that Google login is not currently available
+    toast.add({
+      title: 'Google Login',
+      description: 'Google login is currently not available. Please use email and password.',
+      color: 'blue',
+      icon: 'i-heroicons-information-circle'
+    });
   } catch (e) {
-    const errorMessage = 'Google login failed'
-    error.value = errorMessage
-    console.error('Google login error:', e)
+    const errorMessage = 'Google login failed';
+    error.value = errorMessage;
+    console.error('Google login error:', e);
     
-    // Show error toast notification (red for errors)
+    // Show error toast notification
     toast.add({
       title: 'Login Error',
       description: errorMessage,
       color: 'red',
       icon: 'i-heroicons-exclamation-triangle'
-    })
-    
-    loading.value = false
+    });
+  } finally {
+    loading.value = false;
   }
 }
 </script>

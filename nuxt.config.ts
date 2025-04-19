@@ -11,7 +11,8 @@ export default defineNuxtConfig({
       appName: 'QuickMeazure',
       appUrl: process.env.APP_URL || 'http://localhost:3000',
       supabaseUrl: process.env.SUPABASE_URL,
-      supabaseKey: process.env.SUPABASE_KEY
+      supabaseKey: process.env.SUPABASE_KEY,
+      paystackKey: process.env.PAYSTACK_PUBLIC_KEY || 'pk_test_your_paystack_public_key'
     },
     // Add auth secret for nuxt-auth-utils
     authSecret: process.env.AUTH_SECRET || 'your-secret-key',

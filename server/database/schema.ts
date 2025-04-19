@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, real, jsonb, date, unique, boolean } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, timestamp, integer, real, jsonb, date, unique, boolean, varchar } from 'drizzle-orm/pg-core'
 
 // Users table
 export const users = pgTable('users', {
@@ -23,6 +23,25 @@ export const plans = pgTable('plans', {
   maxClients: integer('max_clients'), // Max number of clients allowed
   maxStyles: integer('max_styles'), // Max number of styles allowed
   maxStorage: integer('max_storage'), // Storage limit in MB
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// Subscriptions table to track user subscriptions
+export const subscriptions = pgTable('subscriptions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  planId: integer('plan_id').notNull().references(() => plans.id),
+  status: text('status').notNull().default('active'), // active, canceled, expired, pending
+  startDate: timestamp('start_date').notNull().defaultNow(),
+  endDate: timestamp('end_date'), // When the subscription expires
+  billingPeriod: text('billing_period').notNull(), // monthly, annual
+  amount: real('amount').notNull(), // Amount paid
+  nextBillingDate: timestamp('next_billing_date'), // When the next payment is due
+  canceledAt: timestamp('canceled_at'), // When the user canceled
+  paymentMethod: text('payment_method').default('paystack'), // Payment method used
+  paymentReference: varchar('payment_reference', { length: 255 }), // Reference ID from payment provider
+  metadata: jsonb('metadata'), // Additional data
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
@@ -141,6 +160,7 @@ export const measurements = pgTable('measurements', {
 // Export types
 export type User = typeof users.$inferSelect
 export type Plan = typeof plans.$inferSelect
+export type Subscription = typeof subscriptions.$inferSelect
 export type Business = typeof businesses.$inferSelect
 export type BusinessProfile = typeof businessProfiles.$inferSelect
 export type Client = typeof clients.$inferSelect

@@ -15,8 +15,17 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    // Validate name (not empty)
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      throw createError({
+        statusCode: 400,
+        message: 'Name cannot be empty'
+      })
+    }
+
+    // Validate email format more strictly
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
     if (!emailRegex.test(email)) {
       throw createError({
         statusCode: 400,
@@ -24,11 +33,24 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Validate password strength (minimum 8 characters)
+    // Enhanced password validation
     if (password.length < 8) {
       throw createError({
         statusCode: 400,
         message: 'Password must be at least 8 characters long'
+      })
+    }
+
+    // Check for password complexity
+    const hasUppercase = /[A-Z]/.test(password)
+    const hasLowercase = /[a-z]/.test(password)
+    const hasNumber = /\d/.test(password)
+    const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>\/?]/.test(password)
+
+    if (!(hasUppercase && hasLowercase && hasNumber && hasSpecialChar)) {
+      throw createError({
+        statusCode: 400,
+        message: 'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character'
       })
     }
 
@@ -58,7 +80,7 @@ export default defineEventHandler(async (event) => {
         // Create a mock user object
         const mockUser = {
           id: Math.floor(Math.random() * 1000).toString(),
-          name,
+          name: trimmedName,
           email: email.toLowerCase(),
         }
         
@@ -99,12 +121,13 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    // Generate a secure salt and hash the password
+    const salt = await bcrypt.genSalt(12)
+    const hashedPassword = await bcrypt.hash(password, salt)
     
     // Create the new user
     const newUser = {
-      name,
+      name: trimmedName,
       email: email.toLowerCase(),
       password: hashedPassword,
       createdAt: new Date()
@@ -133,7 +156,7 @@ export default defineEventHandler(async (event) => {
         // Create a mock user object
         user = {
           id: Math.floor(Math.random() * 1000).toString(),
-          name,
+          name: trimmedName,
           email: email.toLowerCase(),
           createdAt: new Date()
         }
@@ -170,6 +193,14 @@ export default defineEventHandler(async (event) => {
       config.jwtSecret,
       { expiresIn: '7d' }
     )
+
+    // Set the token as cookie for API access
+    setCookie(event, 'auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/'
+    })
 
     // Return user data and token without sensitive fields
     return {

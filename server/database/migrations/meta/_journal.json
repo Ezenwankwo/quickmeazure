@@ -43,6 +43,13 @@
       "when": 1744809591623,
       "tag": "0005_parched_tomas",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1745041422987,
+      "tag": "0006_simple_lizard",
+      "breakpoints": true
     }
   ]
 }

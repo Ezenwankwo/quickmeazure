@@ -592,27 +592,33 @@ const columns = [
   {
     key: 'client',
     label: 'Client',
+    id: 'client'
   },
   {
     key: 'style',
     label: 'Style',
+    id: 'style'
   },
   {
     key: 'dueDate',
     label: 'Due Date',
+    id: 'dueDate'
   },
   {
     key: 'status',
     label: 'Status',
+    id: 'status'
   },
   {
     key: 'payment',
     label: 'Payment',
+    id: 'payment'
   },
   {
     key: 'actions',
     label: '',
     sortable: false,
+    id: 'actions'
   },
 ];
 

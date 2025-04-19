@@ -57,7 +57,7 @@
             </li>
             <li v-if="isAnnual && plan.price > 0" class="flex items-center text-primary-700">
               <UIcon name="i-heroicons-check-circle" class="text-primary-700 mr-[0.5rem]" />
-              <span><strong>15% savings</strong> with annual billing</span>
+              <span><strong>Save 2 months</strong> with annual billing</span>
             </li>
           </ul>
         </div>
@@ -65,12 +65,12 @@
         <div class="p-[1.5rem] bg-[#F9FAFB]">
           <UButton
             size="lg"
-            :to="`/auth/register${plan.name !== 'Free' ? `?plan=${plan.name.toLowerCase()}${isAnnual ? '-annual' : ''}&billing=${isAnnual ? 'annual' : 'monthly'}` : ''}`"
+            :to="`/auth/register${plan.name !== 'Growth' ? `?plan=${plan.name.toLowerCase()}${isAnnual ? '-annual' : ''}&billing=${isAnnual ? 'annual' : 'monthly'}` : ''}`"
             color="primary"
             :variant="plan.isFeatured ? 'solid' : 'outline'"
             block
           >
-            {{ plan.name === 'Free' ? 'Get Started' : `Choose ${plan.name}${isAnnual ? ' Annual' : ''}` }}
+            {{ plan.name === 'Growth' && plan.price === 0 ? 'Get Started' : `Choose ${plan.name}${isAnnual ? ' Annual' : ''}` }}
           </UButton>
         </div>
       </div>
@@ -80,17 +80,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-
-const props = defineProps({
-  monthlyPlans: {
-    type: Array,
-    required: true
-  },
-  annualPlans: {
-    type: Array,
-    required: true
-  }
-});
+import { monthlyPlans, annualPlans } from '~/data/subscription-plans';
 
 // Billing period state
 const isAnnual = ref(false);
@@ -102,7 +92,7 @@ const toggleBilling = () => {
 
 // Computed plans based on billing period
 const displayedPlans = computed(() => {
-  const plans = isAnnual.value ? props.annualPlans : props.monthlyPlans;
+  const plans = isAnnual.value ? annualPlans : monthlyPlans;
   return plans.slice().sort((a, b) => (a.price || 0) - (b.price || 0));
 });
 

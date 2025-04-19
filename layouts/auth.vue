@@ -13,21 +13,17 @@
         <!-- Navigation for guests -->
         <div class="flex items-center space-x-2 sm:space-x-4">
           <UButton
-            v-if="route.path !== '/auth/login'"
+            v-if="route.path !== '/auth/login' && !isSubscriptionConfirmPage"
             to="/auth/login"
-            color="gray"
+            color="neutral"
             variant="outline"
-            size="sm"
-            class="sm:text-base border border-gray-400 hover:border-gray-600"
           >
             Login
           </UButton>
           <UButton
-            v-if="route.path !== '/auth/register'"
+            v-if="route.path !== '/auth/register' && !isSubscriptionConfirmPage"
             to="/auth/register"
             color="primary"
-            size="sm"
-            class="sm:text-base"
           >
             Register
           </UButton>
@@ -47,4 +43,9 @@
 <script setup>
 // Get current route for conditional rendering
 const route = useRoute();
+
+// Check if current page is subscription confirm page
+const isSubscriptionConfirmPage = computed(() => {
+  return route.path === '/subscription/confirm';
+});
 </script> 

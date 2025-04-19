@@ -30,7 +30,15 @@ if (process.client) {
   if (savedAuth) {
     try {
       const parsed = JSON.parse(savedAuth);
-      authState.value = parsed;
+      
+      // Only set auth state if session hasn't expired
+      if (!parsed.sessionExpiry || Date.now() < parsed.sessionExpiry) {
+        authState.value = parsed;
+      } else {
+        // Clear expired auth data
+        localStorage.removeItem('auth');
+        console.log('Session expired, clearing auth data');
+      }
     } catch (e) {
       console.error('Failed to parse auth data from localStorage', e);
       // Clear invalid data
@@ -62,9 +70,22 @@ export function useAuth() {
   }
 
   // Computed properties
-  const isLoggedIn = computed(() => authState.value.isLoggedIn);
+  const isLoggedIn = computed(() => authState.value.isLoggedIn && !!authState.value.token);
   const user = computed(() => authState.value.user);
-  const token = computed(() => authState.value.token);
+  const token = computed(() => {
+    // Check if token exists and session hasn't expired
+    if (!authState.value.token) return null;
+    
+    // Return token only if session hasn't expired
+    if (authState.value.sessionExpiry && Date.now() > authState.value.sessionExpiry) {
+      // Token has expired, handle expiry silently
+      console.log('Token expired, clearing auth state');
+      handleSessionExpiry(false);
+      return null;
+    }
+    
+    return authState.value.token;
+  });
   
   // Check if user's subscription is active
   const isSubscriptionActive = computed(() => {
@@ -82,18 +103,18 @@ export function useAuth() {
   });
 
   // Handle session expiry - logs the user out and redirects to login page
-  const handleSessionExpiry = (showNotification = true) => {
+  const handleSessionExpiry = async (showNotification = true) => {
     const route = useRoute();
     
     // Don't redirect if we're already on an auth page to prevent loops
     if (route.path.includes('/auth/')) {
       // Just logout
-      logout();
+      await logout();
       return;
     }
     
     // Clear auth state
-    logout();
+    await logout();
     
     // Show notification
     if (showNotification && process.client) {
@@ -101,7 +122,7 @@ export function useAuth() {
       toast.add({
         title: 'Session Expired',
         description: 'Your session has expired. Please log in again.',
-        color: 'red'
+        color: 'error'
       });
     }
     
@@ -143,6 +164,12 @@ export function useAuth() {
         localStorage.setItem('lastLoginTime', now.toString());
       }
       
+      // Check if user has a subscription - redirect to subscription/confirm if not
+      if (data.user.subscriptionPlan === 'free' || !data.user.subscriptionPlan) {
+        navigateTo('/subscription/confirm');
+        return { success: true, redirected: true };
+      }
+      
       return { success: true };
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -156,48 +183,122 @@ export function useAuth() {
   // Register function
   async function register(name: string, email: string, password: string, plan: string = 'free') {
     try {
+      // Clear any auth error state
+      if (process.client) {
+        localStorage.removeItem('isHandlingAuthError');
+      }
+      
       // Call the register API endpoint using $fetch
       const data = await $fetch<{ user: User; token: string }>('/api/auth/register', {
         method: 'POST',
         body: { name, email, password, subscriptionPlan: plan },
       });
       
+      // Calculate session expiry (default to 8 hours)
+      const now = Date.now();
+      const sessionExpiry = now + (8 * 60 * 60 * 1000);
+      
       // Update auth state
       authState.value = {
         user: data.user,
         isLoggedIn: true,
-        token: data.token
+        token: data.token,
+        sessionExpiry
       };
       
       // Save to localStorage
       if (process.client) {
         localStorage.setItem('auth', JSON.stringify(authState.value));
+        localStorage.setItem('lastLoginTime', now.toString());
       }
       
       return { success: true };
     } catch (error: any) {
       console.error('Registration failed:', error);
+      
+      // Extract error message from the response
+      let errorMessage = 'Registration failed';
+      
+      if (error.data) {
+        // Handle structured error responses
+        if (error.data.message) {
+          errorMessage = error.data.message;
+        } else if (error.data.statusMessage) {
+          errorMessage = error.data.statusMessage;
+        }
+      }
+      
+      // Map common error messages to more user-friendly messages
+      if (errorMessage.includes('already registered')) {
+        errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+      } else if (errorMessage.includes('Password must include')) {
+        errorMessage = 'Password must include at least one uppercase letter, one lowercase letter, one number, and one special character.';
+      }
+      
       return { 
         success: false, 
-        error: error.data?.statusMessage || 'Registration failed' 
+        error: errorMessage 
       };
     }
   }
 
   // Logout function
-  function logout() {
-    // Clear auth state
-    authState.value = {
-      user: null,
-      isLoggedIn: false,
-      token: null
-    };
-    
-    // Remove from localStorage - clear all auth-related items
-    if (process.client) {
-      localStorage.removeItem('auth');
-      localStorage.removeItem('isHandlingAuthError');
-      localStorage.removeItem('lastLoginTime');
+  async function logout() {
+    try {
+      console.log('Starting logout process');
+      
+      // Clear local auth state first to ensure UI updates immediately
+      authState.value = {
+        user: null,
+        isLoggedIn: false,
+        token: null
+      };
+      
+      // Remove from localStorage - clear all auth-related items
+      if (process.client) {
+        localStorage.removeItem('auth');
+        localStorage.removeItem('isHandlingAuthError');
+        localStorage.removeItem('lastLoginTime');
+        console.log('Local storage cleared');
+      }
+      
+      // Now call the server API to clear the session
+      // We put this after local state clearing so the UI feels more responsive
+      try {
+        console.log('Calling server logout API endpoint');
+        const response = await $fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        console.log('Server logout API response:', response);
+      } catch (apiError) {
+        // If the API call fails, we've already cleared local state
+        // so just log the error but don't throw it
+        console.error('API logout error (non-critical):', apiError);
+      }
+      
+      console.log('Logout completed successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Logout error:', error);
+      
+      // Ensure local state is cleared even on error
+      authState.value = {
+        user: null,
+        isLoggedIn: false,
+        token: null
+      };
+      
+      if (process.client) {
+        localStorage.removeItem('auth');
+        localStorage.removeItem('isHandlingAuthError');
+        localStorage.removeItem('lastLoginTime');
+      }
+      
+      return { success: true, error };
     }
   }
 

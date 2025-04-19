@@ -413,21 +413,25 @@ const columns = [
     key: 'client',
     label: 'Client',
     sortable: true,
+    id: 'client'
   },
   {
     key: 'measurements',
     label: 'Key Measurements',
     sortable: false,
+    id: 'measurements'
   },
   {
     key: 'lastUpdated',
     label: 'Last Updated',
     sortable: true,
+    id: 'lastUpdated'
   },
   {
     key: 'actions',
     label: 'Actions',
     sortable: false,
+    id: 'actions'
   },
 ];
 

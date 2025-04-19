@@ -417,7 +417,7 @@ useHead({
 });
 
 // Import auth composable
-import { useAuth } from '~/composables/useAuth';
+import { useSessionAuth } from '~/composables/useSessionAuth';
 
 // Table configuration
 const columns = [
@@ -425,31 +425,37 @@ const columns = [
     key: 'name',
     label: 'Name',
     sortable: true,
+    id: 'name'
   },
   {
     key: 'phone',
     label: 'Phone',
     sortable: true,
+    id: 'phone'
   },
   {
     key: 'email',
     label: 'Email',
     sortable: true,
+    id: 'email'
   },
   {
     key: 'measurements',
     label: 'Measurements',
     sortable: true,
+    id: 'measurements'
   },
   {
     key: 'createdAt',
     label: 'Date Added',
     sortable: true,
+    id: 'createdAt'
   },
   {
     key: 'actions',
     label: 'Actions',
     sortable: false,
+    id: 'actions'
   },
 ];
 
@@ -559,15 +565,14 @@ const deleteClient = async () => {
   isDeleting.value = true;
   
   try {
-    // Get auth token from the auth store
-    const auth = useAuth();
-    const token = auth.token.value;
+    // Get auth from our new session management composable
+    const auth = useSessionAuth();
     
     // Call the delete endpoint
     await $fetch(`/api/clients/${clientToDelete.value.id}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${auth.token.value}`
       }
     });
     
@@ -616,11 +621,11 @@ const fetchClients = async () => {
   isLoading.value = true;
   
   try {
-    // Get auth token from the auth store
-    const auth = useAuth();
-    const token = auth.token.value;
+    // Get auth from our new session management composable
+    const auth = useSessionAuth();
     
-    if (!token) {
+    // Check if user is authenticated
+    if (!auth.isLoggedIn.value || !auth.token.value) {
       // Redirect to login if not authenticated
       useToast().add({
         title: 'Authentication required',
@@ -660,7 +665,7 @@ const fetchClients = async () => {
     // Make API request with all parameters
     const response = await $fetch(`/api/clients?${params.toString()}`, {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${auth.token.value}`
       }
     });
     

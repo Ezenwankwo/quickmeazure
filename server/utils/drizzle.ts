@@ -56,4 +56,5 @@ export type Business = typeof schema.businesses.$inferSelect
 export type Client = typeof schema.clients.$inferSelect
 export type Order = typeof schema.orders.$inferSelect
 export type Style = typeof schema.styles.$inferSelect
-export type Measurement = typeof schema.measurements.$inferSelect 
+export type Measurement = typeof schema.measurements.$inferSelect
+export type Subscription = typeof schema.subscriptions.$inferSelect 
