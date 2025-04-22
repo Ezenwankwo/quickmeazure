@@ -162,7 +162,7 @@ const route = useRoute();
 const orderId = route.params.id;
 
 // Import auth composable
-import { useAuth } from '~/composables/useAuth';
+import { useSessionAuth } from '~/composables/useSessionAuth';
 
 // State management
 const order = ref(null);
@@ -239,7 +239,7 @@ const fetchOrderDetails = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -329,7 +329,7 @@ const savePayment = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     // Format payment date

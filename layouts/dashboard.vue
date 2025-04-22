@@ -68,7 +68,10 @@
                 block
                 to="/dashboard"
                 color="gray"
-                :variant="route.path.startsWith('/dashboard') ? 'solid' : 'ghost'"
+                variant="ghost"
+                active-color="primary"
+                active-variant="neutral"
+                active-class="font-semibold text-primary-700 border-l-3 border-primary-600 pl-2 bg-primary-50"
                 class="justify-start"
                 :ui="{ rounded: 'rounded-lg' }"
                 :trailing="false"
@@ -81,7 +84,10 @@
                 block
                 to="/clients"
                 color="gray"
-                :variant="route.path.startsWith('/clients') ? 'solid' : 'ghost'"
+                variant="ghost"
+                active-color="primary"
+                active-variant="neutral"
+                active-class="font-semibold text-primary-700 border-l-3 border-primary-600 pl-2 bg-primary-50"
                 class="justify-start"
                 :ui="{ rounded: 'rounded-lg' }"
                 :trailing="false"
@@ -92,22 +98,28 @@
               </UButton>
               <UButton
                 block
-                to="/measurements"
+                to="/clients/new"
                 color="gray"
-                :variant="route.path.startsWith('/measurements') ? 'solid' : 'ghost'"
+                variant="ghost"
+                active-color="primary"
+                active-variant="neutral"
+                active-class="font-semibold text-primary-700 border-l-3 border-primary-600 pl-2 bg-primary-50"
                 class="justify-start"
                 :ui="{ rounded: 'rounded-lg' }"
                 :trailing="false"
                 size="lg"
                 icon="i-heroicons-variable"
               >
-                Measurements
+                Measure
               </UButton>
               <UButton
                 block
                 to="/styles"
                 color="gray"
-                :variant="route.path.startsWith('/styles') ? 'solid' : 'ghost'"
+                variant="ghost"
+                active-color="primary"
+                active-variant="neutral"
+                active-class="font-semibold text-primary-700 border-l-3 border-primary-600 pl-2 bg-primary-50"
                 class="justify-start"
                 :ui="{ rounded: 'rounded-lg' }"
                 :trailing="false"
@@ -120,7 +132,10 @@
                 block
                 to="/orders"
                 color="gray"
-                :variant="route.path.startsWith('/orders') ? 'solid' : 'ghost'"
+                variant="ghost"
+                active-color="primary"
+                active-variant="neutral"
+                active-class="font-semibold text-primary-700 border-l-3 border-primary-600 pl-2 bg-primary-50"
                 class="justify-start"
                 :ui="{ rounded: 'rounded-lg' }"
                 :trailing="false"
@@ -141,67 +156,80 @@
     </div>
 
     <!-- Mobile Footer Navigation -->
-    <ClientOnly>
-      <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
-        <nav class="grid grid-cols-5 gap-1 p-2">
-          <UButton
-            to="/dashboard"
-            color="gray"
-            :variant="route.path.startsWith('/dashboard') ? 'solid' : 'ghost'"
-            class="flex-col h-auto py-2"
-            size="lg"
-            :ui="{ rounded: 'rounded-lg' }"
-            icon="i-heroicons-home"
-          >
-            <span class="text-xs mt-1">Dashboard</span>
-          </UButton>
-          <UButton
-            to="/clients"
-            color="gray"
-            :variant="route.path.startsWith('/clients') ? 'solid' : 'ghost'"
-            class="flex-col h-auto py-2"
-            size="lg"
-            :ui="{ rounded: 'rounded-lg' }"
-            icon="i-heroicons-users"
-          >
-            <span class="text-xs mt-1">Clients</span>
-          </UButton>
-          <UButton
-            to="/measurements"
-            color="gray"
-            :variant="route.path.startsWith('/measurements') ? 'solid' : 'ghost'"
-            class="flex-col h-auto py-2"
-            size="lg"
-            :ui="{ rounded: 'rounded-lg' }"
-            icon="i-heroicons-variable"
-          >
-            <span class="text-xs mt-1">Measure</span>
-          </UButton>
-          <UButton
-            to="/styles"
-            color="gray"
-            :variant="route.path.startsWith('/styles') ? 'solid' : 'ghost'"
-            class="flex-col h-auto py-2"
-            size="lg"
-            :ui="{ rounded: 'rounded-lg' }"
-            icon="i-heroicons-swatch"
-          >
-            <span class="text-xs mt-1">Styles</span>
-          </UButton>
-          <UButton
-            to="/orders"
-            color="gray"
-            :variant="route.path.startsWith('/orders') ? 'solid' : 'ghost'"
-            class="flex-col h-auto py-2"
-            size="lg"
-            :ui="{ rounded: 'rounded-lg' }"
-            icon="i-heroicons-shopping-bag"
-          >
-            <span class="text-xs mt-1">Orders</span>
-          </UButton>
-        </nav>
-      </footer>
-    </ClientOnly>
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
+      <nav class="grid grid-cols-5 gap-1 p-2">
+        <UButton
+          to="/dashboard"
+          color="gray"
+          variant="ghost"
+          active-color="primary"
+          active-variant="neutral"
+          active-class="font-semibold text-primary-700 border-t-2 border-primary-600 bg-primary-50"
+          class="flex-col h-auto py-2"
+          size="lg"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-home"
+        >
+          <span class="text-xs mt-1">Dashboard</span>
+        </UButton>
+        <UButton
+          to="/clients"
+          color="gray"
+          variant="ghost"
+          active-color="primary"
+          active-variant="neutral"
+          active-class="font-semibold text-primary-700 border-t-2 border-primary-600 bg-primary-50"
+          class="flex-col h-auto py-2"
+          size="lg"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-users"
+        >
+          <span class="text-xs mt-1">Clients</span>
+        </UButton>
+        <UButton
+          to="/clients/new"
+          color="gray"
+          variant="ghost"
+          active-color="primary"
+          active-variant="neutral"
+          active-class="font-semibold text-primary-700 border-t-2 border-primary-600 bg-primary-50"
+          class="flex-col h-auto py-2"
+          size="lg"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-variable"
+        >
+          <span class="text-xs mt-1">Measure</span>
+        </UButton>
+        <UButton
+          to="/styles"
+          color="gray"
+          variant="ghost"
+          active-color="primary"
+          active-variant="neutral"
+          active-class="font-semibold text-primary-700 border-t-2 border-primary-600 bg-primary-50"
+          class="flex-col h-auto py-2"
+          size="lg"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-swatch"
+        >
+          <span class="text-xs mt-1">Styles</span>
+        </UButton>
+        <UButton
+          to="/orders"
+          color="gray"
+          variant="ghost"
+          active-color="primary"
+          active-variant="neutral"
+          active-class="font-semibold text-primary-700 border-t-2 border-primary-600 bg-primary-50"
+          class="flex-col h-auto py-2"
+          size="lg"
+          :ui="{ rounded: 'rounded-lg' }"
+          icon="i-heroicons-shopping-bag"
+        >
+          <span class="text-xs mt-1">Orders</span>
+        </UButton>
+      </nav>
+    </footer>
   </div>
 </template>
 
@@ -212,8 +240,6 @@ import { useSessionAuth } from '~/composables/useSessionAuth';
 const auth = useSessionAuth();
 const user = computed(() => auth.user.value);
 const route = useRoute();
-const router = useRouter();
-const toast = useToast();
 
 // Dropdown state
 const isDropdownOpen = ref(false);
@@ -242,4 +268,24 @@ const handleLogout = async () => {
     console.error('Error logging out:', error);
   }
 };
-</script> 
+</script>
+
+<style scoped>
+.active-nav-item {
+  position: relative;
+  font-weight: 500;
+  color: rgb(var(--color-primary-600));
+}
+
+.active-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 60%;
+  width: 3px;
+  background-color: rgb(var(--color-primary-600));
+  border-radius: 0 4px 4px 0;
+}
+</style> 

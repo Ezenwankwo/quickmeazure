@@ -57,8 +57,9 @@
 </template>
 
 <script setup>
-// Get authenticated user with useAuth composable
-const { isLoggedIn } = useAuth();
+// Get authenticated user with useSessionAuth composable
+import { useSessionAuth } from '~/composables/useSessionAuth';
+const { isLoggedIn } = useSessionAuth();
 const route = useRoute();
 
 // Redirect to dashboard if user is logged in and trying to access public pages

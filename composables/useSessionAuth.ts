@@ -153,7 +153,7 @@ export function useSessionAuth() {
       console.error('Login failed:', error)
       return { 
         success: false, 
-        error: error.data?.statusMessage || 'Invalid email or password' 
+        error: error.data?.message || error.data?.statusMessage
       }
     }
   }
@@ -192,6 +192,7 @@ export function useSessionAuth() {
       
       // Extract error message from the response
       let errorMessage = 'Registration failed'
+      let statusCode = error.statusCode || error.status || 500
       
       if (error.data) {
         // Handle structured error responses
@@ -202,9 +203,15 @@ export function useSessionAuth() {
         }
       }
       
+      // Add appropriate context based on status code
+      if (statusCode === 409) {
+        errorMessage = 'Email is already registered. Please use a different email or login instead.'
+      }
+      
       return { 
         success: false, 
-        error: errorMessage 
+        error: errorMessage,
+        statusCode
       }
     }
   }

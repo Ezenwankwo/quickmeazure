@@ -280,7 +280,7 @@ definePageMeta({
   layout: 'default'
 });
 
-const { isLoggedIn } = useAuth();
+const { isLoggedIn } = useSessionAuth();
 
 // Check if user is logged in, if so redirect to dashboard
 onMounted(() => {

@@ -161,7 +161,7 @@ const route = useRoute();
 const orderId = route.params.id;
 
 // Import auth composable
-import { useAuth } from '~/composables/useAuth';
+import { useSessionAuth } from '~/composables/useSessionAuth';
 
 // Set page metadata
 useHead({
@@ -302,7 +302,7 @@ const fetchData = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -400,7 +400,7 @@ const saveOrder = async () => {
     }
     
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     // Prepare data with proper type conversions

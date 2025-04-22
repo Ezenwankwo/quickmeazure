@@ -1,57 +1,24 @@
-import { parse, parseSetCookie, serialize } from 'cookie-es'
-
+/**
+ * This middleware handles token refresh
+ * Modified to only run on the client side to avoid SSR issues with cookie handling
+ */
 export default defineNuxtRouteMiddleware(async (to) => {
-  // Skip refresh for unauthenticated routes or during client navigation
-  if (to.path.startsWith('/auth/') || process.client) {
+  // Skip for auth routes or if we're on the server
+  if (to.path.startsWith('/auth/') || process.server) {
     return
   }
-  
-  // Get the runtime config
-  const runtimeConfig = useRuntimeConfig()
 
-  // Get the server event for SSR requests
-  const serverEvent = useRequestEvent()
+  // Get session state from useSessionAuth  
+  const { isLoggedIn, refreshSession } = useSessionAuth()
   
-  // Get the user session
-  const { loggedIn } = useUserSession()
-  
-  // If user is logged in, try to refresh the token during SSR
-  if (loggedIn.value && serverEvent) {
+  // Only attempt refresh if we're logged in
+  if (isLoggedIn.value) {
     try {
-      await useRequestFetch()('/api/auth/refresh', {
-        method: 'POST',
-        onResponse({ response: { headers } }) {
-          // Forward the Set-Cookie header to the main server event
-          if (process.server && serverEvent) {
-            for (const setCookie of headers.getSetCookie()) {
-              appendResponseHeader(serverEvent, 'Set-Cookie', setCookie)
-              
-              // Update session cookie for next fetch requests
-              const { name, value } = parseSetCookie(setCookie)
-              if (name === runtimeConfig.session?.name) {
-                // Update headers.cookie for future requests
-                const cookies = parse(serverEvent.headers.get('cookie') || '')
-                // Set or overwrite existing cookie
-                cookies[name] = value
-                // Update cookie event header for future requests
-                serverEvent.headers.set('cookie', 
-                  Object.entries(cookies)
-                    .map(([name, value]) => serialize(name, value))
-                    .join('; ')
-                )
-                
-                // Also apply to serverEvent.node.req.headers if it exists
-                if (serverEvent.node?.req?.headers) {
-                  serverEvent.node.req.headers['cookie'] = serverEvent.headers.get('cookie') || ''
-                }
-              }
-            }
-          }
-        }
-      })
+      // Use the refreshSession method from useSessionAuth
+      await refreshSession()
     } catch (error) {
       console.error('Failed to refresh session:', error)
-      // Don't throw or redirect here, let the auth middleware handle unauthorized access
+      // The error will be handled by the auth system
     }
   }
 }) 

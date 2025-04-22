@@ -150,7 +150,7 @@ useHead({
 });
 
 // Import auth composable
-import { useAuth } from '~/composables/useAuth';
+import { useSessionAuth } from '~/composables/useSessionAuth';
 
 // Form state
 const form = ref({
@@ -230,7 +230,7 @@ const calculateBalance = () => {
 const fetchData = async () => {
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -285,7 +285,7 @@ const saveOrder = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     // Format due date

@@ -3,9 +3,8 @@ import { useSessionAuth } from '~/composables/useSessionAuth'
 // Client-side plugin to refresh auth token periodically
 export default defineNuxtPlugin({
   name: 'auth-refresh',
-  setup() {
+  setup(nuxtApp) {
     const { isLoggedIn, refreshSession } = useSessionAuth()
-    const nuxtApp = useNuxtApp()
     
     // Refresh interval - start at 15 minutes (in ms)
     const INITIAL_REFRESH_INTERVAL = 15 * 60 * 1000
@@ -77,12 +76,24 @@ export default defineNuxtPlugin({
       }
     })
     
-    // Clean up on app unmount
-    onBeforeUnmount(() => {
-      if (refreshTimer !== null) {
-        clearTimeout(refreshTimer)
-        refreshTimer = null
-      }
+    // Use Nuxt's app:beforeMount hook for initialization
+    nuxtApp.hook('app:mounted', () => {
+      console.log('Auth refresh plugin initialized')
     })
+    
+    // Clean up timers when component unmounts
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () => {
+        if (refreshTimer !== null) {
+          clearTimeout(refreshTimer)
+          refreshTimer = null
+        }
+      })
+    }
+    
+    // Return an empty object to satisfy plugin interface
+    return {
+      provide: {}
+    }
   }
 }) 

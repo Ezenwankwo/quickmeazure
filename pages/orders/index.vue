@@ -52,7 +52,7 @@
     <!-- Filter Panel -->
     <UCard v-if="isFilterOpen" class="bg-white/95 backdrop-blur-sm border border-gray-100 shadow-sm mt-2">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <UFormGroup label="Status">
+        <UFormField label="Status">
           <USelect
             v-model="filters.status"
             :options="statusOptions"
@@ -60,9 +60,9 @@
             class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterOrders"
           />
-        </UFormGroup>
+        </UFormField>
         
-        <UFormGroup label="Due Date">
+        <UFormField label="Due Date">
           <USelect
             v-model="filters.dueDate"
             :options="dueDateOptions"
@@ -70,9 +70,9 @@
             class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterOrders"
           />
-        </UFormGroup>
+        </UFormField>
         
-        <UFormGroup label="Payment Status">
+        <UFormField label="Payment Status">
           <USelect
             v-model="filters.paymentStatus"
             :options="paymentStatusOptions"
@@ -80,7 +80,7 @@
             class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterOrders"
           />
-        </UFormGroup>
+        </UFormField>
       </div>
       
       <div class="flex justify-end mt-4">
@@ -181,39 +181,53 @@
                 size="xs"
                 :to="`/orders/${row.id}/edit`"
               />
-              <UDropdown
-                :items="[
-                  [
-                    {
-                      label: 'Mark as Completed',
-                      icon: 'i-heroicons-check-circle',
-                      click: () => updateOrderStatus(row, 'Completed'),
-                      disabled: row.status === 'Completed'
-                    },
-                    {
-                      label: 'Record Payment',
-                      icon: 'i-heroicons-currency-dollar',
-                      to: `/orders/${row.id}/payment`,
-                      disabled: row.balanceAmount <= 0
-                    }
-                  ],
-                  [
-                    {
-                      label: 'Delete Order',
-                      icon: 'i-heroicons-trash',
-                      click: () => confirmDelete(row),
-                      color: 'red'
-                    }
-                  ]
-                ]"
-              >
+              <UDropdownMenu>
                 <UButton
                   color="gray"
                   variant="ghost"
                   icon="i-heroicons-ellipsis-vertical"
                   size="xs"
                 />
-              </UDropdown>
+                
+                <template #items>
+                  <UButton
+                    class="w-full justify-start px-2 py-1 text-left"
+                    @click="updateOrderStatus(row, 'Completed')"
+                    :disabled="row.status === 'Completed'"
+                    variant="ghost"
+                  >
+                    <template #leading>
+                      <UIcon name="i-heroicons-check-circle" />
+                    </template>
+                    Mark as Completed
+                  </UButton>
+                  
+                  <UButton
+                    class="w-full justify-start px-2 py-1 text-left"
+                    :to="`/orders/${row.id}/payment`"
+                    :disabled="row.balanceAmount <= 0"
+                    variant="ghost"
+                  >
+                    <template #leading>
+                      <UIcon name="i-heroicons-currency-dollar" />
+                    </template>
+                    Record Payment
+                  </UButton>
+                  
+                  <USeparator />
+                  
+                  <UButton
+                    @click="confirmDelete(row)"
+                    class="w-full justify-start px-2 py-1 text-left text-red-500"
+                    variant="ghost"
+                  >
+                    <template #leading>
+                      <UIcon name="i-heroicons-trash" />
+                    </template>
+                    Delete Order
+                  </UButton>
+                </template>
+              </UDropdownMenu>
             </div>
           </template>
         </UTable>
@@ -339,42 +353,56 @@
                   color="gray"
                   variant="ghost"
                   icon="i-heroicons-pencil-square"
-                  size="sm"
+                  size="xs"
                   :to="`/orders/${order.id}/edit`"
                 />
-                <UDropdown
-                  :items="[
-                    [
-                      {
-                        label: 'Mark as Completed',
-                        icon: 'i-heroicons-check-circle',
-                        click: () => updateOrderStatus(order, 'Completed'),
-                        disabled: order.status === 'Completed'
-                      },
-                      {
-                        label: 'Record Payment',
-                        icon: 'i-heroicons-currency-dollar',
-                        to: `/orders/${order.id}/payment`,
-                        disabled: order.balanceAmount <= 0
-                      }
-                    ],
-                    [
-                      {
-                        label: 'Delete Order',
-                        icon: 'i-heroicons-trash',
-                        click: () => confirmDelete(order),
-                        color: 'red'
-                      }
-                    ]
-                  ]"
-                >
+                <UDropdownMenu>
                   <UButton
                     color="gray"
                     variant="ghost"
                     icon="i-heroicons-ellipsis-vertical"
                     size="sm"
                   />
-                </UDropdown>
+                  
+                  <template #items>
+                    <UButton
+                      class="w-full justify-start px-2 py-1 text-left"
+                      @click="updateOrderStatus(order, 'Completed')"
+                      :disabled="order.status === 'Completed'"
+                      variant="ghost"
+                    >
+                      <template #leading>
+                        <UIcon name="i-heroicons-check-circle" />
+                      </template>
+                      Mark as Completed
+                    </UButton>
+                    
+                    <UButton
+                      class="w-full justify-start px-2 py-1 text-left"
+                      :to="`/orders/${order.id}/payment`"
+                      :disabled="order.balanceAmount <= 0"
+                      variant="ghost"
+                    >
+                      <template #leading>
+                        <UIcon name="i-heroicons-currency-dollar" />
+                      </template>
+                      Record Payment
+                    </UButton>
+                    
+                    <USeparator />
+                    
+                    <UButton
+                      @click="confirmDelete(order)"
+                      class="w-full justify-start px-2 py-1 text-left text-red-500"
+                      variant="ghost"
+                    >
+                      <template #leading>
+                        <UIcon name="i-heroicons-trash" />
+                      </template>
+                      Delete Order
+                    </UButton>
+                  </template>
+                </UDropdownMenu>
               </div>
             </div>
           </div>
@@ -527,7 +555,7 @@ useHead({
 });
 
 // Import auth composable
-import { useAuth } from '~/composables/useAuth';
+import { useSessionAuth } from '~/composables/useSessionAuth';
 
 // State
 const search = ref('');
@@ -644,7 +672,7 @@ const fetchOrders = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -883,7 +911,7 @@ const deleteOrder = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     // Call the delete endpoint
@@ -938,7 +966,7 @@ const deleteOrder = async () => {
 const updateOrderStatus = async (order, newStatus) => {
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     // Call the update endpoint

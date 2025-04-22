@@ -1,4 +1,5 @@
 import { initializePaystackPayment } from '~/utils/paystack';
+import { useSessionAuth } from './useSessionAuth';
 
 interface PaymentOptions {
   amount: number;
@@ -10,7 +11,7 @@ interface PaymentOptions {
 }
 
 export const usePaystack = () => {
-  const auth = useAuth();
+  const auth = useSessionAuth();
   const config = useRuntimeConfig();
   
   /**
@@ -39,12 +40,20 @@ export const usePaystack = () => {
           if (response.status === 'success') {
             // Verify payment with our server
             try {
+              // Ensure we have a valid token
+              if (!auth.token.value) {
+                throw new Error('Authentication token not available');
+              }
+              
               const verificationResult = await $fetch('/api/payments/verify', {
                 method: 'POST',
                 body: {
                   reference: response.reference,
                   plan_id: options.planId,
                   billing_period: options.billingPeriod
+                },
+                headers: {
+                  'Authorization': `Bearer ${auth.token.value}`
                 }
               });
               

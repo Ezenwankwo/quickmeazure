@@ -72,6 +72,11 @@ export default defineEventHandler(async (event) => {
         })
       }
     } catch (dbError: any) {
+      // If the error is already a structured error (like the 409 we throw above), rethrow it
+      if (dbError.statusCode) {
+        throw dbError;
+      }
+      
       console.error('Database error checking for existing user:', dbError)
       // In development with SKIP_MIGRATIONS=true, we'll mock the registration process
       if (process.env.SKIP_MIGRATIONS === 'true' && process.env.NODE_ENV === 'development') {

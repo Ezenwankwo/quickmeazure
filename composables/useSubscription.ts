@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue';
-import { useAuth } from './useAuth';
+import { useSessionAuth } from './useSessionAuth';
 
 // Define subscription plan types
 export type SubscriptionPlanType = 'free' | 'standard' | 'premium';
@@ -38,7 +38,7 @@ interface Subscription {
  * Composable for subscription management
  */
 export const useSubscription = () => {
-  const { user, isSubscriptionActive } = useAuth();
+  const { user, isSubscriptionActive } = useSessionAuth();
   
   const subscription = ref<Subscription | null>(null);
   const isLoading = ref(false);
@@ -104,12 +104,14 @@ export const useSubscription = () => {
   // Get client limit based on current plan
   const clientLimit = computed(() => {
     if (!isSubscriptionActive.value) return 0;
+    if (!currentPlan.value) return 0;
     return currentPlan.value.clientLimit;
   });
 
   // Check if user can add more clients
   async function canAddMoreClients(currentClientCount: number): Promise<boolean> {
     if (!isSubscriptionActive.value) return false;
+    if (!currentPlan.value) return false;
     if (currentPlan.value.clientLimit === null) return true; // Unlimited
     return currentClientCount < currentPlan.value.clientLimit;
   }
@@ -117,6 +119,7 @@ export const useSubscription = () => {
   // Calculate remaining clients
   function getRemainingClients(currentClientCount: number): number {
     if (!isSubscriptionActive.value) return 0;
+    if (!currentPlan.value) return 0;
     if (currentPlan.value.clientLimit === null) return Infinity; // Unlimited
     return Math.max(0, currentPlan.value.clientLimit - currentClientCount);
   }
@@ -124,6 +127,7 @@ export const useSubscription = () => {
   // Format remaining clients for display
   function formatRemainingClients(currentClientCount: number): string {
     if (!isSubscriptionActive.value) return '0';
+    if (!currentPlan.value) return '0';
     if (currentPlan.value.clientLimit === null) return 'Unlimited';
     return getRemainingClients(currentClientCount).toString();
   }

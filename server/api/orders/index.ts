@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
     try {
       // Get query parameters
       const query = getQuery(event);
-      const clientId = query.clientId as string | undefined;
+      const clientId = query.clientId ? parseInt(query.clientId as string) : undefined;
       const page = parseInt(query.page as string || '1');
       const limit = parseInt(query.limit as string || '10');
       const sortField = (query.sortField as string) || 'createdAt';
@@ -87,14 +87,11 @@ export default defineEventHandler(async (event) => {
         .select({
           id: orders.id,
           clientId: orders.clientId,
-          measurementId: orders.measurementId,
-          styleId: orders.styleId,
-          status: orders.status,
           dueDate: orders.dueDate,
           totalAmount: orders.totalAmount,
-          depositAmount: orders.depositAmount,
-          balanceAmount: orders.balanceAmount,
-          notes: orders.notes,
+          status: orders.status,
+          description: orders.description,
+          details: orders.details,
           createdAt: orders.createdAt,
           updatedAt: orders.updatedAt,
           // Include client name for display
@@ -105,7 +102,8 @@ export default defineEventHandler(async (event) => {
         })
         .from(orders)
         .innerJoin(clients, eq(orders.clientId, clients.id))
-        .leftJoin(styles, eq(orders.styleId, styles.id))
+        .leftJoin(measurements, eq(measurements.clientId, clients.id))
+        .leftJoin(styles, eq(styles.id, sql`CAST((${orders.details}->>'styleId') AS INTEGER)`))
         .where(and(...whereConditions));
       
       // Build count query with same conditions
@@ -193,13 +191,6 @@ export default defineEventHandler(async (event) => {
         });
       }
       
-      if (!body.measurementId) {
-        throw createError({
-          statusCode: 400,
-          statusMessage: 'Measurement ID is required',
-        });
-      }
-
       if (!body.totalAmount) {
         throw createError({
           statusCode: 400,
@@ -222,67 +213,37 @@ export default defineEventHandler(async (event) => {
         });
       }
       
-      // Verify measurement exists and belongs to this client
-      const measurementExists = await db.select()
-        .from(measurements)
-        .where(and(
-          eq(measurements.id, body.measurementId),
-          eq(measurements.clientId, body.clientId)
-        ));
-        
-      if (measurementExists.length === 0) {
-        throw createError({
-          statusCode: 404,
-          statusMessage: 'Measurement not found or does not belong to this client',
-        });
-      }
-
-      // Verify style exists and belongs to user if provided
-      if (body.styleId) {
-        const styleExists = await db.select()
-          .from(styles)
-          .where(and(
-            eq(styles.id, body.styleId),
-            eq(styles.userId, auth.userId)
-          ));
-
-        if (styleExists.length === 0) {
-          throw createError({
-            statusCode: 404,
-            statusMessage: 'Style not found',
-          });
-        }
-      }
-
-      // Calculate balance amount
-      const depositAmount = body.depositAmount || 0;
-      const totalAmount = body.totalAmount;
-      const balanceAmount = totalAmount - depositAmount;
+      // Store additional details in the details JSON field
+      const orderDetails = {
+        styleId: body.styleId ? parseInt(body.styleId) : null,
+        measurementId: body.measurementId ? parseInt(body.measurementId) : null,
+        depositAmount: body.depositAmount ? parseFloat(body.depositAmount) : 0,
+        balanceAmount: parseFloat(body.totalAmount) - (body.depositAmount ? parseFloat(body.depositAmount) : 0),
+        notes: body.notes || null
+      };
 
       // Create new order
       const newOrder = {
-        id: uuidv4(),
-        clientId: body.clientId,
-        measurementId: body.measurementId,
-        styleId: body.styleId || null,
-        status: body.status || 'pending',
-        dueDate: body.dueDate ? new Date(body.dueDate) : null,
-        totalAmount,
-        depositAmount,
-        balanceAmount,
-        notes: body.notes || null,
+        clientId: parseInt(body.clientId),
+        dueDate: body.dueDate ? body.dueDate : null,
+        totalAmount: parseFloat(body.totalAmount),
+        status: body.status || 'Pending',
+        description: body.description || null,
+        details: orderDetails,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
 
-      await db.insert(orders).values(newOrder);
+      const result = await db.insert(orders).values(newOrder).returning();
+      const insertedOrder = result[0];
       
       // Return the new order with client and style info
       return {
-        ...newOrder,
+        ...insertedOrder,
         clientName: clientExists[0].name,
         styleName: body.styleId ? (await db.select().from(styles).where(eq(styles.id, body.styleId)))[0]?.name : null,
-        styleImageUrl: body.styleId ? (await db.select().from(styles).where(eq(styles.id, body.styleId)))[0]?.imageUrl : null
+        styleImageUrl: body.styleId ? (await db.select().from(styles).where(eq(styles.id, body.styleId)))[0]?.imageUrl : null,
+        ...orderDetails
       };
     } catch (error: any) {
       console.error('Error creating order:', error);

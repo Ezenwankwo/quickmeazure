@@ -52,7 +52,7 @@
     <!-- Filter Panel -->
     <UCard v-if="isFilterOpen" class="bg-white/95 backdrop-blur-sm border border-gray-100 shadow-sm mt-2">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <UFormGroup label="Date Added">
+        <UFormField label="Date Added">
           <USelect
             v-model="filters.dateAdded"
             :options="dateOptions"
@@ -60,9 +60,9 @@
             class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterClients"
           />
-        </UFormGroup>
+        </UFormField>
         
-        <UFormGroup label="Has Measurements">
+        <UFormField label="Has Measurements">
           <USelect
             v-model="filters.hasMeasurements"
             :options="booleanOptions"
@@ -70,9 +70,9 @@
             class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterClients"
           />
-        </UFormGroup>
+        </UFormField>
         
-        <UFormGroup label="Has Orders">
+        <UFormField label="Has Orders">
           <USelect
             v-model="filters.hasOrders"
             :options="booleanOptions"
@@ -80,7 +80,7 @@
             class="focus-within:ring-2 ring-primary-200"
             @update:model-value="filterClients"
           />
-        </UFormGroup>
+        </UFormField>
       </div>
       
       <div class="flex justify-end mt-4">

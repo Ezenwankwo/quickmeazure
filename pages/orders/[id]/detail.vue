@@ -49,38 +49,57 @@
           </div>
         </div>
         
-        <UDropdown :items="[
-          [
-            {
-              label: 'Mark as In Progress',
-              icon: 'i-heroicons-cog-6-tooth',
-              click: () => updateOrderStatus('In Progress'),
-              disabled: order.status === 'In Progress' || order.status === 'Completed' || order.status === 'Cancelled'
-            },
-            {
-              label: 'Mark as Ready for Pickup',
-              icon: 'i-heroicons-check-badge',
-              click: () => updateOrderStatus('Ready for Pickup'),
-              disabled: order.status === 'Ready for Pickup' || order.status === 'Completed' || order.status === 'Cancelled'
-            },
-            {
-              label: 'Mark as Completed',
-              icon: 'i-heroicons-check-circle',
-              click: () => updateOrderStatus('Completed'),
-              disabled: order.status === 'Completed' || order.status === 'Cancelled'
-            },
-            {
-              label: 'Mark as Cancelled',
-              icon: 'i-heroicons-x-circle',
-              click: () => updateOrderStatus('Cancelled'),
-              disabled: order.status === 'Cancelled'
-            }
-          ]
-        ]">
+        <UDropdownMenu placement="bottom-end">
           <UButton color="white" trailing-icon="i-heroicons-chevron-down">
             Update Status
           </UButton>
-        </UDropdown>
+          <template #items>
+            <UButton
+              class="w-full justify-start px-2 py-1 text-left"
+              @click="updateOrderStatus('In Progress')"
+              :disabled="order.status === 'In Progress' || order.status === 'Completed' || order.status === 'Cancelled'"
+              variant="ghost"
+            >
+              <template #leading>
+                <UIcon name="i-heroicons-cog-6-tooth" />
+              </template>
+              Mark as In Progress
+            </UButton>
+            <UButton
+              class="w-full justify-start px-2 py-1 text-left"
+              @click="updateOrderStatus('Ready for Pickup')"
+              :disabled="order.status === 'Ready for Pickup' || order.status === 'Completed' || order.status === 'Cancelled'"
+              variant="ghost"
+            >
+              <template #leading>
+                <UIcon name="i-heroicons-check-badge" />
+              </template>
+              Mark as Ready for Pickup
+            </UButton>
+            <UButton
+              class="w-full justify-start px-2 py-1 text-left"
+              @click="updateOrderStatus('Completed')"
+              :disabled="order.status === 'Completed' || order.status === 'Cancelled'"
+              variant="ghost"
+            >
+              <template #leading>
+                <UIcon name="i-heroicons-check-circle" />
+              </template>
+              Mark as Completed
+            </UButton>
+            <UButton
+              class="w-full justify-start px-2 py-1 text-left"
+              @click="updateOrderStatus('Cancelled')"
+              :disabled="order.status === 'Cancelled'"
+              variant="ghost"
+            >
+              <template #leading>
+                <UIcon name="i-heroicons-x-circle" />
+              </template>
+              Mark as Cancelled
+            </UButton>
+          </template>
+        </UDropdownMenu>
       </div>
       
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -228,7 +247,7 @@ const route = useRoute();
 const orderId = route.params.id;
 
 // Import auth composable
-import { useAuth } from '~/composables/useAuth';
+import { useSessionAuth } from '~/composables/useSessionAuth';
 
 // State management
 const order = ref(null);
@@ -296,7 +315,7 @@ const updateOrderStatus = async (newStatus) => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     // Update the order status
@@ -335,7 +354,7 @@ const fetchOrder = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {

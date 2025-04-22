@@ -1,22 +1,42 @@
 import { useSessionAuth } from '~/composables/useSessionAuth';
+import { useLayout } from '~/composables/useLayout';
 
 export default defineNuxtRouteMiddleware((to) => {
-  // Skip middleware on server side
-  if (process.server) return;
-
+  // Use only sessionAuth
   const { isLoggedIn } = useSessionAuth();
-  const nuxtApp = useNuxtApp();
+  const { setLayout } = useLayout();
   
   // Define which paths should use which layouts
   // By default, auth routes use auth layout
   if (to.path.startsWith('/auth/')) {
-    setPageLayout('auth');
+    setLayout('auth');
     return;
   }
   
   // Public pages can use default layout
   if (to.path === '/' || to.path.startsWith('/legal/')) {
-    setPageLayout('default');
+    setLayout('default');
+    return;
+  }
+  
+  // Path-based fallback for dashboard routes - ensure dashboard layout
+  // for these routes even if auth state has issues
+  const dashboardPaths = [
+    '/dashboard', 
+    '/clients', 
+    '/styles', 
+    '/orders', 
+    '/profile', 
+    '/settings',
+    '/subscription'
+  ];
+  
+  // Check if current path starts with any of the dashboard paths
+  const isDashboardRoute = dashboardPaths.some(path => to.path.startsWith(path));
+  
+  // Always use dashboard layout for dashboard routes, regardless of auth state
+  if (isDashboardRoute) {
+    setLayout('dashboard');
     return;
   }
   
@@ -25,11 +45,11 @@ export default defineNuxtRouteMiddleware((to) => {
     // All authenticated routes use dashboard layout
     // Only set if not already specified in the page meta
     if (!to.meta.layout) {
-      setPageLayout('dashboard');
+      setLayout('dashboard');
     }
     return;
   }
   
   // For any other routes, if user is not logged in, use default layout
-  setPageLayout('default');
+  setLayout('default');
 }); 

@@ -121,7 +121,6 @@ definePageMeta({
 import { UInput, UButton, UIcon, ULink, UCheckbox } from '#components'
 import { useSessionAuth } from '~/composables/useSessionAuth';
 
-const router = useRouter();
 const route = useRoute();
 const form = ref({
   email: '',
@@ -137,17 +136,16 @@ const showPassword = ref(false);
 const toast = useToast()
 
 // Use Auth composable
-const { login } = useAuth()
+const { login } = useSessionAuth();
 
 // Form submission handler
 const handleLogin = async () => {
   isSubmitting.value = true;
-  errorMessage.value = '';
+  error.value = ''; // Reset error display
   
   try {
     // Call the login function from our auth composable
-    const auth = useSessionAuth();
-    const result = await auth.login(
+    const result = await login(
       form.value.email,
       form.value.password,
       form.value.rememberMe
@@ -161,19 +159,39 @@ const handleLogin = async () => {
         color: 'green'
       });
       
-      // Redirect to the intended destination or dashboard
-      if (route.query.redirect) {
-        navigateTo(decodeURIComponent(route.query.redirect.toString()));
-      } else {
-        navigateTo('/dashboard');
+      // Only redirect if not already redirected by the auth service
+      // The auth service redirects users without a subscription to the confirm page
+      if (!result.redirected) {
+        // Redirect to the intended destination or dashboard
+        if (route.query.redirect) {
+          navigateTo(decodeURIComponent(route.query.redirect.toString()));
+        } else {
+          navigateTo('/dashboard');
+        }
       }
     } else {
-      // Show error message
-      errorMessage.value = result.error || 'Invalid email or password';
+      // Set error message for display in the UI
+      error.value = result.error || 'Invalid email or password';
+      
+      // Also show toast notification for the error
+      toast.add({
+        title: 'Login Failed',
+        description: result.error || 'Invalid email or password',
+        color: 'red',
+        icon: 'i-heroicons-exclamation-triangle'
+      });
     }
-  } catch (error) {
-    console.error('Login error:', error);
-    errorMessage.value = 'An error occurred. Please try again.';
+  } catch (err) {
+    console.error('Login error:', err);
+    error.value = 'An error occurred. Please try again.';
+    
+    // Show toast notification for unexpected errors
+    toast.add({
+      title: 'Login Error',
+      description: 'An unexpected error occurred. Please try again.',
+      color: 'red',
+      icon: 'i-heroicons-exclamation-triangle'
+    });
   } finally {
     isSubmitting.value = false;
   }

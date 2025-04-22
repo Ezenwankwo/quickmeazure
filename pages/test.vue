@@ -47,7 +47,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useAuth } from '~/composables/useAuth';
+import { useSessionAuth } from '~/composables/useSessionAuth';
 
 // Status tracking
 const isLoading = ref(false);
@@ -62,7 +62,7 @@ const testOrderCreation = async () => {
   
   try {
     // Get auth token
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -103,7 +103,7 @@ const testRawSqlite = async () => {
   
   try {
     // Get auth token
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -144,7 +144,7 @@ const testLibSql = async () => {
   
   try {
     // Get auth token
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -185,7 +185,7 @@ const testDrizzle = async () => {
   
   try {
     // Get auth token
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -226,7 +226,7 @@ const testMinimal = async () => {
   
   try {
     // Get auth token
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {

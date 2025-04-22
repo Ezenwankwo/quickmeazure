@@ -1,4 +1,4 @@
-import { defineEventHandler, readBody } from 'h3';
+import { defineEventHandler, readBody, getRequestHeaders } from 'h3';
 
 /**
  * Verify Paystack payment
@@ -46,26 +46,39 @@ export default defineEventHandler(async (event) => {
     
     if (data.status && data.data.status === 'success') {
       // Payment was successful
-      // In a real app, you would update user's subscription in the database here
       
-      // Get authenticated user from session
-      const session = event.context.session;
-      if (session?.user?.id) {
-        try {
-          // Create subscription using the subscription endpoint
-          await $fetch('/api/subscriptions/create', {
-            method: 'POST',
-            body: {
-              planId: plan_id,
-              paymentReference: reference,
-              billingPeriod: billing_period || 'monthly',
-              amount: data.data.amount / 100 // Convert from kobo to naira
-            }
-          });
-        } catch (subscriptionError) {
-          console.error('Error creating subscription:', subscriptionError);
-          // Continue with the payment verification response even if subscription creation fails
-        }
+      // Get authentication header from the original request
+      const headers = getRequestHeaders(event);
+      const authHeader = headers.authorization;
+      
+      if (!authHeader) {
+        console.error('No authorization header found in request');
+        return {
+          success: false,
+          message: 'Authentication required'
+        };
+      }
+      
+      try {
+        // Create subscription using the subscription endpoint with auth header
+        await $fetch('/api/subscriptions/create', {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader
+          },
+          body: {
+            planId: plan_id,
+            paymentReference: reference,
+            billingPeriod: billing_period || 'monthly',
+            amount: data.data.amount / 100 // Convert from kobo to naira
+          }
+        });
+      } catch (subscriptionError) {
+        console.error('Error creating subscription:', subscriptionError);
+        return {
+          success: false,
+          message: 'Payment verified, but subscription creation failed'
+        };
       }
       
       return {

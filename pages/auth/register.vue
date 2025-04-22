@@ -39,6 +39,7 @@
               name="name"
               placeholder="Your full name"
               required
+              size="lg"
               class="w-full"
             />
             <p v-if="formErrors.name" class="mt-1 text-sm text-red-600">{{ formErrors.name }}</p>
@@ -52,6 +53,7 @@
               type="email"
               placeholder="Your email address"
               required
+              size="lg"
               class="w-full"
             />
             <p v-if="formErrors.email" class="mt-1 text-sm text-red-600">{{ formErrors.email }}</p>
@@ -65,6 +67,7 @@
               :type="showPassword ? 'text' : 'password'"
               placeholder="Choose a strong password"
               required
+              size="lg"
               class="w-full"
               :ui="{ trailing: 'pe-1' }"
             >
@@ -113,6 +116,7 @@
               :type="showConfirmPassword ? 'text' : 'password'"
               placeholder="Confirm your password"
               required
+              size="lg"
               class="w-full"
               :ui="{ trailing: 'pe-1' }"
             >
@@ -137,9 +141,10 @@
               v-model="agreeToTerms" 
               name="terms" 
               required
+              size="lg"
             />
             <label for="terms" class="ml-2 block text-sm text-gray-700">
-              I agree to the <ULink to="/legal/terms" class="font-medium">Service</ULink> and <ULink to="/legal/privacy" class="font-medium">Privacy Policies</ULink>
+              I agree to the <ULink to="/legal/terms" class="font-medium">terms</ULink> and <ULink to="/legal/privacy" class="font-medium">privacy policies.</ULink>
             </label>
           </div>
         </div>
@@ -150,6 +155,7 @@
             type="submit"
             color="primary"
             block
+            size="lg"
             :loading="isLoading"
             :disabled="!isFormValid"
           >
@@ -195,7 +201,8 @@ const showConfirmPassword = ref(false);
 const formErrors = ref({});
 
 // Use Auth composable
-const { register } = useAuth();
+import { useSessionAuth } from '~/composables/useSessionAuth';
+const { register } = useSessionAuth();
 
 // Password validation
 const hasLowerCase = (str) => /[a-z]/.test(str);
@@ -283,16 +290,20 @@ async function handleRegister() {
         color: 'green'
       });
       
-      // Navigate to dashboard
-      router.push('/dashboard');
+      // Navigate to subscription confirmation page instead of dashboard
+      router.push('/subscription/confirm');
     } else {
       // Handle registration failure
       const errorMessage = result.error || 'Registration failed';
       
       // Determine which field has the error
-      if (errorMessage.includes('email')) {
+      if (errorMessage.toLowerCase().includes('email is already registered') || 
+          errorMessage.toLowerCase().includes('email already exists') || 
+          errorMessage.toLowerCase().includes('email already registered')) {
+        formErrors.value.email = 'This email is already registered. Please use a different email or login instead.';
+      } else if (errorMessage.toLowerCase().includes('email')) {
         formErrors.value.email = errorMessage;
-      } else if (errorMessage.includes('password')) {
+      } else if (errorMessage.toLowerCase().includes('password')) {
         formErrors.value.password = errorMessage;
       } else {
         // Show general error toast

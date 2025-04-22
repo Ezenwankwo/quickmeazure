@@ -109,7 +109,6 @@ export default defineEventHandler(async (event) => {
         address: clients.address,
         notes: clients.notes,
         createdAt: clients.createdAt,
-        updatedAt: clients.updatedAt,
         // Check if client has measurements
         hasMeasurements: exists(
           db.select().from(measurements).where(eq(measurements.clientId, clients.id))
@@ -145,7 +144,7 @@ export default defineEventHandler(async (event) => {
           orderByClause = sortDirection(clients.createdAt);
           break;
         case 'updatedAt':
-          orderByClause = sortDirection(clients.updatedAt);
+          orderByClause = sortDirection(clients.createdAt);
           break;
         default:
           orderByClause = sortDirection(clients.name);
@@ -198,57 +197,47 @@ export default defineEventHandler(async (event) => {
           statusMessage: 'Name is required',
         });
       }
-
-      // Get user subscription plan
-      const userData = await db.select().from(users).where(eq(users.id, auth.userId));
-      if (!userData.length) {
-        throw createError({
-          statusCode: 404,
-          statusMessage: 'User not found',
-        });
-      }
       
-      const userSubscription = userData[0].subscriptionPlan;
-
-      // Check client limit based on subscription plan
-      const clientCount = await db.select({ count: count() }).from(clients).where(eq(clients.userId, auth.userId));
-      const currentCount = clientCount[0]?.count || 0;
-      
-      // Set client limit based on subscription plan
-      let clientLimit = 100; // Default for free plan
-      if (userSubscription === 'standard') {
-        clientLimit = 500;
-      } else if (userSubscription === 'premium') {
-        clientLimit = Infinity; // Unlimited
-      }
-      
-      if (clientLimit !== Infinity && currentCount >= clientLimit) {
-        throw createError({
-          statusCode: 403,
-          statusMessage: 'Client limit reached for your subscription plan. Please upgrade to add more clients.',
-        });
-      }
-
       // Create new client
-      const newClient = {
-        id: uuidv4(),
-        userId: auth.userId,
+      const newClient = await db.insert(clients).values({
         name: body.name,
         email: body.email || null,
         phone: body.phone || null,
         address: body.address || null,
         notes: body.notes || null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      await db.insert(clients).values(newClient);
-      return newClient;
-    } catch (error: any) {
-      console.error('Error creating client:', error);
-      if (error.statusCode) {
-        throw error; // Re-throw validation errors
+        userId: auth.userId,
+      }).returning();
+      
+      // If client was created successfully and measurements are provided
+      if (newClient.length > 0 && body.measurements) {
+        const clientId = newClient[0].id;
+        
+        // Convert numeric strings to numbers
+        const processedMeasurements = {
+          clientId,
+          height: body.measurements.height ? parseFloat(body.measurements.height) : null,
+          weight: body.measurements.weight ? parseFloat(body.measurements.weight) : null,
+          bust: body.measurements.bust ? parseFloat(body.measurements.bust) : null,
+          waist: body.measurements.waist ? parseFloat(body.measurements.waist) : null,
+          hip: body.measurements.hip ? parseFloat(body.measurements.hip) : null,
+          inseam: body.measurements.inseam ? parseFloat(body.measurements.inseam) : null,
+          shoulder: body.measurements.shoulder ? parseFloat(body.measurements.shoulder) : null,
+          sleeve: body.measurements.sleeve ? parseFloat(body.measurements.sleeve) : null,
+          neck: body.measurements.neck ? parseFloat(body.measurements.neck) : null,
+          chest: body.measurements.chest ? parseFloat(body.measurements.chest) : null,
+          thigh: body.measurements.thigh ? parseFloat(body.measurements.thigh) : null,
+          notes: body.measurements.notes || null,
+          additionalMeasurements: body.measurements.additionalMeasurements || {},
+          lastUpdated: new Date(),
+        };
+        
+        // Create measurement record
+        await db.insert(measurements).values(processedMeasurements);
       }
+      
+      return newClient[0];
+    } catch (error) {
+      console.error('Error creating client:', error);
       throw createError({
         statusCode: 500,
         statusMessage: 'Failed to create client',

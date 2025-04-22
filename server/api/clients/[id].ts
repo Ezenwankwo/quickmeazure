@@ -1,8 +1,8 @@
 import { db } from '~/server/database';
-import { clients } from '~/server/database/schema';
-import { eq, and } from 'drizzle-orm';
+import { clients, measurements } from '~/server/database/schema';
+import { eq } from 'drizzle-orm';
 
-// Define event handler for client-specific operations
+// Define event handler
 export default defineEventHandler(async (event) => {
   const method = getMethod(event);
   
@@ -15,33 +15,47 @@ export default defineEventHandler(async (event) => {
     });
   }
   
-  const clientId = getRouterParam(event, 'id');
-  if (!clientId) {
+  // Get client ID from params
+  const id = parseInt(event.context.params?.id || '');
+  if (isNaN(id)) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'Client ID is required',
+      statusMessage: 'Invalid client ID',
     });
   }
-
-  // Verify client exists and belongs to user
-  const clientExists = await db.select()
-    .from(clients)
-    .where(and(
-      eq(clients.id, clientId),
-      eq(clients.userId, auth.userId)
-    ));
-
-  if (clientExists.length === 0) {
+  
+  // Verify client belongs to authenticated user
+  const clientData = await db.select().from(clients)
+    .where(eq(clients.id, id))
+    .limit(1);
+  
+  if (clientData.length === 0) {
     throw createError({
       statusCode: 404,
       statusMessage: 'Client not found',
     });
   }
-
-  // Handle GET request to fetch a specific client
+  
+  if (clientData[0].userId !== auth.userId) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Access denied',
+    });
+  }
+  
+  // Handle GET request to fetch a single client with measurements
   if (method === 'GET') {
     try {
-      return clientExists[0];
+      // Get client measurement data
+      const measurementData = await db.select().from(measurements)
+        .where(eq(measurements.clientId, id))
+        .limit(1);
+        
+      // Combine client and measurement data
+      return {
+        ...clientData[0],
+        measurement: measurementData.length > 0 ? measurementData[0] : null
+      };
     } catch (error) {
       console.error('Error fetching client:', error);
       throw createError({
@@ -50,8 +64,8 @@ export default defineEventHandler(async (event) => {
       });
     }
   }
-
-  // Handle PUT request to update a client
+  
+  // Handle PUT request to update a client and possibly its measurements
   if (method === 'PUT') {
     try {
       const body = await readBody(event);
@@ -63,47 +77,90 @@ export default defineEventHandler(async (event) => {
           statusMessage: 'Name is required',
         });
       }
-
+      
       // Update client
-      const updatedClient = {
-        name: body.name,
-        email: body.email || null,
-        phone: body.phone || null,
-        address: body.address || null,
-        notes: body.notes || null,
-        updatedAt: new Date(),
-      };
-
       await db.update(clients)
-        .set(updatedClient)
-        .where(and(
-          eq(clients.id, clientId),
-          eq(clients.userId, auth.userId)
-        ));
-
-      return { ...clientExists[0], ...updatedClient };
-    } catch (error: any) {
-      console.error('Error updating client:', error);
-      if (error.statusCode) {
-        throw error; // Re-throw validation errors
+        .set({
+          name: body.name,
+          email: body.email || null,
+          phone: body.phone || null,
+          address: body.address || null,
+          notes: body.notes || null,
+        })
+        .where(eq(clients.id, id));
+      
+      // Handle measurements
+      if (body.measurements) {
+        // Check if measurement exists for this client
+        const existingMeasurement = await db.select().from(measurements)
+          .where(eq(measurements.clientId, id))
+          .limit(1);
+          
+        // Convert numeric strings to numbers
+        const processedMeasurements = {
+          height: body.measurements.height ? parseFloat(body.measurements.height) : null,
+          weight: body.measurements.weight ? parseFloat(body.measurements.weight) : null,
+          bust: body.measurements.bust ? parseFloat(body.measurements.bust) : null,
+          waist: body.measurements.waist ? parseFloat(body.measurements.waist) : null,
+          hip: body.measurements.hip ? parseFloat(body.measurements.hip) : null,
+          inseam: body.measurements.inseam ? parseFloat(body.measurements.inseam) : null,
+          shoulder: body.measurements.shoulder ? parseFloat(body.measurements.shoulder) : null,
+          sleeve: body.measurements.sleeve ? parseFloat(body.measurements.sleeve) : null,
+          neck: body.measurements.neck ? parseFloat(body.measurements.neck) : null,
+          chest: body.measurements.chest ? parseFloat(body.measurements.chest) : null,
+          thigh: body.measurements.thigh ? parseFloat(body.measurements.thigh) : null,
+          notes: body.measurements.notes || null,
+          additionalMeasurements: body.measurements.additionalMeasurements || {},
+          lastUpdated: new Date(),
+        };
+        
+        // Update or create measurement
+        if (existingMeasurement.length > 0) {
+          // Update existing measurement
+          await db.update(measurements)
+            .set(processedMeasurements)
+            .where(eq(measurements.clientId, id));
+        } else {
+          // Create new measurement
+          await db.insert(measurements).values({
+            ...processedMeasurements,
+            clientId: id,
+          });
+        }
       }
+      
+      // Return updated client with measurements
+      const updatedClient = await db.select().from(clients)
+        .where(eq(clients.id, id))
+        .limit(1);
+        
+      const updatedMeasurement = await db.select().from(measurements)
+        .where(eq(measurements.clientId, id))
+        .limit(1);
+        
+      return {
+        ...updatedClient[0],
+        measurement: updatedMeasurement.length > 0 ? updatedMeasurement[0] : null
+      };
+    } catch (error) {
+      console.error('Error updating client:', error);
       throw createError({
         statusCode: 500,
         statusMessage: 'Failed to update client',
       });
     }
   }
-
+  
   // Handle DELETE request to delete a client
   if (method === 'DELETE') {
     try {
-      const result = await db.delete(clients)
-        .where(and(
-          eq(clients.id, clientId),
-          eq(clients.userId, auth.userId)
-        ));
-
-      return { success: true, message: 'Client deleted successfully' };
+      // Delete associated measurements first (to maintain referential integrity)
+      await db.delete(measurements).where(eq(measurements.clientId, id));
+      
+      // Delete client
+      await db.delete(clients).where(eq(clients.id, id));
+      
+      return { success: true };
     } catch (error) {
       console.error('Error deleting client:', error);
       throw createError({
@@ -112,8 +169,8 @@ export default defineEventHandler(async (event) => {
       });
     }
   }
-
-  // If method is not supported
+  
+  // If method not supported
   throw createError({
     statusCode: 405,
     statusMessage: 'Method not allowed',

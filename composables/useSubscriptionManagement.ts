@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue';
+import { useSessionAuth } from './useSessionAuth';
 
 interface SubscriptionPlan {
   id: string;
@@ -92,7 +93,7 @@ export const useSubscriptionManagement = () => {
 
     try {
       // Get the auth token
-      const { token } = useAuth();
+      const { token } = useSessionAuth();
       
       if (!token.value) {
         subscription.value = null;
@@ -131,7 +132,7 @@ export const useSubscriptionManagement = () => {
 
     try {
       // Get the auth token
-      const { token } = useAuth();
+      const { token } = useSessionAuth();
       
       if (!token.value) {
         return false;
@@ -175,7 +176,7 @@ export const useSubscriptionManagement = () => {
 
     try {
       // Get the auth token
-      const { token } = useAuth();
+      const { token } = useSessionAuth();
       
       if (!token.value) {
         return { 
