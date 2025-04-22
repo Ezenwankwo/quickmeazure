@@ -18,8 +18,9 @@
             v-model="search"
             placeholder="Search clients..."
             icon="i-heroicons-magnifying-glass"
+            size="lg"
             class="w-full focus-within:ring-2 ring-primary-200"
-            @input="filterClients"
+            @input="handleSearchInput"
           />
           <span v-if="search" class="absolute right-2 top-2.5 cursor-pointer text-gray-400 hover:text-gray-600" @click="resetSearch">
             <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
@@ -29,9 +30,10 @@
         <div class="flex gap-2 w-full sm:w-auto sm:ml-auto">
           <USelect
             v-model="sortBy"
-            :options="sortOptions"
+            :items="sortOptions"
             placeholder="Sort by"
-            class="w-full sm:w-52 focus-within:ring-2 ring-primary-200"
+            size="lg"
+            class="w-full sm:w-52 py-2"
             @update:model-value="filterClients"
           />
           
@@ -50,24 +52,15 @@
     </UCard>
     
     <!-- Filter Panel -->
-    <UCard v-if="isFilterOpen" class="bg-white/95 backdrop-blur-sm border border-gray-100 shadow-sm mt-2">
+    <UCard v-if="isFilterOpen" class="bg-white border border-gray-100 shadow-sm mt-2 relative z-10">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <UFormField label="Date Added">
           <USelect
             v-model="filters.dateAdded"
-            :options="dateOptions"
+            :items="dateOptions"
+            size="lg"
             placeholder="Any time"
-            class="focus-within:ring-2 ring-primary-200"
-            @update:model-value="filterClients"
-          />
-        </UFormField>
-        
-        <UFormField label="Has Measurements">
-          <USelect
-            v-model="filters.hasMeasurements"
-            :options="booleanOptions"
-            placeholder="All clients"
-            class="focus-within:ring-2 ring-primary-200"
+            class="w-full py-2"
             @update:model-value="filterClients"
           />
         </UFormField>
@@ -75,9 +68,10 @@
         <UFormField label="Has Orders">
           <USelect
             v-model="filters.hasOrders"
-            :options="booleanOptions"
+            :items="booleanOptions"
+            size="lg"
             placeholder="All clients"
-            class="focus-within:ring-2 ring-primary-200"
+            class="w-full py-2"
             @update:model-value="filterClients"
           />
         </UFormField>
@@ -163,76 +157,68 @@
       </div>
       
       <!-- Mobile Card View (shown only on mobile) -->
-      <div class="sm:hidden space-y-4">
+      <div class="sm:hidden space-y-5">
         <template v-if="!isLoading && paginatedClients.length > 0">
-          <UCard 
+          <div 
             v-for="client in paginatedClients" 
             :key="client.id"
-            class="border border-gray-200 shadow-sm"
+            class="bg-white rounded-xl overflow-hidden shadow-md transition-all duration-200 hover:shadow-lg border border-gray-100"
           >
-            <div class="flex items-center mb-3">
-              <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3">
-                <span class="text-primary-700 font-medium text-lg">{{ getInitials(client.name) }}</span>
-              </div>
-              <NuxtLink :to="`/clients/${client.id}`" class="font-semibold text-lg text-primary-600 hover:underline">
-                {{ client.name }}
-              </NuxtLink>
-            </div>
-            
-            <div class="space-y-2 text-sm">
-              <div class="flex justify-between py-1 border-b border-gray-100">
-                <span class="text-gray-500">Phone</span>
-                <span>{{ client.phone }}</span>
-              </div>
-              <div class="flex justify-between py-1 border-b border-gray-100">
-                <span class="text-gray-500">Email</span>
-                <span class="text-right">{{ client.email }}</span>
-              </div>
-              <div class="flex justify-between py-1 border-b border-gray-100">
-                <span class="text-gray-500">Measurements</span>
-                <UBadge v-if="client.hasMeasurements" color="green" variant="subtle" size="sm">
-                  Yes
-                </UBadge>
-                <UBadge v-else color="gray" variant="subtle" size="sm">
-                  No
-                </UBadge>
-              </div>
-              <div class="flex justify-between py-1 border-b border-gray-100">
-                <span class="text-gray-500">Date Added</span>
-                <span>{{ formatDate(client.createdAt) }}</span>
+            <!-- Card header with gradient -->
+            <div class="bg-white px-4 py-3 border-b border-gray-100">
+              <div class="flex items-center">
+                <div class="w-12 h-12 rounded-full bg-gray-50 shadow-sm flex items-center justify-center mr-3 border border-gray-200">
+                  <span class="text-gray-700 font-semibold text-lg">{{ getInitials(client.name) }}</span>
+                </div>
+                <div>
+                  <NuxtLink :to="`/clients/${client.id}`" class="font-semibold text-lg text-gray-800 hover:text-primary-700">
+                    {{ client.name }}
+                  </NuxtLink>
+                  <div class="flex items-center text-sm text-gray-600">
+                    <UIcon name="i-heroicons-phone" class="w-4 h-4 mr-1" />
+                    <span>{{ client.phone }}</span>
+                  </div>
+                </div>
               </div>
             </div>
             
-            <template #footer>
-              <div class="flex justify-between items-center">
+            <!-- Card body -->
+            <div class="px-4 py-3">
+              <div class="flex items-center text-sm text-gray-600 mb-2">
+                <UIcon name="i-heroicons-calendar" class="w-4 h-4 mr-2 text-gray-500" />
+                <span>Added {{ formatDate(client.createdAt) }}</span>
+              </div>
+              
+              <!-- Action buttons -->
+              <div class="flex mt-4 pt-3 border-t border-gray-100">
                 <UButton
                   :to="`/clients/${client.id}`"
-                  color="primary"
+                  color="gray"
                   variant="ghost"
                   size="sm"
+                  class="flex-1 mr-2"
+                  icon="i-heroicons-eye"
                 >
                   View
                 </UButton>
-                
-                <div class="flex space-x-2">
-                  <UButton
-                    :to="`/clients/${client.id}/edit`"
-                    color="gray"
-                    variant="ghost"
-                    icon="i-heroicons-pencil-square"
-                    size="sm"
-                  />
-                  <UButton
-                    color="red"
-                    variant="ghost"
-                    icon="i-heroicons-trash"
-                    size="sm"
-                    @click="confirmDelete(client)"
-                  />
-                </div>
+                <UButton
+                  :to="`/clients/${client.id}/edit`"
+                  color="gray"
+                  variant="ghost"
+                  size="sm"
+                  icon="i-heroicons-pencil-square"
+                  class="mr-2"
+                />
+                <UButton
+                  color="gray"
+                  variant="ghost"
+                  size="sm"
+                  icon="i-heroicons-trash"
+                  @click="confirmDelete(client)"
+                />
               </div>
-            </template>
-          </UCard>
+            </div>
+          </div>
         </template>
         
         <!-- Empty state for mobile -->
@@ -248,7 +234,7 @@
             v-if="!search && !isFilterApplied"
             to="/clients/new"
             color="primary"
-            size="sm"
+            size="lg"
           >
             Add client
           </UButton>
@@ -265,29 +251,29 @@
         
         <!-- Loading state for mobile -->
         <template v-else>
-          <div v-for="i in 3" :key="i" class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4">
-            <div class="flex items-center">
-              <div class="w-10 h-10 rounded-full bg-gray-200 animate-pulse mr-3"></div>
-              <div class="h-6 bg-gray-200 rounded animate-pulse w-1/2"></div>
-            </div>
-            <div class="space-y-2">
-              <div class="flex justify-between py-1 border-b border-gray-100">
-                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
-                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/3"></div>
-              </div>
-              <div class="flex justify-between py-1 border-b border-gray-100">
-                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
-                <div class="h-4 bg-gray-200 rounded animate-pulse w-2/5"></div>
-              </div>
-              <div class="flex justify-between py-1 border-b border-gray-100">
-                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
-                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/6"></div>
+          <div v-for="i in 3" :key="i" class="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100 mb-4">
+            <!-- Shimmer header -->
+            <div class="bg-white px-4 py-3 border-b border-gray-100">
+              <div class="flex items-center">
+                <div class="w-12 h-12 rounded-full bg-gray-200 animate-pulse mr-3"></div>
+                <div class="space-y-2">
+                  <div class="h-5 bg-gray-200 rounded animate-pulse w-36"></div>
+                  <div class="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                </div>
               </div>
             </div>
-            <div class="flex justify-between items-center pt-2">
-              <div class="h-8 bg-gray-200 rounded animate-pulse w-1/4"></div>
-              <div class="flex space-x-2">
-                <div class="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+            
+            <!-- Shimmer body -->
+            <div class="px-4 py-3">
+              <div class="flex items-center mb-4">
+                <div class="w-4 h-4 bg-gray-200 rounded animate-pulse mr-2"></div>
+                <div class="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
+              </div>
+              
+              <!-- Shimmer buttons -->
+              <div class="flex pt-3 border-t border-gray-100">
+                <div class="h-8 bg-gray-200 rounded animate-pulse flex-1 mr-2"></div>
+                <div class="h-8 w-8 bg-gray-200 rounded animate-pulse mr-2"></div>
                 <div class="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
               </div>
             </div>
@@ -376,7 +362,7 @@
     </UCard>
     
     <!-- Delete Confirmation Modal -->
-    <UModal v-model="isDeleteModalOpen">
+    <UModal v-if="isDeleteModalOpen" v-model="isDeleteModalOpen">
       <UCard>
         <template #header>
           <div class="flex items-center">
@@ -502,6 +488,22 @@ const booleanOptions = [
 // Constants
 const ITEMS_PER_PAGE = 10;
 
+// For debouncing search
+const debouncedSearch = ref('');
+const searchTimeout = ref(null);
+
+// Handle debounced search
+const handleSearchInput = (e) => {
+  // Clear any existing timeout
+  if (searchTimeout.value) clearTimeout(searchTimeout.value);
+  
+  // Set a new timeout
+  searchTimeout.value = setTimeout(() => {
+    debouncedSearch.value = search.value;
+    filterClients();
+  }, 300); // 300ms debounce
+};
+
 // Computed properties
 const pageCount = computed(() => {
   return totalPages.value;
@@ -539,12 +541,20 @@ const filterClients = () => {
 };
 
 const resetSearch = () => {
+  // Clear any existing timeout
+  if (searchTimeout.value) clearTimeout(searchTimeout.value);
+  
   search.value = '';
+  debouncedSearch.value = '';
   filterClients();
 };
 
 const resetFilters = () => {
+  // Clear any existing timeout
+  if (searchTimeout.value) clearTimeout(searchTimeout.value);
+  
   search.value = '';
+  debouncedSearch.value = '';
   filters.value = {
     hasMeasurements: null,
     hasOrders: null,
