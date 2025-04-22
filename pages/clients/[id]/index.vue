@@ -11,7 +11,7 @@
     />
     
     <div v-if="isLoading" class="flex justify-center py-12">
-      <ULoading />
+      <USkeleton class="h-32 w-full" />
     </div>
     
     <template v-else-if="client">
@@ -58,91 +58,121 @@
               </div>
             </div>
             
-            <div>
-              <div class="text-sm text-gray-500 mb-1">Notes</div>
-              <div class="whitespace-pre-line">{{ client.notes || 'No notes' }}</div>
-            </div>
           </div>
         </div>
       </UCard>
       
-      <!-- Measurements -->
-      <UCard class="bg-white">
+      <!-- Measurements Card -->
+      <UCard v-if="client" class="bg-white">
         <template #header>
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-medium">Measurements</h2>
             <UButton
               color="primary"
-              variant="solid"
-              icon="i-heroicons-plus"
-              :to="`/measurements/new?clientId=${clientId}`"
+              variant="ghost"
+              icon="i-heroicons-pencil-square"
+              :to="`/clients/${clientId}/edit`"
             >
-              Add Measurement
+              Edit
             </UButton>
           </div>
         </template>
         
-        <div v-if="isLoadingMeasurements" class="py-6 flex justify-center">
-          <ULoading />
-        </div>
-        
-        <div v-else-if="measurements.length === 0" class="py-6 text-center">
-          <UIcon name="i-heroicons-ruler" class="text-gray-400 mx-auto mb-2" size="xl" />
-          <h3 class="text-lg font-medium text-gray-900">No measurements yet</h3>
-          <p class="text-gray-500 mt-1 mb-4">Create your first measurement for this client</p>
-          <UButton
-            color="primary"
-            :to="`/measurements/new?clientId=${clientId}`"
-            icon="i-heroicons-plus"
-          >
-            Add Measurement
-          </UButton>
-        </div>
-        
-        <div v-else>
-          <UTable 
-            :columns="measurementColumns" 
-            :rows="measurements"
-            hover
-          >
-            <template #date-data="{ row }">
-              {{ formatDate(row.updatedAt) }}
-            </template>
-            
-            <template #bust-data="{ row }">
-              <span v-if="row.bust">{{ row.bust }}"</span>
-              <span v-else>—</span>
-            </template>
-            
-            <template #waist-data="{ row }">
-              <span v-if="row.waist">{{ row.waist }}"</span>
-              <span v-else>—</span>
-            </template>
-            
-            <template #hip-data="{ row }">
-              <span v-if="row.hip">{{ row.hip }}"</span>
-              <span v-else>—</span>
-            </template>
-            
-            <template #actions-data="{ row }">
-              <div class="flex space-x-2">
-                <UButton
-                  color="gray"
-                  variant="ghost"
-                  icon="i-heroicons-eye"
-                  size="xs"
-                  :to="`/measurements/${row.id}`"
-                />
-                <UButton
-                  color="gray"
-                  variant="ghost"
-                  icon="i-heroicons-pencil-square"
-                  size="xs"
-                  :to="`/measurements/${row.id}/edit`"
-                />
+        <div v-if="client.measurement">
+          <!-- Upper Body Measurements -->
+          <div class="mb-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              Upper Body
+            </h4>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div v-if="client.measurement.bust !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Bust</div>
+                <div class="font-medium">{{ client.measurement.bust }}"</div>
               </div>
-            </template>
-          </UTable>
+              
+              <div v-if="client.measurement.waist !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Waist</div>
+                <div class="font-medium">{{ client.measurement.waist }}"</div>
+              </div>
+              
+              <div v-if="client.measurement.chest !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Chest</div>
+                <div class="font-medium">{{ client.measurement.chest }}"</div>
+              </div>
+              
+              <div v-if="client.measurement.shoulder !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Shoulder</div>
+                <div class="font-medium">{{ client.measurement.shoulder }}"</div>
+              </div>
+              
+              <div v-if="client.measurement.sleeve !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Sleeve</div>
+                <div class="font-medium">{{ client.measurement.sleeve }}"</div>
+              </div>
+              
+              <div v-if="client.measurement.neck !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Neck</div>
+                <div class="font-medium">{{ client.measurement.neck }}"</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Lower Body Measurements -->
+          <div class="mb-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              Lower Body
+            </h4>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div v-if="client.measurement.hip !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Hip</div>
+                <div class="font-medium">{{ client.measurement.hip }}"</div>
+              </div>
+              
+              <div v-if="client.measurement.inseam !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Inseam</div>
+                <div class="font-medium">{{ client.measurement.inseam }}"</div>
+              </div>
+              
+              <div v-if="client.measurement.thigh !== null" class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">Thigh</div>
+                <div class="font-medium">{{ client.measurement.thigh }}"</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Custom Measurements -->
+          <div v-if="client.measurement.additionalMeasurements && Object.keys(client.measurement.additionalMeasurements).length > 0" class="mb-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              Custom Measurements
+            </h4>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div v-for="(value, key) in client.measurement.additionalMeasurements" :key="key" 
+                  class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
+                <div class="text-xs text-gray-500 mb-1">{{ key }}</div>
+                <div class="font-medium">{{ value }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Measurement Notes -->
+          <div v-if="client.measurement.notes" class="mb-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              Notes
+            </h4>
+            <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div class="whitespace-pre-line">{{ client.measurement.notes }}</div>
+            </div>
+          </div>
+          
+          <div v-if="client.measurement.lastUpdated" class="mt-4 text-xs text-gray-500 italic">
+            Last updated: {{ formatDate(client.measurement.lastUpdated) }}
+          </div>
+        </div>
+        
+        <div v-else class="text-center py-5 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <UIcon name="i-heroicons-ruler" class="text-gray-400 mx-auto mb-2" size="lg" />
+          <h3 class="text-base font-medium text-gray-900">No measurements available</h3>
+          <p class="text-gray-500 text-sm mt-1">Measurements will appear here when added</p>
         </div>
       </UCard>
       
@@ -163,7 +193,7 @@
         </template>
         
         <div v-if="isLoadingOrders" class="py-6 flex justify-center">
-          <ULoading />
+          <USkeleton class="h-24 w-full" />
         </div>
         
         <div v-else-if="orders.length === 0" class="py-6 text-center">
@@ -274,8 +304,6 @@ const clientId = route.params.id;
 // State
 const client = ref(null);
 const isLoading = ref(true);
-const measurements = ref([]);
-const isLoadingMeasurements = ref(true);
 const orders = ref([]);
 const isLoadingOrders = ref(true);
 
@@ -299,7 +327,7 @@ const fetchClient = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -341,36 +369,6 @@ const fetchClient = async () => {
   }
 };
 
-// Fetch client measurements
-const fetchMeasurements = async () => {
-  if (!clientId) return;
-  isLoadingMeasurements.value = true;
-  
-  try {
-    // Get auth token from the auth store
-    const auth = useAuth();
-    const token = auth.token.value;
-    
-    // Fetch measurements for this client
-    const data = await $fetch(`/api/measurements?clientId=${clientId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    measurements.value = data;
-  } catch (error) {
-    console.error('Error fetching measurements:', error);
-    useToast().add({
-      title: 'Error',
-      description: 'Failed to load measurements',
-      color: 'red',
-    });
-  } finally {
-    isLoadingMeasurements.value = false;
-  }
-};
-
 // Fetch client orders
 const fetchOrders = async () => {
   if (!clientId) return;
@@ -378,7 +376,7 @@ const fetchOrders = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     // Fetch orders for this client
@@ -400,35 +398,6 @@ const fetchOrders = async () => {
     isLoadingOrders.value = false;
   }
 };
-
-// Column definitions for measurements table
-const measurementColumns = [
-  {
-    key: 'date',
-    label: 'Date',
-    id: 'date'
-  },
-  {
-    key: 'bust',
-    label: 'Bust',
-    id: 'bust'
-  },
-  {
-    key: 'waist',
-    label: 'Waist',
-    id: 'waist'
-  },
-  {
-    key: 'hip',
-    label: 'Hip',
-    id: 'hip'
-  },
-  {
-    key: 'actions',
-    label: '',
-    id: 'actions'
-  },
-];
 
 // Column definitions for orders table
 const orderColumns = [
@@ -507,7 +476,6 @@ const getStatusColor = (status) => {
 // Fetch data on component mount
 onMounted(() => {
   fetchClient();
-  fetchMeasurements();
   fetchOrders();
 });
 </script> 

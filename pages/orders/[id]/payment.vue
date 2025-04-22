@@ -11,7 +11,7 @@
     />
     
     <div v-if="isLoading" class="flex justify-center py-12">
-      <ULoading />
+      <USkeleton class="h-32 w-full" />
     </div>
     
     <template v-else-if="order">

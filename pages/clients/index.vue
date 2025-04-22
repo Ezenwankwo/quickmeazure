@@ -93,67 +93,93 @@
     <UCard class="bg-white">
       <!-- Desktop Table View (hidden on mobile) -->
       <div class="hidden sm:block">
-        <UTable 
-          :columns="columns" 
-          :rows="paginatedClients" 
-          :loading="isLoading"
-          :empty-state="{
-            icon: 'i-heroicons-user-plus',
-            label: 'No clients found',
-            description: search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by adding your first client',
-            action: search || isFilterApplied ? { label: 'Reset filters', click: resetFilters } : { label: 'Add client', to: '/clients/new' }
-          }"
-        >
-          <template #name-data="{ row }">
-            <div class="flex items-center">
-              <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
-                <span class="text-primary-700 font-medium">{{ getInitials(row.name) }}</span>
-              </div>
-              <NuxtLink :to="`/clients/${row.id}`" class="font-medium text-primary-600 hover:underline">
-                {{ row.name }}
-              </NuxtLink>
-            </div>
-          </template>
-          
-          <template #measurements-data="{ row }">
-            <UBadge v-if="row.hasMeasurements" color="green" variant="subtle" size="sm">
-              Yes
-            </UBadge>
-            <UBadge v-else color="gray" variant="subtle" size="sm">
-              No
-            </UBadge>
-          </template>
-          
-          <template #createdAt-data="{ row }">
-            {{ formatDate(row.createdAt) }}
-          </template>
-          
-          <template #actions-data="{ row }">
-            <div class="flex space-x-2">
-              <UButton
-                :to="`/clients/${row.id}`"
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-eye"
-                size="xs"
-              />
-              <UButton
-                :to="`/clients/${row.id}/edit`"
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-pencil-square"
-                size="xs"
-              />
-              <UButton
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-trash"
-                size="xs"
-                @click="confirmDelete(row)"
-              />
-            </div>
-          </template>
-        </UTable>
+        <div v-if="isLoading" class="py-8 space-y-6">
+          <USkeleton class="h-8 w-full" />
+          <USkeleton v-for="i in 5" :key="i" class="h-12 w-full" />
+        </div>
+        
+        <div v-else-if="paginatedClients.length === 0" class="py-12 text-center">
+          <UIcon name="i-heroicons-user-plus" class="mx-auto h-12 w-12 text-gray-400" />
+          <h3 class="mt-2 text-sm font-semibold text-gray-900">No clients found</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            {{ search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by adding your first client' }}
+          </p>
+          <div class="mt-6">
+            <UButton
+              v-if="!search && !isFilterApplied"
+              to="/clients/new"
+              color="primary"
+            >
+              Add client
+            </UButton>
+            <UButton
+              v-else
+              color="gray"
+              variant="outline"
+              @click="resetFilters"
+            >
+              Reset filters
+            </UButton>
+          </div>
+        </div>
+        
+        <table v-else class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th v-for="column in columns" :key="column.key" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div class="flex items-center cursor-pointer" @click="handleSort(column)">
+                  {{ column.label }}
+                  <UIcon v-if="column.sortable" :name="getSortIcon(column.key)" class="ml-1 h-4 w-4" />
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="client in paginatedClients" :key="client.id" class="hover:bg-gray-50">
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
+                    <span class="text-primary-700 font-medium">{{ getInitials(client.name) }}</span>
+                  </div>
+                  <NuxtLink :to="`/clients/${client.id}`" class="font-medium text-primary-600 hover:underline">
+                    {{ client.name }}
+                  </NuxtLink>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                {{ client.phone }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                {{ formatDate(client.createdAt) }}
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex space-x-2">
+                  <UButton
+                    :to="`/clients/${client.id}`"
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-eye"
+                    size="xs"
+                  />
+                  <UButton
+                    :to="`/clients/${client.id}/edit`"
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-pencil-square"
+                    size="xs"
+                  />
+                  <UButton
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-trash"
+                    size="xs"
+                    @click="confirmDelete(client)"
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       
       <!-- Mobile Card View (shown only on mobile) -->
@@ -418,18 +444,6 @@ const columns = [
     label: 'Phone',
     sortable: true,
     id: 'phone'
-  },
-  {
-    key: 'email',
-    label: 'Email',
-    sortable: true,
-    id: 'email'
-  },
-  {
-    key: 'measurements',
-    label: 'Measurements',
-    sortable: true,
-    id: 'measurements'
   },
   {
     key: 'createdAt',
@@ -762,5 +776,33 @@ const formatClientData = (client) => {
     ...client,
     createdAt: new Date(client.createdAt).toISOString(),
   };
+};
+
+// Handle sort by clicking on column headers
+const handleSort = (column) => {
+  if (!column.sortable) return;
+  
+  const field = column.key;
+  // If already sorting by this field, toggle direction
+  if (sortBy.value.startsWith(field)) {
+    const direction = sortBy.value.endsWith('-asc') ? 'desc' : 'asc';
+    sortBy.value = `${field}-${direction}`;
+  } else {
+    // Default to ascending for new sort field
+    sortBy.value = `${field}-asc`;
+  }
+  
+  filterClients();
+};
+
+// Get the appropriate sort icon based on current sort state
+const getSortIcon = (columnKey) => {
+  if (!sortBy.value.startsWith(columnKey)) {
+    return 'i-heroicons-arrows-up-down-mini';
+  }
+  
+  return sortBy.value.endsWith('-asc') 
+    ? 'i-heroicons-arrow-up-mini' 
+    : 'i-heroicons-arrow-down-mini';
 };
 </script>
