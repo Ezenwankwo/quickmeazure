@@ -17,23 +17,27 @@
         <div>
           <h2 class="text-lg font-medium mb-4">Style Information</h2>
           <div class="grid grid-cols-1 gap-6">
-            <UFormGroup label="Style Name" name="name" required>
+            <UFormField label="Style Name" name="name" required>
               <UInput
                 v-model="style.name"
                 placeholder="Enter style name"
+                size="lg"
+                class="w-full"
                 required
               />
-            </UFormGroup>
+            </UFormField>
             
-            <UFormGroup label="Description" name="description">
+            <UFormField label="Description" name="description">
               <UTextarea
                 v-model="style.description"
                 placeholder="Describe the style"
-                rows="4"
+                size="lg"
+                class="w-full"
+                :rows="4"
               />
-            </UFormGroup>
+            </UFormField>
             
-            <UFormGroup label="Image" name="image">
+            <UFormField label="Image" name="image" required>
               <div class="border-2 border-dashed border-gray-300 rounded-lg p-6">
                 <div v-if="imagePreview" class="mb-4">
                   <img :src="imagePreview" alt="Preview" class="max-h-64 mx-auto rounded" />
@@ -65,7 +69,7 @@
                   </p>
                 </div>
               </div>
-            </UFormGroup>
+            </UFormField>
           </div>
         </div>
         
@@ -73,7 +77,7 @@
         <div class="flex justify-end space-x-4">
           <UButton
             type="button"
-            color="gray"
+            color="neutral"
             variant="outline"
             to="/styles"
           >
@@ -84,6 +88,7 @@
             type="submit"
             color="primary"
             :loading="isSaving"
+            :disabled="!isFormValid"
           >
             Save Style
           </UButton>
@@ -110,6 +115,11 @@ const style = ref({
 const isSaving = ref(false);
 const imagePreview = ref(null);
 const fileInput = ref(null);
+
+// Computed property to check if form is valid
+const isFormValid = computed(() => {
+  return !!style.value.name && !!style.value.imageFile;
+});
 
 // Trigger file input click
 const triggerFileInput = () => {
@@ -139,10 +149,20 @@ const handleImageUpload = (event) => {
 
 // Save style
 const saveStyle = async () => {
+  // Validate form inputs
   if (!style.value.name) {
     useToast().add({
       title: 'Validation Error',
       description: 'Style name is required',
+      color: 'red'
+    });
+    return;
+  }
+  
+  if (!style.value.imageFile) {
+    useToast().add({
+      title: 'Validation Error',
+      description: 'Image is required',
       color: 'red'
     });
     return;
@@ -153,37 +173,33 @@ const saveStyle = async () => {
   try {
     const { authFetch } = useApiAuth();
     
-    // Handle image upload via FormData if we have an image file
-    let newStyle;
+    // Handle image upload via FormData
+    const formData = new FormData();
+    formData.append('name', style.value.name);
     
-    if (style.value.imageFile) {
-      // Use FormData to send the file directly to the server
-      const formData = new FormData();
-      formData.append('name', style.value.name);
-      
-      if (style.value.description) {
-        formData.append('description', style.value.description);
-      }
-      
-      formData.append('image', style.value.imageFile);
-      
-      // Send form data to the server for processing
-      newStyle = await authFetch('/api/styles', {
-        method: 'POST',
-        body: formData
-      });
-    } else {
-      // If no image, just send JSON data
-      const styleData = {
-        name: style.value.name,
-        description: style.value.description || null
-      };
-      
-      newStyle = await authFetch('/api/styles', {
-        method: 'POST',
-        body: styleData
-      });
+    if (style.value.description) {
+      formData.append('description', style.value.description);
     }
+    
+    // Add the file with both possible field names to ensure compatibility
+    formData.append('file', style.value.imageFile);
+    formData.append('image', style.value.imageFile);
+    
+    console.log('Submitting form with FormData:', {
+      name: style.value.name,
+      description: style.value.description,
+      hasImage: !!style.value.imageFile,
+      imageFileName: style.value.imageFile?.name,
+      imageSize: style.value.imageFile?.size
+    });
+    
+    // Send form data to the server for processing
+    const { data: newStyle } = await authFetch('/api/styles', {
+      method: 'POST',
+      body: formData
+    });
+    
+    console.log('Style created successfully:', newStyle.value);
     
     // Show success notification
     useToast().add({
@@ -193,15 +209,36 @@ const saveStyle = async () => {
     });
     
     // Navigate to the style detail page
-    navigateTo(`/styles/${newStyle.id}/detail`);
+    navigateTo(`/styles/${newStyle.value.id}/detail`);
   } catch (error) {
     console.error('Error creating style:', error);
+    if (error.data) {
+      console.error('Server error details:', error.data);
+    }
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response headers:', error.response.headers);
+    }
+    
+    // Enhanced error handling
+    let errorMessage = 'Failed to create style. Please try again.';
+    
+    if (error.response) {
+      const status = error.response.status;
+      if (status === 413) {
+        errorMessage = 'The image file is too large. Please use a smaller image.';
+      } else if (status === 415) {
+        errorMessage = 'The file format is not supported.';
+      } else if (error.data?.statusMessage) {
+        errorMessage = error.data.statusMessage;
+      }
+    }
     
     // Error notification (auth errors are handled by authFetch)
     if (!error.message?.includes('No authentication token')) {
       useToast().add({
         title: 'Error',
-        description: 'Failed to create style. Please try again.',
+        description: errorMessage,
         color: 'red'
       });
     }

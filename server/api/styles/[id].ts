@@ -1,7 +1,7 @@
 import { createError, getMethod } from 'h3';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '~/server/database';
-import { styles } from '~/server/database/schema';
+import { styles, orders, clients } from '~/server/database/schema';
 import { extractFileFromMultipart, extractFieldsFromMultipart } from '~/server/utils/multipart';
 import { uploadFileToS3, getFileExtension, getContentType } from '~/server/utils/s3';
 
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     .select()
     .from(styles)
     .where(and(
-      eq(styles.id, styleId),
+      eq(styles.id, parseInt(styleId)),
       eq(styles.userId, userId)
     ));
   
@@ -48,9 +48,31 @@ export default defineEventHandler(async (event) => {
   // Handle GET request to get a style
   if (method === 'GET') {
     try {
-      return { style: styleExists[0] };
+      console.log(`API: Fetching style with ID ${styleId}`);
+      
+      // Fetch related orders for this style
+      const relatedOrders = await db
+        .select({
+          id: orders.id,
+          clientName: clients.name,
+          createdAt: orders.createdAt,
+          status: orders.status,
+          totalAmount: orders.totalAmount
+        })
+        .from(orders)
+        .innerJoin(clients, eq(orders.clientId, clients.id))
+        .where(sql`CAST((${orders.details}->>'styleId') AS INTEGER) = ${parseInt(styleId)}`);
+      
+      console.log(`API: Found ${relatedOrders.length} related orders`);
+      console.log('API: Style data:', styleExists[0]);
+      
+      // Return both style and related orders
+      return { 
+        style: styleExists[0],
+        relatedOrders
+      };
     } catch (error) {
-      console.error('Error fetching style:', error);
+      console.error('API Error fetching style:', error);
       throw createError({
         statusCode: 500,
         statusMessage: 'Failed to fetch style',
@@ -138,7 +160,7 @@ export default defineEventHandler(async (event) => {
         .update(styles)
         .set(updatedStyle)
         .where(and(
-          eq(styles.id, styleId),
+          eq(styles.id, parseInt(styleId)),
           eq(styles.userId, userId)
         ));
 
@@ -161,7 +183,7 @@ export default defineEventHandler(async (event) => {
       await db
         .delete(styles)
         .where(and(
-          eq(styles.id, styleId),
+          eq(styles.id, parseInt(styleId)),
           eq(styles.userId, userId)
         ));
 

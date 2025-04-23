@@ -18,7 +18,7 @@
           <h2 class="text-lg font-medium mb-4">Order Information</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Measurement Selection (instead of client) -->
-            <UFormGroup label="Measurement" name="measurementId" required>
+            <UFormField label="Measurement" name="measurementId" required>
               <USelect
                 v-model="form.measurementId"
                 :options="measurementOptions"
@@ -26,34 +26,34 @@
                 required
                 @update:model-value="updateClientId"
               />
-            </UFormGroup>
+            </UFormField>
             
             <!-- Style Selection -->
-            <UFormGroup label="Style" name="styleId">
+            <UFormField label="Style" name="styleId">
               <USelect
                 v-model="form.styleId"
                 :options="styleOptions"
                 placeholder="Select a style (optional)"
               />
-            </UFormGroup>
+            </UFormField>
 
             <!-- Order Status -->
-            <UFormGroup label="Status" name="status" required>
+            <UFormField label="Status" name="status" required>
               <USelect
                 v-model="form.status"
                 :options="statusOptions"
                 placeholder="Select status"
                 required
               />
-            </UFormGroup>
+            </UFormField>
             
             <!-- Due Date -->
-            <UFormGroup label="Due Date" name="dueDate">
+            <UFormField label="Due Date" name="dueDate">
               <UInput
                 v-model="form.dueDate"
                 type="date"
               />
-            </UFormGroup>
+            </UFormField>
           </div>
         </div>
         
@@ -61,7 +61,7 @@
         <div>
           <h2 class="text-lg font-medium mb-4">Payment Information</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <UFormGroup label="Total Amount" name="totalAmount" required>
+            <UFormField label="Total Amount" name="totalAmount" required>
               <UInputGroup>
                 <template #prepend>
                   <span class="text-gray-500">₦</span>
@@ -75,9 +75,9 @@
                   @input="calculateBalance"
                 />
               </UInputGroup>
-            </UFormGroup>
+            </UFormField>
             
-            <UFormGroup label="Deposit Amount" name="depositAmount">
+            <UFormField label="Deposit Amount" name="depositAmount">
               <UInputGroup>
                 <template #prepend>
                   <span class="text-gray-500">₦</span>
@@ -90,9 +90,9 @@
                   @input="calculateBalance"
                 />
               </UInputGroup>
-            </UFormGroup>
+            </UFormField>
 
-            <UFormGroup label="Balance Due" name="balanceAmount">
+            <UFormField label="Balance Due" name="balanceAmount">
               <UInputGroup>
                 <template #prepend>
                   <span class="text-gray-500">₦</span>
@@ -104,20 +104,20 @@
                   class="bg-gray-50"
                 />
               </UInputGroup>
-            </UFormGroup>
+            </UFormField>
           </div>
         </div>
         
         <!-- Additional Information -->
         <div>
           <h2 class="text-lg font-medium mb-4">Additional Information</h2>
-          <UFormGroup label="Notes" name="notes">
+          <UFormField label="Notes" name="notes">
             <UTextarea
               v-model="form.notes"
               placeholder="Add any additional notes about this order..."
               rows="4"
             />
-          </UFormGroup>
+          </UFormField>
         </div>
         
         <!-- Action Buttons -->

@@ -123,38 +123,81 @@ export default defineEventHandler(async (event) => {
       const contentType = event.node.req.headers['content-type'] || '';
       const isMultipart = contentType.includes('multipart/form-data');
       
+      console.log('Creating style with content-type:', contentType);
+      
       let styleName = '';
       let styleDescription = null;
       let imageUrl = null;
       
       if (isMultipart) {
-        // Parse multipart form data
-        const fields = await extractFieldsFromMultipart(event);
-        const file = await extractFileFromMultipart(event);
-        
-        styleName = fields.name || '';
-        styleDescription = fields.description || null;
-        
-        // Handle file upload to S3 if a file was provided
-        if (file) {
-          const fileExt = getFileExtension(file.filename);
-          const contentType = getContentType(fileExt);
+        console.log('Processing multipart form data');
+        try {
+          // Parse multipart form data
+          const fields = await extractFieldsFromMultipart(event);
+          console.log('Extracted fields:', fields);
           
-          // Upload to S3
-          imageUrl = await uploadFileToS3(
-            file.buffer,
-            file.filename,
-            contentType
-          );
+          const file = await extractFileFromMultipart(event);
+          console.log('Extracted file:', file ? {
+            filename: file.filename,
+            contentType: file.contentType,
+            bufferSize: file.buffer?.length || 0
+          } : 'No file found');
+          
+          styleName = fields.name || '';
+          styleDescription = fields.description || null;
+          
+          // Handle file upload to S3 if a file was provided
+          if (file && file.buffer && file.buffer.length > 0) {
+            const fileExt = getFileExtension(file.filename);
+            const contentType = getContentType(fileExt);
+            
+            console.log('Uploading file to S3:', {
+              filename: file.filename,
+              fileExt,
+              contentType,
+              bufferSize: file.buffer.length
+            });
+            
+            try {
+              // Upload to S3
+              imageUrl = await uploadFileToS3(
+                file.buffer,
+                file.filename,
+                contentType
+              );
+              console.log('Successfully uploaded to S3, imageUrl:', imageUrl);
+            } catch (s3Error: any) {
+              console.error('S3 upload error:', s3Error);
+              throw createError({
+                statusCode: 500,
+                statusMessage: `S3 upload failed: ${s3Error.message}`,
+              });
+            }
+          } else {
+            console.error('No valid file found in multipart data');
+            throw createError({
+              statusCode: 400,
+              statusMessage: 'Image is required',
+            });
+          }
+        } catch (multipartError: any) {
+          console.error('Error processing multipart data:', multipartError);
+          throw createError({
+            statusCode: 500,
+            statusMessage: `Multipart processing error: ${multipartError.message}`,
+          });
         }
       } else {
         // Regular JSON body
         const body = await readBody(event);
+        console.log('Received JSON body:', body);
+        
         styleName = body.name;
         styleDescription = body.description || null;
         
         // If there's a base64 image, handle it
         if (body.imageBase64) {
+          console.log('Processing base64 image');
           // Decode base64
           const matches = body.imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
           
@@ -163,28 +206,70 @@ export default defineEventHandler(async (event) => {
             const buffer = Buffer.from(matches[2], 'base64');
             const fileExt = contentType.split('/')[1] || 'jpg';
             
-            // Upload to S3
-            imageUrl = await uploadFileToS3(
-              buffer,
-              `image.${fileExt}`,
-              contentType
-            );
+            console.log('Uploading base64 image to S3:', {
+              contentType,
+              fileExt,
+              bufferSize: buffer.length
+            });
+            
+            try {
+              // Upload to S3
+              imageUrl = await uploadFileToS3(
+                buffer,
+                `image.${fileExt}`,
+                contentType
+              );
+              console.log('Successfully uploaded base64 image to S3, imageUrl:', imageUrl);
+            } catch (s3Error: any) {
+              console.error('S3 upload error for base64 image:', s3Error);
+              throw createError({
+                statusCode: 500,
+                statusMessage: `S3 upload failed for base64 image: ${s3Error.message}`,
+              });
+            }
+          } else {
+            console.error('Invalid base64 image format');
+            throw createError({
+              statusCode: 400,
+              statusMessage: 'Invalid image format',
+            });
           }
+        } else {
+          console.error('No image provided in JSON body');
+          throw createError({
+            statusCode: 400,
+            statusMessage: 'Image is required',
+          });
         }
       }
       
       // Validate required fields
       if (!styleName) {
+        console.error('Style name is missing');
         throw createError({
           statusCode: 400,
           statusMessage: 'Style name is required',
         });
       }
+      
+      if (!imageUrl) {
+        console.error('Image URL is missing after processing');
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Image upload failed',
+        });
+      }
 
-      // Create new style
+      console.log('Creating new style in database:', {
+        name: styleName,
+        description: styleDescription ? 'provided' : 'not provided',
+        imageUrl: imageUrl
+      });
+      
+      // Create new style - noting the id field is a serial in the schema, not a UUID
       const newStyle = {
-        id: uuidv4(),
-        userId,
+        // Let the database handle the id field
+        userId: Number(userId),
         name: styleName,
         description: styleDescription,
         imageUrl: imageUrl,
@@ -192,8 +277,12 @@ export default defineEventHandler(async (event) => {
         updatedAt: new Date(),
       };
 
-      await db.insert(styles).values(newStyle);
-      return newStyle;
+      // Insert and get the generated id
+      const result = await db.insert(styles).values(newStyle).returning({ id: styles.id });
+      const styleId = result[0].id;
+      
+      console.log('Style created successfully with ID:', styleId);
+      return { ...newStyle, id: styleId };
     } catch (error: any) {
       console.error('Error creating style:', error);
       if (error.statusCode) {
@@ -201,7 +290,7 @@ export default defineEventHandler(async (event) => {
       }
       throw createError({
         statusCode: 500,
-        statusMessage: 'Failed to create style',
+        statusMessage: `Failed to create style: ${error.message}`,
       });
     }
   }

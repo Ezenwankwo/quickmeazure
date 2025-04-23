@@ -19,6 +19,7 @@
             v-model="search"
             placeholder="Search styles..."
             icon="i-heroicons-magnifying-glass"
+            size="lg"
             class="w-full focus-within:ring-2 ring-primary-200"
             @input="filterStyles"
           />
@@ -30,9 +31,10 @@
         <div class="flex gap-2 w-full sm:w-auto sm:ml-auto">
           <USelect
             v-model="sortBy"
-            :options="sortOptions"
+            :items="sortOptions"
             placeholder="Sort by"
-            class="w-full sm:w-52 focus-within:ring-2 ring-primary-200"
+            size="lg"
+            class="w-full sm:w-52"
             @update:model-value="filterStyles"
           />
         </div>
@@ -41,6 +43,14 @@
     
     <!-- Content area with conditional rendering -->
     <div>
+      <!-- Debug info - hidden in production -->
+      <pre v-if="false" class="text-xs p-2 bg-gray-100 mb-4 overflow-auto">
+        isLoading: {{ isLoading }}
+        filteredStyles length: {{ filteredStyles ? filteredStyles.length : 'undefined' }}
+        showEmptyState computed: {{ showEmptyState }}
+        showDataGrid computed: {{ showDataGrid }}
+      </pre>
+
       <!-- Loading State - only shown when loading -->
       <template v-if="isLoading">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -190,42 +200,19 @@
     </div>
     
     <!-- Delete Confirmation Modal -->
-    <UModal v-model="showDeleteModal">
-      <UCard>
-        <template #header>
-          <div class="flex items-center">
-            <UIcon name="i-heroicons-exclamation-triangle" class="text-red-500 mr-2" />
-            <h3 class="text-lg font-medium">Delete Style</h3>
-          </div>
-        </template>
-        
-        <p>Are you sure you want to delete <strong>{{ styleToDelete?.name }}</strong>? This action cannot be undone and will permanently remove this style from your catalog.</p>
-        
-        <template #footer>
-          <div class="flex justify-end space-x-4">
-            <UButton
-              color="gray"
-              variant="outline"
-              @click="showDeleteModal = false"
-            >
-              Cancel
-            </UButton>
-            <UButton
-              color="red"
-              @click="deleteStyle"
-              :loading="isDeleting"
-              :disabled="isDeleting"
-            >
-              Delete
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
+    <DeleteModal
+      v-model="showDeleteModal"
+      title="Delete Style"
+      :message="`Are you sure you want to delete <strong>${styleToDelete?.name}</strong>? This action cannot be undone and will permanently remove this style from your catalog.`"
+      @confirm="deleteStyle"
+      :loading="isDeleting"
+    />
   </div>
 </template>
 
 <script setup>
+import DeleteModal from '~/components/DeleteModal.vue';
+
 // Set page metadata
 useHead({
   title: 'Style Catalog - QuickMeazure',
@@ -248,9 +235,7 @@ const pagination = ref({
   total: 0,
   page: 1,
   limit: 12,
-  totalPages: 1,
-  hasNextPage: false,
-  hasPrevPage: false
+  totalPages: 1
 });
 
 // Sort options
@@ -273,13 +258,34 @@ const logState = () => {
 
 // Load data
 const loadStyles = async () => {
+  isLoading.value = true;
+  
   try {
-    // Explicitly set loading state
-    isLoading.value = true;
+    // Get auth token
+    const auth = useSessionAuth();
     
-    const { authFetch } = useApiAuth();
+    // Check if user is authenticated
+    if (!auth.isLoggedIn.value || !auth.token.value) {
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to view styles',
+        color: 'orange'
+      });
+      navigateTo('/auth/login');
+      return;
+    }
     
-    // Convert sort value to API parameters
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('page', currentPage.value.toString());
+    params.append('limit', '12');
+    
+    // Add search parameter if provided
+    if (search.value.trim()) {
+      params.append('search', search.value);
+    }
+    
+    // Add sort parameters
     let sortField = 'createdAt';
     let sortOrder = 'desc';
     
@@ -302,73 +308,64 @@ const loadStyles = async () => {
         break;
     }
     
-    // Build query params
-    const params = new URLSearchParams({
-      page: currentPage.value.toString(),
-      limit: '12',
-      sortField,
-      sortOrder
+    params.append('sortField', sortField);
+    params.append('sortOrder', sortOrder);
+    
+    // Make API request
+    const response = await $fetch(`/api/styles?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${auth.token.value}`
+      }
     });
     
-    // Add search parameter if it exists
-    if (search.value) {
-      params.append('search', search.value);
-    }
+    console.log('API response:', response);
     
-    // Fetch styles from the API using authFetch with pagination
-    const response = await authFetch(`/api/styles?${params.toString()}`);
-    
-    // Process the response
+    // Update state with response data
     if (response && response.data) {
       styles.value = response.data;
-      pagination.value = response.pagination || {
-        total: styles.value.length,
-        page: 1,
-        limit: 12,
-        totalPages: 1,
-        hasNextPage: false,
-        hasPrevPage: false
-      };
+      filteredStyles.value = response.data;
       
-      // Use the API's filtered data directly
-      filteredStyles.value = styles.value;
+      // Update pagination data
+      if (response.pagination) {
+        pagination.value = response.pagination;
+      } else {
+        pagination.value = {
+          total: response.data.length,
+          page: 1,
+          limit: 12,
+          totalPages: Math.ceil(response.data.length / 12)
+        };
+      }
     } else {
-      console.error('Invalid API response format:', response);
+      styles.value = [];
       filteredStyles.value = [];
       pagination.value = {
         total: 0,
         page: 1,
         limit: 12,
-        totalPages: 1,
-        hasNextPage: false,
-        hasPrevPage: false
+        totalPages: 1
       };
     }
   } catch (error) {
     console.error('Error loading styles:', error);
     
-    // Reset data on error
+    styles.value = [];
     filteredStyles.value = [];
     pagination.value = {
       total: 0,
       page: 1,
       limit: 12,
-      totalPages: 1,
-      hasNextPage: false,
-      hasPrevPage: false
+      totalPages: 1
     };
     
-    // Show error notification (session expiry is automatically handled by authFetch)
+    // Show error notification
     useToast().add({
       title: 'Error',
       description: 'Failed to load styles. Please try again.',
       color: 'red'
     });
   } finally {
-    // Always set isLoading to false when done
     isLoading.value = false;
-    console.log('Load complete, isLoading:', isLoading.value);
-    console.log('Filtered styles count:', filteredStyles.value.length);
   }
 };
 
@@ -475,10 +472,7 @@ const deleteStyle = async () => {
 };
 
 onMounted(() => {
-  console.log('Component mounted');
-  isLoading.value = true;
-  loadStyles().then(() => {
-    logState();
-  });
+  console.log('Component mounted - Loading styles...');
+  loadStyles();
 });
 </script>

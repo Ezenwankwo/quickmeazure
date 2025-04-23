@@ -12,28 +12,6 @@
         />
         <h1 class="text-2xl font-bold text-gray-800">Style Details</h1>
       </div>
-      
-      <!-- Action Buttons -->
-      <div class="flex space-x-2">
-        <UButton
-          color="primary"
-          variant="outline"
-          icon="i-heroicons-pencil"
-          :to="`/styles/${$route.params.id}/edit`"
-          :disabled="isLoading"
-        >
-          Edit
-        </UButton>
-        <UButton
-          color="red"
-          variant="outline"
-          icon="i-heroicons-trash"
-          @click="confirmDelete = true"
-          :disabled="isLoading || isDeleting"
-        >
-          Delete
-        </UButton>
-      </div>
     </div>
     
     <!-- Loading state -->
@@ -50,43 +28,34 @@
     </UAlert>
     
     <!-- Style details -->
-    <div v-else-if="style" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left column: Image -->
-      <UCard class="lg:col-span-1 overflow-hidden shadow-md hover:shadow-lg transition-shadow">
-        <div class="aspect-w-3 aspect-h-4 bg-gray-100 rounded-md overflow-hidden">
-          <img 
-            v-if="style.imageUrl" 
-            :src="style.imageUrl" 
-            :alt="style.name" 
-            class="w-full h-full object-contain rounded-md p-2"
-          />
-          <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-            <UIcon name="i-heroicons-squares-2x2" class="text-gray-400 text-5xl" />
-          </div>
-        </div>
-        
-        <template #footer>
+    <div v-else-if="style" class="grid grid-cols-1 gap-6">
+      <!-- Combined card with image, name and description -->
+      <UCard class="bg-white shadow-md">
+        <template #header>
           <div class="flex justify-between items-center">
-            <span class="text-xs text-gray-500">Added {{ formatDate(style.createdAt) }}</span>
-            <span v-if="style.updatedAt && style.updatedAt !== style.createdAt" class="text-xs text-gray-500">
-              Updated {{ formatDate(style.updatedAt) }}
-            </span>
+            <h2 class="text-xl font-semibold text-gray-800">{{ style.name }}</h2>
+            <UBadge color="primary" variant="subtle">Style</UBadge>
           </div>
         </template>
-      </UCard>
-      
-      <!-- Right column: Details and Related Orders -->
-      <div class="lg:col-span-2 space-y-6">
-        <!-- Style information -->
-        <UCard class="bg-white shadow-md">
-          <template #header>
-            <div class="flex justify-between items-center">
-              <h2 class="text-xl font-semibold text-gray-800">{{ style.name }}</h2>
-              <UBadge color="primary" variant="subtle">Style</UBadge>
+        
+        <div class="flex flex-col md:flex-row gap-6">
+          <!-- Left side: Image -->
+          <div class="w-full md:w-1/3">
+            <div class="aspect-w-3 aspect-h-4 bg-gray-100 rounded-md overflow-hidden">
+              <img 
+                v-if="style.imageUrl" 
+                :src="style.imageUrl" 
+                :alt="style.name" 
+                class="w-full h-full object-contain rounded-md p-2"
+              />
+              <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                <UIcon name="i-heroicons-squares-2x2" class="text-gray-400 text-5xl" />
+              </div>
             </div>
-          </template>
+          </div>
           
-          <div class="space-y-4">
+          <!-- Right side: Details -->
+          <div class="w-full md:w-2/3 space-y-4">
             <div>
               <h3 class="text-sm font-medium text-gray-500 mb-1">Description</h3>
               <p v-if="style.description" class="text-gray-700">{{ style.description }}</p>
@@ -98,94 +67,113 @@
               <p class="text-gray-700">{{ style.notes }}</p>
             </div>
           </div>
-          
-          <template #footer>
-            <div class="flex items-center text-sm text-gray-500">
-              <UIcon name="i-heroicons-information-circle" class="mr-1" />
-              <span>Style ID: <span class="font-mono">{{ style.id }}</span></span>
-            </div>
-          </template>
-        </UCard>
+        </div>
         
-        <!-- Related orders -->
-        <UCard class="bg-white shadow-md">
-          <template #header>
-            <div class="flex justify-between items-center">
-              <h3 class="text-lg font-medium">Related Orders</h3>
-              <UBadge color="gray" variant="subtle">{{ relatedOrders?.length || 0 }}</UBadge>
+        <template #footer>
+          <div class="flex justify-between items-center">
+            <div class="flex items-center text-sm text-gray-500">
+              <UIcon name="i-heroicons-calendar" class="mr-1" />
+              <span>Added {{ formatDate(style.createdAt) }}</span>
             </div>
-          </template>
-          
-          <div v-if="relatedOrders && relatedOrders.length > 0">
-            <UTable 
-              :columns="[
-                { key: 'client', label: 'Client', id: 'client' },
-                { key: 'date', label: 'Order Date', id: 'date' },
-                { key: 'status', label: 'Status', id: 'status' },
-                { key: 'actions', label: '', id: 'actions' }
-              ]"
-              :rows="relatedOrders"
-              :ui="{ 
-                td: { 
-                  padding: 'py-2 px-3' 
-                } 
-              }"
-            >
-              <template #client-data="{ row }">
-                <div class="flex items-center">
-                  <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-2">
-                    <span class="text-primary-700 font-medium text-sm">{{ getInitials(row.clientName) }}</span>
-                  </div>
-                  <div>
-                    <div class="font-medium text-gray-900 text-sm">{{ row.clientName }}</div>
-                  </div>
+            
+            <div class="flex space-x-2">
+              <UButton
+                color="primary"
+                variant="outline"
+                icon="i-heroicons-pencil"
+                :to="`/styles/${$route.params.id}/edit`"
+                :disabled="isLoading"
+              />
+              <UButton
+                color="error"
+                variant="outline"
+                icon="i-heroicons-trash"
+                @click="confirmDelete = true"
+                :disabled="isLoading || isDeleting"
+              />
+            </div>
+          </div>
+        </template>
+      </UCard>
+      
+      <!-- Related orders -->
+      <UCard class="bg-white shadow-md">
+        <template #header>
+          <div class="flex justify-between items-center">
+            <h3 class="text-lg font-medium">Related Orders</h3>
+            <UBadge color="gray" variant="subtle">{{ relatedOrders?.length || 0 }}</UBadge>
+          </div>
+        </template>
+        
+        <div v-if="relatedOrders && relatedOrders.length > 0">
+          <UTable 
+            :columns="[
+              { key: 'client', label: 'Client', id: 'client' },
+              { key: 'date', label: 'Order Date', id: 'date' },
+              { key: 'status', label: 'Status', id: 'status' },
+              { key: 'actions', label: '', id: 'actions' }
+            ]"
+            :rows="relatedOrders"
+            :ui="{ 
+              td: { 
+                padding: 'py-2 px-3' 
+              } 
+            }"
+          >
+            <template #client-data="{ row }">
+              <div class="flex items-center">
+                <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-2">
+                  <span class="text-primary-700 font-medium text-sm">{{ getInitials(row.clientName) }}</span>
                 </div>
-              </template>
-              
-              <template #date-data="{ row }">
-                <div class="text-sm text-gray-600">{{ formatDate(row.createdAt) }}</div>
-              </template>
-              
-              <template #status-data="{ row }">
-                <UBadge
-                  :color="getStatusColor(row.status)"
-                  variant="subtle"
-                  size="sm"
-                >
-                  {{ row.status }}
-                </UBadge>
-              </template>
-              
-              <template #actions-data="{ row }">
-                <UButton
-                  icon="i-heroicons-eye"
-                  color="gray"
-                  variant="ghost"
-                  size="xs"
-                  :to="`/orders/${row.id}/detail`"
-                />
-              </template>
-            </UTable>
-          </div>
-          
-          <div v-else class="text-center py-6">
-            <UIcon name="i-heroicons-shopping-bag" class="mx-auto h-10 w-10 text-gray-300" />
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No Orders Yet</h3>
-            <p class="mt-1 text-sm text-gray-500">
-              This style hasn't been used in any orders yet.
-            </p>
-            <UButton
-              to="/orders/new"
-              color="primary"
-              variant="outline"
-              class="mt-4"
-              size="sm"
-            >
-              Create Order
-            </UButton>
-          </div>
-        </UCard>
-      </div>
+                <div>
+                  <div class="font-medium text-gray-900 text-sm">{{ row.clientName }}</div>
+                </div>
+              </div>
+            </template>
+            
+            <template #date-data="{ row }">
+              <div class="text-sm text-gray-600">{{ formatDate(row.createdAt) }}</div>
+            </template>
+            
+            <template #status-data="{ row }">
+              <UBadge
+                :color="getStatusColor(row.status)"
+                variant="subtle"
+                size="sm"
+              >
+                {{ row.status }}
+              </UBadge>
+            </template>
+            
+            <template #actions-data="{ row }">
+              <UButton
+                icon="i-heroicons-eye"
+                color="gray"
+                variant="ghost"
+                size="xs"
+                :to="`/orders/${row.id}/detail`"
+              />
+            </template>
+          </UTable>
+        </div>
+        
+        <div v-else class="text-center py-6">
+          <UIcon name="i-heroicons-shopping-bag" class="mx-auto h-10 w-10 text-gray-300" />
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No Orders Yet</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            This style hasn't been used in any orders yet.
+          </p>
+          <UButton
+            to="/orders/new"
+            color="primary"
+            variant="outline"
+            class="mt-4"
+            size="sm"
+          >
+            Create Order
+          </UButton>
+        </div>
+      </UCard>
     </div>
     
     <!-- Delete Confirmation Modal -->
@@ -229,25 +217,48 @@ onMounted(async () => {
     const styleId = route.params.id;
     isLoading.value = true;
     
-    const { authFetch } = useApiAuth();
+    // Get auth token
+    const auth = useSessionAuth();
+    const token = auth.token.value;
     
-    // Fetch style data from API with authentication
-    const response = await authFetch(`/api/styles/${styleId}`);
+    if (!token) {
+      error.value = 'Authentication required. Please log in.';
+      isLoading.value = false;
+      return;
+    }
     
-    // The API now returns an object with style and relatedOrders
-    style.value = response.style;
+    console.log('Fetching style with ID:', styleId);
     
-    // Set related orders from the API response (or fetch them separately)
-    relatedOrders.value = response.relatedOrders || [];
+    // Use useFetch with correct headers
+    const { data: fetchData, error: fetchError } = await useFetch(`/api/styles/${styleId}`, {
+      key: `style-${styleId}`,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    // Check for error
+    if (fetchError.value) {
+      console.error('Fetch error:', fetchError.value);
+      error.value = `Error: ${fetchError.value.message || 'Failed to load style'}`;
+      isLoading.value = false;
+      return;
+    }
+    
+    // Check if we have data
+    if (fetchData.value) {
+      console.log('API response data:', fetchData.value);
+      style.value = fetchData.value.style;
+      relatedOrders.value = fetchData.value.relatedOrders || [];
+    } else {
+      console.error('No data in API response');
+      error.value = 'Failed to load style data. Please try again.';
+    }
     
     isLoading.value = false;
   } catch (err) {
-    console.error('Error loading style details:', err);
-    
-    // Show error only if not an auth error (those are handled by authFetch)
-    if (!err.message?.includes('No authentication token')) {
-      error.value = 'Failed to load style details. Please try again.';
-    }
+    console.error('Error in style detail page:', err);
+    error.value = 'Failed to load style details. Please try again.';
     isLoading.value = false;
   }
 });
@@ -291,24 +302,38 @@ const deleteStyle = async () => {
   try {
     isDeleting.value = true;
     
-    const { authFetch } = useApiAuth();
+    // Get auth token
+    const auth = useSessionAuth();
+    const token = auth.token.value;
     
-    await authFetch(`/api/styles/${route.params.id}`, {
-      method: 'DELETE'
+    if (!token) {
+      toast.add({
+        title: 'Authentication Required',
+        description: 'Please log in to delete this style.',
+        color: 'orange'
+      });
+      confirmDelete.value = false;
+      isDeleting.value = false;
+      return;
+    }
+    
+    // Delete the style using direct $fetch for simplicity
+    const response = await $fetch(`/api/styles/${route.params.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
     
-    toast.add({
-      title: 'Success',
-      description: 'Style deleted successfully',
-      color: 'green'
-    });
-    
-    router.push('/styles');
-  } catch (err) {
-    console.error('Error deleting style:', err);
-    
-    // Show error only if not an auth error (those are handled by authFetch)
-    if (!err.message?.includes('No authentication token')) {
+    if (response && response.success) {
+      toast.add({
+        title: 'Success',
+        description: 'Style deleted successfully',
+        color: 'green'
+      });
+      
+      router.push('/styles');
+    } else {
       toast.add({
         title: 'Error',
         description: 'Failed to delete style. Please try again.',
@@ -316,6 +341,18 @@ const deleteStyle = async () => {
       });
       confirmDelete.value = false;
     }
+    
+    isDeleting.value = false;
+  } catch (err) {
+    console.error('Error deleting style:', err);
+    
+    toast.add({
+      title: 'Error',
+      description: 'Failed to delete style. Please try again.',
+      color: 'red'
+    });
+    
+    confirmDelete.value = false;
     isDeleting.value = false;
   }
 };

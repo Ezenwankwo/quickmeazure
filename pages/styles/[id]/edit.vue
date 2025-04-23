@@ -8,7 +8,7 @@
         :to="`/styles/${$route.params.id}/detail`"
         class="mr-4"
       />
-      <h1 class="text-2xl font-bold">Edit Style</h1>
+      <h1 class="text-xl font-bold">Edit Style</h1>
     </div>
     
     <!-- Loading state -->
@@ -30,23 +30,27 @@
         <div>
           <h2 class="text-lg font-medium mb-4">Style Information</h2>
           <div class="grid grid-cols-1 gap-6">
-            <UFormGroup label="Style Name" name="name" required>
+            <UFormField label="Style Name" name="name" required>
               <UInput
                 v-model="style.name"
                 placeholder="Enter style name"
+                size="lg"
+                class="w-full"
                 required
               />
-            </UFormGroup>
+            </UFormField>
             
-            <UFormGroup label="Description" name="description">
+            <UFormField label="Description" name="description">
               <UTextarea
                 v-model="style.description"
                 placeholder="Describe the style"
-                rows="4"
+                size="lg"
+                class="w-full"
+                :rows="4"
               />
-            </UFormGroup>
+            </UFormField>
             
-            <UFormGroup label="Image" name="image">
+            <UFormField label="Image" name="image" required>
               <div class="border-2 border-dashed border-gray-300 rounded-lg p-6">
                 <div v-if="imagePreview" class="mb-4">
                   <img :src="imagePreview" alt="Preview" class="max-h-64 mx-auto rounded" />
@@ -78,7 +82,7 @@
                   </p>
                 </div>
               </div>
-            </UFormGroup>
+            </UFormField>
           </div>
         </div>
         
@@ -86,7 +90,7 @@
         <div class="flex justify-end space-x-4">
           <UButton
             type="button"
-            color="gray"
+            color="neutral"
             variant="outline"
             :to="`/styles/${$route.params.id}/detail`"
           >
@@ -97,6 +101,7 @@
             type="submit"
             color="primary"
             :loading="isSaving"
+            :disabled="!isFormValid"
           >
             Update Style
           </UButton>
@@ -133,36 +138,66 @@ const error = ref(null);
 const imagePreview = ref(null);
 const fileInput = ref(null);
 
+// Computed property to check if form is valid
+const isFormValid = computed(() => {
+  return !!style.value.name;
+});
+
 // Fetch style data
 onMounted(async () => {
   try {
     const styleId = route.params.id;
     isLoading.value = true;
     
-    const { authFetch } = useApiAuth();
+    // Get auth token
+    const auth = useSessionAuth();
+    const token = auth.token.value;
     
-    // Fetch style data from API with authentication
-    const response = await authFetch(`/api/styles/${styleId}`);
+    if (!token) {
+      error.value = 'Authentication required. Please log in.';
+      isLoading.value = false;
+      return;
+    }
     
-    // Set style data
-    style.value = {
-      ...response.style,
-      imageFile: null
-    };
+    console.log('Fetching style with ID:', styleId);
     
-    // Set image preview if available
-    if (style.value.imageUrl) {
-      imagePreview.value = style.value.imageUrl;
+    // Use useFetch with correct headers
+    const { data: fetchData, error: fetchError } = await useFetch(`/api/styles/${styleId}`, {
+      key: `style-edit-${styleId}`,
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    // Check for error
+    if (fetchError.value) {
+      console.error('Fetch error:', fetchError.value);
+      error.value = `Error: ${fetchError.value.message || 'Failed to load style'}`;
+      isLoading.value = false;
+      return;
+    }
+    
+    // Check if we have data
+    if (fetchData.value) {
+      console.log('API response data:', fetchData.value);
+      style.value = {
+        ...fetchData.value.style,
+        imageFile: null
+      };
+      
+      // Set image preview if available
+      if (style.value.imageUrl) {
+        imagePreview.value = style.value.imageUrl;
+      }
+    } else {
+      console.error('No data in API response');
+      error.value = 'Failed to load style data. Please try again.';
     }
     
     isLoading.value = false;
   } catch (err) {
     console.error('Error loading style details:', err);
-    
-    // Show error only if not an auth error (those are handled by authFetch)
-    if (!err.message?.includes('No authentication token')) {
-      error.value = 'Failed to load style details. Please try again.';
-    }
+    error.value = 'Failed to load style details. Please try again.';
     isLoading.value = false;
   }
 });
@@ -211,8 +246,21 @@ const updateStyle = async () => {
   isSaving.value = true;
   
   try {
-    const { authFetch } = useApiAuth();
     const styleId = route.params.id;
+    
+    // Get auth token
+    const auth = useSessionAuth();
+    const token = auth.token.value;
+    
+    if (!token) {
+      toast.add({
+        title: 'Authentication Required',
+        description: 'Please log in to update this style.',
+        color: 'orange'
+      });
+      isSaving.value = false;
+      return;
+    }
     
     // Handle image upload via FormData if we have an image file
     let updatedStyle;
@@ -226,12 +274,17 @@ const updateStyle = async () => {
         formData.append('description', style.value.description || '');
       }
       
+      // Add the file with both possible field names to ensure compatibility
+      formData.append('file', style.value.imageFile);
       formData.append('image', style.value.imageFile);
       
       // Send form data to the server for processing
-      updatedStyle = await authFetch(`/api/styles/${styleId}`, {
+      updatedStyle = await $fetch(`/api/styles/${styleId}`, {
         method: 'PUT',
-        body: formData
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
     } else {
       // If no image changed, just send JSON data
@@ -240,9 +293,12 @@ const updateStyle = async () => {
         description: style.value.description || null
       };
       
-      updatedStyle = await authFetch(`/api/styles/${styleId}`, {
+      updatedStyle = await $fetch(`/api/styles/${styleId}`, {
         method: 'PUT',
-        body: styleData
+        body: styleData,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
     }
     
@@ -258,14 +314,25 @@ const updateStyle = async () => {
   } catch (err) {
     console.error('Error updating style:', err);
     
-    // Show error only if not an auth error (those are handled by authFetch)
-    if (!err.message?.includes('No authentication token')) {
-      toast.add({
-        title: 'Error',
-        description: 'Failed to update style. Please try again.',
-        color: 'red'
-      });
+    // Enhanced error handling
+    let errorMessage = 'Failed to update style. Please try again.';
+    
+    if (err.response) {
+      const status = err.response.status;
+      if (status === 413) {
+        errorMessage = 'The image file is too large. Please use a smaller image.';
+      } else if (status === 415) {
+        errorMessage = 'The file format is not supported.';
+      } else if (err.data?.statusMessage) {
+        errorMessage = err.data.statusMessage;
+      }
     }
+    
+    toast.add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'red'
+    });
   } finally {
     isSaving.value = false;
   }
