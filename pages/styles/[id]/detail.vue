@@ -189,43 +189,19 @@
     </div>
     
     <!-- Delete Confirmation Modal -->
-    <UModal v-model="confirmDelete">
-      <UCard>
-        <template #header>
-          <div class="flex items-center">
-            <UIcon name="i-heroicons-exclamation-triangle" class="text-red-500 mr-2" />
-            <h3 class="text-lg font-medium">Delete Style</h3>
-          </div>
-        </template>
-        
-        <p>Are you sure you want to delete <strong>{{ style?.name }}</strong>? This action cannot be undone and will permanently remove this style from your catalog.</p>
-        
-        <template #footer>
-          <div class="flex justify-end space-x-4">
-            <UButton
-              color="gray"
-              variant="outline"
-              @click="confirmDelete = false"
-            >
-              Cancel
-            </UButton>
-            <UButton
-              color="red"
-              @click="deleteStyle"
-              :loading="isDeleting"
-              :disabled="isDeleting"
-            >
-              Delete
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
+    <DeleteModal
+      v-model="confirmDelete"
+      title="Delete Style"
+      :message="`Are you sure you want to delete <strong>${style?.name}</strong>? This action cannot be undone and will permanently remove this style from your catalog.`"
+      @confirm="deleteStyle"
+      :loading="isDeleting"
+    />
   </div>
 </template>
 
 <script setup>
 import { useRoute, useRouter } from 'vue-router';
+import DeleteModal from '~/components/DeleteModal.vue';
 
 // Set page metadata
 useHead({

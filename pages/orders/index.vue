@@ -517,38 +517,19 @@
     </UCard>
     
     <!-- Delete Confirmation Modal -->
-    <UModal v-model="showDeleteModal">
-      <UCard>
-        <template #header>
-          <h3 class="text-lg font-medium">Confirm Deletion</h3>
-        </template>
-        
-        <p>Are you sure you want to delete the order for <strong>{{ orderToDelete?.client }}</strong>? This action cannot be undone.</p>
-        
-        <template #footer>
-          <div class="flex justify-end space-x-4">
-            <UButton
-              color="gray"
-              variant="outline"
-              @click="showDeleteModal = false"
-            >
-              Cancel
-            </UButton>
-            <UButton
-              color="red"
-              @click="deleteOrder"
-              :loading="isDeleting"
-            >
-              Delete
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
+    <DeleteModal
+      v-model="showDeleteModal"
+      title="Confirm Deletion"
+      :message="`Are you sure you want to delete the order for <strong>${orderToDelete?.client}</strong>? This action cannot be undone.`"
+      @confirm="deleteOrder"
+      :loading="isDeleting"
+    />
   </div>
 </template>
 
 <script setup>
+import DeleteModal from '~/components/DeleteModal.vue';
+
 // Set page metadata
 useHead({
   title: 'Orders - QuickMeazure',

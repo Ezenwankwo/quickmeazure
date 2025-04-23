@@ -388,41 +388,19 @@
     </UCard>
     
     <!-- Delete Confirmation Modal -->
-    <UModal v-if="isDeleteModalOpen" v-model="isDeleteModalOpen">
-      <UCard>
-        <template #header>
-          <div class="flex items-center">
-            <UIcon name="i-heroicons-exclamation-triangle" class="text-red-500 mr-2" />
-            <h3 class="text-lg font-medium">Delete Client</h3>
-          </div>
-        </template>
-        
-        <p>Are you sure you want to delete <strong>{{ clientToDelete?.name }}</strong>? This action cannot be undone.</p>
-        
-        <template #footer>
-          <div class="flex justify-end space-x-4">
-            <UButton
-              color="gray"
-              variant="outline"
-              @click="isDeleteModalOpen = false"
-            >
-              Cancel
-            </UButton>
-            <UButton
-              color="red"
-              @click="deleteClient"
-              :loading="isDeleting"
-            >
-              Delete
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
+    <DeleteModal
+      v-model="isDeleteModalOpen"
+      title="Delete Client"
+      :message="`Are you sure you want to delete <strong>${clientToDelete?.name}</strong>? This action cannot be undone.`"
+      @confirm="deleteClient"
+      :loading="isDeleting"
+    />
   </div>
 </template>
 
 <script setup>
+import DeleteModal from '~/components/DeleteModal.vue';
+
 // Set page metadata
 useHead({
   title: 'Clients - QuickMeazure',

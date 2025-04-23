@@ -1,227 +1,419 @@
 <template>
-  <div class="space-y-6">
-    <PageHeader
-      title="Edit Client"
-      subtitle="Update client information"
-      :primaryAction="{
-        label: 'Back to Client',
-        icon: 'i-heroicons-arrow-left',
-        to: `/clients/${clientId}`
-      }"
-    />
-    
-    <div v-if="isLoading" class="flex justify-center py-12">
-      <USkeleton class="h-32 w-full" />
-    </div>
-    
-    <template v-else-if="client">
-      <UCard class="bg-white">
-        <form @submit.prevent="updateClient" class="space-y-6">
-          <!-- Client Information -->
-          <h2 class="text-lg font-medium mb-4">Client Information</h2>
-          
-          <UFormGroup label="Name" name="name" required>
-            <UInput
-              v-model="form.name"
-              placeholder="Enter client name"
-              required
-            />
-          </UFormGroup>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <UFormGroup label="Email" name="email">
-              <UInput
-                v-model="form.email"
-                type="email"
-                placeholder="Enter client email"
-              />
-            </UFormGroup>
-            
-            <UFormGroup label="Phone" name="phone">
-              <UInput
-                v-model="form.phone"
-                placeholder="Enter client phone number"
-              />
-            </UFormGroup>
-          </div>
-          
-          <UFormGroup label="Address" name="address">
-            <UInput
-              v-model="form.address"
-              placeholder="Enter client address"
-            />
-          </UFormGroup>
-          
-          <UFormGroup label="Notes" name="notes">
-            <UTextarea
-              v-model="form.notes"
-              placeholder="Add any additional notes about this client..."
-              :ui="{ base: 'h-24' }"
-            />
-          </UFormGroup>
-          
-          <!-- Measurements Section -->
-          <div class="pt-6 border-t border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-medium">Measurements</h2>
-              <UButton 
-                type="button" 
-                color="gray" 
-                variant="ghost" 
-                icon="i-heroicons-plus-circle" 
-                @click="showMeasurements = !showMeasurements"
-              >
-                {{ showMeasurements ? 'Hide Measurements' : 'Show Measurements' }}
-              </UButton>
-            </div>
-            
-            <div v-if="showMeasurements" class="bg-gray-50 p-4 rounded-lg">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <UFormGroup label="Height (cm)" name="height">
-                  <UInput v-model="form.measurements.height" type="number" step="0.1" placeholder="Height in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Weight (kg)" name="weight">
-                  <UInput v-model="form.measurements.weight" type="number" step="0.1" placeholder="Weight in kg" />
-                </UFormGroup>
-                
-                <UFormGroup label="Bust (cm)" name="bust">
-                  <UInput v-model="form.measurements.bust" type="number" step="0.1" placeholder="Bust in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Waist (cm)" name="waist">
-                  <UInput v-model="form.measurements.waist" type="number" step="0.1" placeholder="Waist in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Hip (cm)" name="hip">
-                  <UInput v-model="form.measurements.hip" type="number" step="0.1" placeholder="Hip in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Inseam (cm)" name="inseam">
-                  <UInput v-model="form.measurements.inseam" type="number" step="0.1" placeholder="Inseam in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Shoulder (cm)" name="shoulder">
-                  <UInput v-model="form.measurements.shoulder" type="number" step="0.1" placeholder="Shoulder in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Sleeve (cm)" name="sleeve">
-                  <UInput v-model="form.measurements.sleeve" type="number" step="0.1" placeholder="Sleeve in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Neck (cm)" name="neck">
-                  <UInput v-model="form.measurements.neck" type="number" step="0.1" placeholder="Neck in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Chest (cm)" name="chest">
-                  <UInput v-model="form.measurements.chest" type="number" step="0.1" placeholder="Chest in cm" />
-                </UFormGroup>
-                
-                <UFormGroup label="Thigh (cm)" name="thigh">
-                  <UInput v-model="form.measurements.thigh" type="number" step="0.1" placeholder="Thigh in cm" />
-                </UFormGroup>
+  <div>
+    <div class="max-w-5xl mx-auto space-y-6 py-6">
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center">
+          <UButton
+            icon="i-heroicons-arrow-left"
+            color="gray"
+            variant="ghost"
+            :to="`/clients/${clientId}`"
+            class="mr-2"
+          />
+          <h1 class="text-2xl font-bold">Edit Client</h1>
+        </div>
+        <UBadge color="primary" variant="soft" size="lg" class="text-sm">Client Information</UBadge>
+      </div>
+      
+      <div v-if="isLoading" class="flex justify-center py-12">
+        <USkeleton class="h-32 w-full" />
+      </div>
+      
+      <template v-else-if="client">
+        <UCard class="bg-white shadow border-0">
+          <form @submit.prevent="updateClient" class="space-y-8">
+            <!-- Client Detail Section -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Full Name <span class="text-red-500">*</span></label>
+                <UInput
+                  v-model="form.name"
+                  placeholder="Client name"
+                  class="w-full"
+                  icon="i-heroicons-user"
+                  size="lg"
+                  autocomplete="name"
+                  required
+                />
               </div>
               
-              <UFormGroup label="Measurement Notes" name="measurementNotes" class="mt-4">
-                <UTextarea
-                  v-model="form.measurements.notes"
-                  placeholder="Add any notes about these measurements"
-                  rows="3"
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Phone Number</label>
+                <UInput
+                  v-model="form.phone"
+                  placeholder="Phone number"
+                  class="w-full"
+                  icon="i-heroicons-phone"
+                  size="lg"
+                  type="tel"
+                  autocomplete="tel"
                 />
-              </UFormGroup>
+              </div>
+              
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Email</label>
+                <UInput
+                  v-model="form.email"
+                  placeholder="Email address"
+                  class="w-full"
+                  icon="i-heroicons-envelope"
+                  size="lg"
+                  type="email"
+                  autocomplete="email"
+                />
+              </div>
+              
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">Address</label>
+                <UInput
+                  v-model="form.address"
+                  placeholder="Physical address"
+                  class="w-full"
+                  icon="i-heroicons-home"
+                  size="lg"
+                  autocomplete="address-line1"
+                />
+              </div>
             </div>
-          </div>
-          
-          <div class="flex justify-between items-center pt-4">
-            <!-- Delete Button -->
-            <UButton
-              type="button"
-              color="red"
-              variant="ghost"
-              @click="confirmDelete"
-              :disabled="isSubmitting"
-            >
-              Delete Client
-            </UButton>
+            
+            <!-- Measurement Tabs -->
+            <div class="mt-6">
+              <div v-for="item in measurementSections" :key="item.value" class="mb-4 border rounded-lg overflow-hidden shadow-sm transition-all hover:shadow-md">
+                <div 
+                  @click="toggleMeasurementSection(item.value)" 
+                  class="flex justify-between items-center p-4 cursor-pointer transition-colors"
+                  :class="openItems.includes(item.value) ? 'bg-primary-50 border-b border-primary-100' : 'bg-white'"
+                >
+                  <div class="font-medium flex items-center">
+                    <UIcon 
+                      :name="getMeasurementIcon(item.value)" 
+                      class="h-5 w-5 mr-2 text-primary-500"
+                    />
+                    {{ item.label }}
+                  </div>
+                  <UIcon 
+                    :name="openItems.includes(item.value) ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" 
+                    class="h-5 w-5 transition-transform text-primary-500"
+                  />
+                </div>
+                
+                <div v-show="openItems.includes(item.value)" class="p-6 bg-gray-50 rounded-b-lg space-y-6 border-t border-primary-100">
+                  <!-- Upper Body Content -->
+                  <div v-if="item.value === 'upper'">
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Bust</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.bust" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Shoulder</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.shoulder" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Sleeve</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.sleeve" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Neck</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.neck" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Chest</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.chest" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Lower Body Content -->
+                  <div v-if="item.value === 'lower'">
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Waist</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.waist" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Hip</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.hip" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Inseam</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.inseam" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Thigh</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.thigh" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Custom Measurements -->
+                  <div v-if="item.value === 'custom'">
+                    <div v-for="(value, key) in form.measurements.additionalMeasurements" :key="key" class="flex gap-4 items-end mb-4 p-3 rounded-lg bg-white border border-gray-200 shadow-sm">
+                      <div class="space-y-2 w-1/2">
+                        <label class="block text-sm font-medium text-gray-700">Measurement Name</label>
+                        <UInput 
+                          v-model="customMeasurementKeys[key]" 
+                          placeholder="e.g., Ankle width" 
+                          class="w-full focus:ring-primary-500"
+                          size="lg"
+                        />
+                      </div>
+                      
+                      <div class="space-y-2 w-1/3">
+                        <label class="block text-sm font-medium text-gray-700">Value</label>
+                        <div class="flex">
+                          <UInput 
+                            v-model="form.measurements.additionalMeasurements[key]" 
+                            type="number" 
+                            step="0.1" 
+                            placeholder="0.0" 
+                            class="w-full rounded-r-none focus:ring-primary-500"
+                            size="lg"
+                          />
+                          <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
+                            in
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <UButton 
+                        type="button" 
+                        color="red" 
+                        icon="i-heroicons-trash" 
+                        variant="soft" 
+                        @click="removeCustomMeasurement(key)" 
+                        class="flex-shrink-0"
+                        size="lg"
+                      />
+                    </div>
+                    
+                    <div class="flex justify-center mt-6">
+                      <UButton 
+                        type="button" 
+                        color="primary" 
+                        variant="solid" 
+                        icon="i-heroicons-plus-circle" 
+                        @click="addCustomMeasurement"
+                        class="shadow-sm hover:shadow-md transition-all duration-200 px-6"
+                        size="lg"
+                      >
+                        <span class="font-medium">Add Custom Measurement</span>
+                      </UButton>
+                    </div>
+                    
+                    <div v-if="Object.keys(form.measurements.additionalMeasurements).length === 0" class="text-center py-8 px-4">
+                      <UIcon name="i-heroicons-pencil-square" class="mx-auto h-12 w-12 text-gray-300 mb-3" />
+                      <h3 class="text-lg font-medium text-gray-700 mb-1">No custom measurements yet</h3>
+                      <p class="text-gray-500 text-sm">Add specific measurements that aren't covered in the standard sections</p>
+                    </div>
+                  </div>
+                  
+                  <!-- Notes Content -->
+                  <div v-if="item.value === 'notes'">
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-gray-700">Measurement Notes</label>
+                      <UTextarea
+                        v-model="form.measurements.notes"
+                        placeholder="Add any special instructions or notes about these measurements"
+                        :rows="5"
+                        class="w-full focus:ring-primary-500"
+                        size="lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             
             <!-- Action Buttons -->
-            <div class="flex space-x-3">
+            <div class="flex items-center justify-between pt-6 border-t">
+              <!-- Delete Button -->
               <UButton
                 type="button"
-                color="gray"
+                color="error"
                 variant="outline"
-                :to="`/clients/${clientId}`"
+                @click="confirmDelete"
                 :disabled="isSubmitting"
-              >
-                Cancel
-              </UButton>
-              
-              <UButton
-                type="submit"
-                color="primary"
-                :loading="isSubmitting"
-              >
-                Save Changes
-              </UButton>
-            </div>
-          </div>
-        </form>
-      </UCard>
-      
-      <!-- Delete Confirmation Modal -->
-      <UModal v-model="showDeleteModal">
-        <UCard>
-          <template #header>
-            <div class="flex items-center">
-              <UIcon name="i-heroicons-exclamation-triangle" class="text-red-500 mr-2" />
-              <h3 class="text-lg font-medium">Delete Client</h3>
-            </div>
-          </template>
-          
-          <p>Are you sure you want to delete <strong>{{ client.name }}</strong>? This action cannot be undone and will also delete all measurements and orders for this client.</p>
-          
-          <template #footer>
-            <div class="flex justify-end space-x-4">
-              <UButton
-                color="gray"
-                variant="outline"
-                @click="showDeleteModal = false"
-              >
-                Cancel
-              </UButton>
-              <UButton
-                color="red"
-                @click="deleteClient"
-                :loading="isDeleting"
+                size="lg"
               >
                 Delete
               </UButton>
+              
+              <!-- Save Buttons -->
+              <div class="flex space-x-3">
+                <UButton
+                  type="button"
+                  color="neutral"
+                  variant="outline"
+                  :to="`/clients/${clientId}`"
+                  :disabled="isSubmitting"
+                  size="lg"
+                >
+                  Cancel
+                </UButton>
+                
+                <UButton
+                  type="submit"
+                  color="primary"
+                  variant="solid"
+                  :loading="isSubmitting"
+                  size="lg"
+                >
+                  Save Changes
+                </UButton>
+              </div>
             </div>
-          </template>
+          </form>
         </UCard>
-      </UModal>
-    </template>
+      </template>
+      
+      <template v-else>
+        <UCard class="bg-white">
+          <div class="py-12 text-center">
+            <UIcon name="i-heroicons-face-frown" class="text-gray-400 mx-auto mb-2" size="xl" />
+            <h3 class="text-lg font-medium text-gray-900">Client not found</h3>
+            <p class="text-gray-500 mt-1 mb-4">This client doesn't exist or you don't have access to it.</p>
+            <UButton
+              color="primary"
+              to="/clients"
+              icon="i-heroicons-arrow-left"
+            >
+              Back to Clients
+            </UButton>
+          </div>
+        </UCard>
+      </template>
+    </div>
     
-    <template v-else>
-      <UCard class="bg-white">
-        <div class="py-12 text-center">
-          <UIcon name="i-heroicons-face-frown" class="text-gray-400 mx-auto mb-2" size="xl" />
-          <h3 class="text-lg font-medium text-gray-900">Client not found</h3>
-          <p class="text-gray-500 mt-1 mb-4">This client doesn't exist or you don't have access to it.</p>
-          <UButton
-            color="primary"
-            to="/clients"
-            icon="i-heroicons-arrow-left"
-          >
-            Back to Clients
-          </UButton>
-        </div>
-      </UCard>
-    </template>
+    <!-- Replace basic modal with component -->
+    <DeleteModal
+      v-model="showDeleteModal"
+      title="Delete Client"
+      :message="`Are you sure you want to delete <strong>${client?.name}</strong>? This action cannot be undone and will also delete all measurements and orders for this client.`"
+      @confirm="deleteClient"
+      :loading="isDeleting"
+    />
   </div>
 </template>
 
 <script setup>
+import DeleteModal from '~/components/DeleteModal.vue';
+
 // Get client ID from route
 const route = useRoute();
 const clientId = route.params.id;
@@ -232,7 +424,33 @@ const isLoading = ref(true);
 const isSubmitting = ref(false);
 const isDeleting = ref(false);
 const showDeleteModal = ref(false);
-const showMeasurements = ref(true);
+
+// Track which accordion items are open - initialized before client data
+const openItems = ref(['upper']);
+
+// Measurement sections
+const measurementSections = ref([
+  { 
+    label: 'Upper Body Measurements',
+    value: 'upper'
+  },
+  { 
+    label: 'Lower Body Measurements',
+    value: 'lower'
+  },
+  { 
+    label: 'Custom Measurements',
+    value: 'custom'
+  },
+  { 
+    label: 'Measurement Notes',
+    value: 'notes'
+  }
+]);
+
+// For custom measurements
+const customMeasurementKeys = ref({});
+const customMeasurementCounter = ref(0);
 
 // Form state
 const form = ref({
@@ -263,13 +481,69 @@ useHead({
   title: 'Edit Client - QuickMeazure',
 });
 
+// Function to toggle measurement sections 
+const toggleMeasurementSection = (sectionValue) => {
+  if (!openItems.value.includes(sectionValue)) {
+    openItems.value.push(sectionValue);
+  } else {
+    openItems.value = openItems.value.filter(item => item !== sectionValue);
+  }
+};
+
+// Get icon for measurement section
+const getMeasurementIcon = (sectionValue) => {
+  switch(sectionValue) {
+    case 'upper':
+      return 'i-heroicons-user-circle';
+    case 'lower':
+      return 'i-heroicons-variable';
+    case 'custom':
+      return 'i-heroicons-pencil-square';
+    case 'notes':
+      return 'i-heroicons-document-text';
+    default:
+      return 'i-heroicons-square-3-stack-3d';
+  }
+};
+
+// Custom measurements functions
+const addCustomMeasurement = () => {
+  const newKey = `custom_${customMeasurementCounter.value}`;
+  customMeasurementCounter.value++;
+  form.value.measurements.additionalMeasurements[newKey] = null;
+  customMeasurementKeys.value[newKey] = '';
+};
+
+const removeCustomMeasurement = (key) => {
+  delete form.value.measurements.additionalMeasurements[key];
+  delete customMeasurementKeys.value[key];
+};
+
+// Process measurements for saving
+const processMeasurements = () => {
+  if (Object.keys(form.value.measurements.additionalMeasurements).length > 0) {
+    const processedAdditionalMeasurements = {};
+    for (const [key, value] of Object.entries(form.value.measurements.additionalMeasurements)) {
+      const customName = customMeasurementKeys.value[key] || key;
+      processedAdditionalMeasurements[customName] = value;
+    }
+    
+    return {
+      ...form.value.measurements,
+      additionalMeasurements: processedAdditionalMeasurements
+    };
+  }
+  
+  return form.value.measurements;
+};
+
 // Fetch client details
 const fetchClient = async () => {
   isLoading.value = true;
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -331,10 +605,64 @@ const fetchClient = async () => {
       }
     };
     
-    // Hide measurements section if there's no measurement data
-    if (!data.measurement) {
-      showMeasurements.value = false;
+    // Set up custom measurement keys
+    if (data.measurement && data.measurement.additionalMeasurements) {
+      Object.keys(data.measurement.additionalMeasurements).forEach((key, index) => {
+        if (key.startsWith('custom_')) {
+          customMeasurementKeys.value[key] = key;
+        } else {
+          const customKey = `custom_${index}`;
+          customMeasurementKeys.value[customKey] = key;
+          customMeasurementCounter.value = Math.max(customMeasurementCounter.value, index + 1);
+          
+          // If we're reconstructing the keys, make sure the value is transferred
+          if (customKey !== key) {
+            form.value.measurements.additionalMeasurements[customKey] = 
+              data.measurement.additionalMeasurements[key];
+            delete form.value.measurements.additionalMeasurements[key];
+          }
+        }
+      });
     }
+    
+    // Update custom measurement counter to avoid conflicts
+    if (customMeasurementCounter.value === 0 && 
+        Object.keys(form.value.measurements.additionalMeasurements).length > 0) {
+      customMeasurementCounter.value = Object.keys(form.value.measurements.additionalMeasurements).length;
+    }
+    
+    // Show relevant measurement sections based on data
+    if (data.measurement) {
+      const hasUpperBodyMeasurements = data.measurement.bust || data.measurement.shoulder || 
+                                      data.measurement.sleeve || data.measurement.neck || 
+                                      data.measurement.chest;
+      
+      const hasLowerBodyMeasurements = data.measurement.waist || data.measurement.hip || 
+                                      data.measurement.inseam || data.measurement.thigh;
+      
+      const hasCustomMeasurements = data.measurement.additionalMeasurements && 
+                                   Object.keys(data.measurement.additionalMeasurements).length > 0;
+      
+      const hasMeasurementNotes = data.measurement.notes && data.measurement.notes.trim() !== '';
+      
+      // Update open sections based on what data exists
+      openItems.value = [];
+      if (hasUpperBodyMeasurements) openItems.value.push('upper');
+      if (hasLowerBodyMeasurements) openItems.value.push('lower');
+      if (hasCustomMeasurements) openItems.value.push('custom');
+      if (hasMeasurementNotes) openItems.value.push('notes');
+      
+      // Ensure at least one section is open
+      if (openItems.value.length === 0) openItems.value = ['upper'];
+    } else {
+      // If no measurements exist, only open the first section
+      openItems.value = ['upper'];
+    }
+    
+    // Update page title with client name
+    useHead({
+      title: `Edit ${data.name} - QuickMeazure`,
+    });
   } catch (error) {
     console.error('Error fetching client:', error);
     let errorMessage = 'Failed to load client details';
@@ -375,7 +703,7 @@ const updateClient = async () => {
     }
     
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
@@ -389,6 +717,9 @@ const updateClient = async () => {
       return;
     }
     
+    // Process measurements for saving
+    const processedMeasurements = processMeasurements();
+    
     // Update client
     await $fetch(`/api/clients/${clientId}`, {
       method: 'PUT',
@@ -398,7 +729,7 @@ const updateClient = async () => {
         phone: form.value.phone,
         address: form.value.address,
         notes: form.value.notes,
-        measurements: showMeasurements.value ? form.value.measurements : null
+        measurements: processedMeasurements
       },
       headers: {
         'Authorization': `Bearer ${token}`
@@ -448,7 +779,7 @@ const deleteClient = async () => {
   
   try {
     // Get auth token from the auth store
-    const auth = useAuth();
+    const auth = useSessionAuth();
     const token = auth.token.value;
     
     if (!token) {
