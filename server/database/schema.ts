@@ -157,6 +157,18 @@ export const measurements = pgTable('measurements', {
   }
 })
 
+// Payments table
+export const payments = pgTable('payments', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => orders.id),
+  amount: real('amount').notNull(),
+  paymentMethod: text('payment_method').notNull(),
+  paymentDate: timestamp('payment_date').notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').notNull(),
+  createdBy: text('created_by').notNull(), // User ID who created the payment
+})
+
 // Export types
 export type User = typeof users.$inferSelect
 export type Plan = typeof plans.$inferSelect
@@ -166,4 +178,5 @@ export type BusinessProfile = typeof businessProfiles.$inferSelect
 export type Client = typeof clients.$inferSelect
 export type Order = typeof orders.$inferSelect
 export type Style = typeof styles.$inferSelect
-export type Measurement = typeof measurements.$inferSelect 
+export type Measurement = typeof measurements.$inferSelect
+export type Payment = typeof payments.$inferSelect 

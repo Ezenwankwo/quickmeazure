@@ -1,6 +1,25 @@
 import { db } from '~/server/database';
 import { orders, clients, styles, measurements } from '~/server/database/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
+
+// Define interfaces for our data structures
+interface OrderDetails {
+  styleId?: number | null;
+  measurementId?: number | null;
+  depositAmount?: number;
+  balanceAmount?: number;
+  notes?: string | null;
+  [key: string]: any; // Allow for additional properties
+}
+
+interface OrderUpdateData {
+  status?: string;
+  description?: string | null;
+  dueDate?: string | null;
+  totalAmount?: number;
+  details?: OrderDetails;
+  updatedAt: Date;
+}
 
 // Define event handler for individual order operations
 export default defineEventHandler(async (event) => {
@@ -28,14 +47,11 @@ export default defineEventHandler(async (event) => {
     .select({
       id: orders.id,
       clientId: orders.clientId,
-      measurementId: orders.measurementId,
-      styleId: orders.styleId,
       status: orders.status,
       dueDate: orders.dueDate,
       totalAmount: orders.totalAmount,
-      depositAmount: orders.depositAmount,
-      balanceAmount: orders.balanceAmount,
-      notes: orders.notes,
+      description: orders.description,
+      details: orders.details,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
       // Include client name
@@ -46,9 +62,9 @@ export default defineEventHandler(async (event) => {
     })
     .from(orders)
     .innerJoin(clients, eq(orders.clientId, clients.id))
-    .leftJoin(styles, eq(orders.styleId, styles.id))
+    .leftJoin(styles, eq(sql`CAST((${orders.details}->>'styleId') AS INTEGER)`, styles.id))
     .where(and(
-      eq(orders.id, orderId),
+      eq(orders.id, parseInt(orderId)),
       eq(clients.userId, auth.userId)
     ));
 
@@ -61,7 +77,16 @@ export default defineEventHandler(async (event) => {
 
   // Handle GET request to fetch a single order
   if (method === 'GET') {
-    return orderWithClient[0];
+    // Extract values from details JSON
+    const details = (orderWithClient[0].details || {}) as OrderDetails;
+    return {
+      ...orderWithClient[0],
+      measurementId: details.measurementId,
+      styleId: details.styleId,
+      depositAmount: details.depositAmount || 0,
+      balanceAmount: details.balanceAmount || 0,
+      notes: details.notes
+    };
   }
 
   // Handle PATCH request to update order
@@ -70,45 +95,50 @@ export default defineEventHandler(async (event) => {
       const body = await readBody(event);
       console.log('Received update data:', JSON.stringify(body, null, 2));
       
+      // Get existing order details
+      const currentDetails = (orderWithClient[0].details || {}) as OrderDetails;
+      
+      // Create updated details object
+      const updatedDetails: OrderDetails = {
+        ...currentDetails,
+        ...(body.styleId !== undefined && { styleId: body.styleId === '' ? null : parseInt(body.styleId) }),
+        ...(body.measurementId !== undefined && { measurementId: body.measurementId === '' ? null : parseInt(body.measurementId) }),
+        ...(body.notes !== undefined && { notes: body.notes }),
+        ...(body.depositAmount !== undefined && { depositAmount: Number(body.depositAmount) || 0 })
+      };
+      
       // Create a new update data object with explicit values
-      // Type the update data to match the orders table schema
-      const finalUpdateData: Partial<typeof orders.$inferInsert> = {
+      const finalUpdateData: OrderUpdateData = {
         // Only include fields that were sent
         ...(body.status !== undefined && { status: body.status }),
-        ...(body.styleId !== undefined && { styleId: body.styleId === '' ? null : body.styleId }),
-        ...(body.notes !== undefined && { notes: body.notes }),
-        
-        // Handle numeric values explicitly
-        ...(body.totalAmount !== undefined && { 
-          totalAmount: Number(body.totalAmount) || 0 
-        }),
-        
-        ...(body.depositAmount !== undefined && { 
-          depositAmount: Number(body.depositAmount) || 0 
-        }),
+        ...(body.description !== undefined && { description: body.description }),
+        ...(body.totalAmount !== undefined && { totalAmount: Number(body.totalAmount) || 0 }),
         
         // Set updatedAt timestamp
         updatedAt: new Date(Date.now())
       };
       
+      // If details were updated, include them
+      if (JSON.stringify(currentDetails) !== JSON.stringify(updatedDetails)) {
+        finalUpdateData.details = updatedDetails;
+      }
+      
       // Handle measurementId separately due to validation requirement
-      if (body.measurementId !== undefined && body.measurementId !== orderWithClient[0].measurementId) {
+      if (body.measurementId !== undefined && body.measurementId !== currentDetails.measurementId) {
         // Additional check to ensure measurement belongs to this client
         const measurement = await db.query.measurements.findFirst({
           where: and(
-            eq(measurements.id, body.measurementId),
+            eq(measurements.id, parseInt(body.measurementId)),
             eq(measurements.clientId, orderWithClient[0].clientId)
           ),
         });
         
-        if (!measurement) {
+        if (!measurement && body.measurementId) {
           throw createError({
             statusCode: 400,
             statusMessage: 'Measurement does not exist or does not belong to this client',
           });
         }
-        
-        finalUpdateData.measurementId = body.measurementId;
       }
       
       // Handle due date separately to avoid getTime errors
@@ -116,7 +146,8 @@ export default defineEventHandler(async (event) => {
         if (body.dueDate === null || body.dueDate === '') {
           finalUpdateData.dueDate = null;
         } else if (typeof body.dueDate === 'number') {
-          finalUpdateData.dueDate = new Date(body.dueDate);
+          // Parse as date string instead of Date object to match schema
+          finalUpdateData.dueDate = new Date(body.dueDate).toISOString().split('T')[0];
         } else {
           // Don't try to parse the date, just use null
           finalUpdateData.dueDate = null;
@@ -124,23 +155,37 @@ export default defineEventHandler(async (event) => {
       }
       
       // Calculate balance amount
-      if (finalUpdateData.totalAmount !== undefined || finalUpdateData.depositAmount !== undefined) {
+      if (finalUpdateData.totalAmount !== undefined || updatedDetails.depositAmount !== undefined) {
         const totalAmount = finalUpdateData.totalAmount !== undefined 
           ? Number(finalUpdateData.totalAmount)
           : Number(orderWithClient[0].totalAmount);
           
-        const depositAmount = finalUpdateData.depositAmount !== undefined 
-          ? Number(finalUpdateData.depositAmount || 0)
-          : Number(orderWithClient[0].depositAmount || 0);
+        const depositAmount = updatedDetails.depositAmount !== undefined 
+          ? Number(updatedDetails.depositAmount || 0)
+          : Number(currentDetails.depositAmount || 0);
           
-        finalUpdateData.balanceAmount = totalAmount - depositAmount;
+        updatedDetails.balanceAmount = totalAmount - depositAmount;
+        
+        // Update the details object with new balance
+        if (!finalUpdateData.details) {
+          finalUpdateData.details = updatedDetails;
+        }
       }
       
       console.log('Final update data:', finalUpdateData);
 
       // If no fields to update, return existing order
       if (Object.keys(finalUpdateData).length === 0) {
-        return orderWithClient[0];
+        // Extract values from details JSON
+        const details = (orderWithClient[0].details || {}) as OrderDetails;
+        return {
+          ...orderWithClient[0],
+          measurementId: details.measurementId,
+          styleId: details.styleId,
+          depositAmount: details.depositAmount || 0,
+          balanceAmount: details.balanceAmount || 0,
+          notes: details.notes
+        };
       }
       
       // Perform update
@@ -150,7 +195,7 @@ export default defineEventHandler(async (event) => {
       try {
         await db.update(orders)
           .set(finalUpdateData)
-          .where(eq(orders.id, orderId));
+          .where(eq(orders.id, parseInt(orderId)));
           
         console.log('Order updated successfully');
       } catch (dbError: any) {
@@ -158,11 +203,19 @@ export default defineEventHandler(async (event) => {
         throw new Error(`Database operation failed: ${dbError.message || 'Unknown error'}`);
       }
       
-      // Return updated order
-      return {
+      // Return updated order with combined data
+      const updatedOrderData = {
         ...orderWithClient[0],
-        ...finalUpdateData
+        ...finalUpdateData,
+        // Extract fields from details
+        measurementId: updatedDetails.measurementId,
+        styleId: updatedDetails.styleId,
+        depositAmount: updatedDetails.depositAmount || 0,
+        balanceAmount: updatedDetails.balanceAmount || 0,
+        notes: updatedDetails.notes
       };
+      
+      return updatedOrderData;
     } catch (error: any) {
       console.error('Error updating order:', error);
       if (error.statusCode) {
@@ -178,7 +231,7 @@ export default defineEventHandler(async (event) => {
   // Handle DELETE request to delete order
   if (method === 'DELETE') {
     try {
-      await db.delete(orders).where(eq(orders.id, orderId));
+      await db.delete(orders).where(eq(orders.id, parseInt(orderId)));
       return { success: true };
     } catch (error: any) {
       console.error('Error deleting order:', error);

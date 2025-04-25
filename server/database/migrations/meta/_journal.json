@@ -50,6 +50,20 @@
       "when": 1745041422987,
       "tag": "0006_simple_lizard",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1745587289505,
+      "tag": "0007_clever_whizzer",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1745587624043,
+      "tag": "0008_lowly_veda",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,7 @@
             v-model="search"
             placeholder="Search client name..."
             icon="i-heroicons-magnifying-glass"
+            size="lg"
             class="w-full focus-within:ring-2 ring-primary-200"
             @input="filterOrders"
           />
@@ -29,9 +30,10 @@
         <div class="flex gap-2 w-full sm:w-auto sm:ml-auto">
           <USelect
             v-model="sortBy"
-            :options="sortOptions"
+            :items="sortOptions"
             placeholder="Sort by"
-            class="w-full sm:w-52 focus-within:ring-2 ring-primary-200"
+            size="lg"
+            class="w-full"
             @update:model-value="filterOrders"
           />
           
@@ -55,9 +57,10 @@
         <UFormField label="Status">
           <USelect
             v-model="filters.status"
-            :options="statusOptions"
+            :items="statusOptions"
             placeholder="All statuses"
-            class="focus-within:ring-2 ring-primary-200"
+            size="lg"
+            class="w-full"
             @update:model-value="filterOrders"
           />
         </UFormField>
@@ -65,9 +68,10 @@
         <UFormField label="Due Date">
           <USelect
             v-model="filters.dueDate"
-            :options="dueDateOptions"
+            :items="dueDateOptions"
             placeholder="Any time"
-            class="focus-within:ring-2 ring-primary-200"
+            size="lg"
+            class="w-full"
             @update:model-value="filterOrders"
           />
         </UFormField>
@@ -75,9 +79,10 @@
         <UFormField label="Payment Status">
           <USelect
             v-model="filters.paymentStatus"
-            :options="paymentStatusOptions"
+            :items="paymentStatusOptions"
             placeholder="All payment statuses"
-            class="focus-within:ring-2 ring-primary-200"
+            size="lg"
+            class="w-full"
             @update:model-value="filterOrders"
           />
         </UFormField>
@@ -112,11 +117,11 @@
         >
           <template #client-data="{ row }">
             <div class="flex items-center">
-              <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center mr-3">
-                <span class="text-primary-700 font-medium">{{ getInitials(row.client) }}</span>
+              <div class="w-8 h-8 rounded-full bg-gray-50 shadow-sm flex items-center justify-center mr-3 border border-gray-200">
+                <span class="text-gray-700 font-semibold">{{ getInitials(row.client) }}</span>
               </div>
-              <NuxtLink :to="`/orders/${row.id}/detail`" class="font-medium text-primary-600 hover:underline">
-                {{ row.clientName }}
+              <NuxtLink :to="`/orders/${row.id}/detail`" class="font-medium text-gray-800 hover:text-primary-700">
+                {{ row.clientName || row.client }}
               </NuxtLink>
             </div>
           </template>
@@ -156,7 +161,7 @@
               <div class="text-xs" :class="{
                 'text-green-600': row.balanceAmount <= 0,
                 'text-amber-600': row.depositAmount > 0 && row.balanceAmount > 0,
-                'text-gray-500': row.depositAmount <= 0
+                'text-gray-500': row.depositAmount <= 0 && row.balanceAmount > 0
               }">
                 <template v-if="row.balanceAmount <= 0">Paid in full</template>
                 <template v-else-if="row.depositAmount > 0">{{ formatPrice(row.balanceAmount) }} balance</template>
@@ -181,53 +186,14 @@
                 size="xs"
                 :to="`/orders/${row.id}/edit`"
               />
-              <UDropdownMenu>
-                <UButton
-                  color="gray"
-                  variant="ghost"
-                  icon="i-heroicons-ellipsis-vertical"
-                  size="xs"
-                />
-                
-                <template #items>
-                  <UButton
-                    class="w-full justify-start px-2 py-1 text-left"
-                    @click="updateOrderStatus(row, 'Completed')"
-                    :disabled="row.status === 'Completed'"
-                    variant="ghost"
-                  >
-                    <template #leading>
-                      <UIcon name="i-heroicons-check-circle" />
-                    </template>
-                    Mark as Completed
-                  </UButton>
-                  
-                  <UButton
-                    class="w-full justify-start px-2 py-1 text-left"
-                    :to="`/orders/${row.id}/payment`"
-                    :disabled="row.balanceAmount <= 0"
-                    variant="ghost"
-                  >
-                    <template #leading>
-                      <UIcon name="i-heroicons-currency-dollar" />
-                    </template>
-                    Record Payment
-                  </UButton>
-                  
-                  <USeparator />
-                  
-                  <UButton
-                    @click="confirmDelete(row)"
-                    class="w-full justify-start px-2 py-1 text-left text-red-500"
-                    variant="ghost"
-                  >
-                    <template #leading>
-                      <UIcon name="i-heroicons-trash" />
-                    </template>
-                    Delete Order
-                  </UButton>
-                </template>
-              </UDropdownMenu>
+              <UButton
+                color="gray"
+                variant="ghost"
+                icon="i-heroicons-trash"
+                size="xs"
+                class="text-red-500 hover:text-red-700"
+                @click="confirmDelete(row)"
+              />
             </div>
           </template>
         </UTable>
@@ -270,18 +236,19 @@
         <template v-else-if="paginatedOrders.length > 0">
           <div v-for="order in paginatedOrders" :key="order.id" class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
             <div class="flex items-start mb-3">
-              <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mr-3 flex-shrink-0">
-                <span class="text-primary-700 font-medium text-lg">{{ getInitials(order.client) }}</span>
+              <div class="w-10 h-10 rounded-full bg-gray-50 shadow-sm flex items-center justify-center mr-3 flex-shrink-0 border border-gray-200">
+                <span class="text-gray-700 font-semibold text-lg">{{ getInitials(order.client) }}</span>
               </div>
               <div class="flex-1 min-w-0">
-                <NuxtLink :to="`/orders/${order.id}/detail`" class="font-semibold text-lg text-primary-600 hover:underline block truncate">
+                <NuxtLink :to="`/orders/${order.id}/detail`" class="font-semibold text-lg text-gray-800 hover:text-primary-700 block truncate">
                   {{ order.client }}
                 </NuxtLink>
-                <div class="mt-1">
+                <div>
                   <UBadge
                     :color="getStatusColor(order.status)"
                     variant="subtle"
                     size="sm"
+                    class="inline-flex px-2.5 py-0.5 rounded font-medium text-xs"
                   >
                     {{ order.status }}
                   </UBadge>
@@ -314,10 +281,12 @@
                   <span :class="{
                     'text-green-600': order.balanceAmount <= 0,
                     'text-amber-600': order.depositAmount > 0 && order.balanceAmount > 0,
-                    'text-gray-500': order.depositAmount <= 0
+                    'text-gray-500': order.depositAmount <= 0 && order.balanceAmount > 0
                   }">
-                    <template v-if="order.balanceAmount <= 0">(Paid)</template>
-                    <template v-else-if="order.depositAmount > 0">({{ formatPrice(order.balanceAmount) }} balance)</template>
+                    <template v-if="order.balanceAmount <= 0">(Paid in full)</template>
+                    <template v-else-if="order.depositAmount > 0">
+                      ({{ formatPrice(order.depositAmount) }} paid, {{ formatPrice(order.balanceAmount) }} balance)
+                    </template>
                     <template v-else>(No payment)</template>
                   </span>
                 </div>
@@ -356,53 +325,14 @@
                   size="xs"
                   :to="`/orders/${order.id}/edit`"
                 />
-                <UDropdownMenu>
-                  <UButton
-                    color="gray"
-                    variant="ghost"
-                    icon="i-heroicons-ellipsis-vertical"
-                    size="sm"
-                  />
-                  
-                  <template #items>
-                    <UButton
-                      class="w-full justify-start px-2 py-1 text-left"
-                      @click="updateOrderStatus(order, 'Completed')"
-                      :disabled="order.status === 'Completed'"
-                      variant="ghost"
-                    >
-                      <template #leading>
-                        <UIcon name="i-heroicons-check-circle" />
-                      </template>
-                      Mark as Completed
-                    </UButton>
-                    
-                    <UButton
-                      class="w-full justify-start px-2 py-1 text-left"
-                      :to="`/orders/${order.id}/payment`"
-                      :disabled="order.balanceAmount <= 0"
-                      variant="ghost"
-                    >
-                      <template #leading>
-                        <UIcon name="i-heroicons-currency-dollar" />
-                      </template>
-                      Record Payment
-                    </UButton>
-                    
-                    <USeparator />
-                    
-                    <UButton
-                      @click="confirmDelete(order)"
-                      class="w-full justify-start px-2 py-1 text-left text-red-500"
-                      variant="ghost"
-                    >
-                      <template #leading>
-                        <UIcon name="i-heroicons-trash" />
-                      </template>
-                      Delete Order
-                    </UButton>
-                  </template>
-                </UDropdownMenu>
+                <UButton
+                  color="gray"
+                  variant="ghost"
+                  icon="i-heroicons-trash"
+                  size="sm"
+                  class="text-red-500 hover:text-red-700"
+                  @click="confirmDelete(order)"
+                />
               </div>
             </div>
           </div>
@@ -765,17 +695,58 @@ const fetchOrders = async () => {
 const formatOrderData = (order) => {
   const dueDate = order.dueDate ? new Date(order.dueDate) : null;
   
+  // Extract payment information from order details if it exists
+  let depositAmount = 0;
+  let balanceAmount = 0;
+  
+  // Extract payment data from order.payments or order.details.payments
+  if (order.details && typeof order.details === 'object') {
+    console.log('Order details found:', order.details);
+    
+    // Try to get payments from details
+    if (order.details.payments) {
+      console.log('Payments found in details:', order.details.payments);
+      depositAmount = parseFloat(order.details.depositAmount || 0);
+    }
+    
+    // Try to extract depositAmount directly
+    if (order.details.depositAmount) {
+      depositAmount = parseFloat(order.details.depositAmount);
+    }
+  }
+  
+  // Check if depositAmount comes directly from the order object
+  if (order.depositAmount) {
+    depositAmount = parseFloat(order.depositAmount);
+  }
+  
+  // Calculate balance amount
+  const totalAmount = order.totalAmount || 0;
+  if (order.balanceAmount !== undefined) {
+    balanceAmount = parseFloat(order.balanceAmount);
+  } else {
+    balanceAmount = totalAmount - depositAmount;
+  }
+  
+  console.log('Payment details extracted:', { 
+    totalAmount,
+    depositAmount,
+    balanceAmount
+  });
+  
   return {
     id: order.id,
     client: order.clientName,
     clientId: order.clientId,
     status: order.status,
+    style: order.style || order.styleName || '', // Try multiple possible field names
     dueDate: dueDate,
     isOverdue: dueDate ? isOverdue(dueDate) : false,
     isDueSoon: dueDate ? isDueSoon(dueDate) : false,
-    totalAmount: order.totalAmount,
-    balanceAmount: order.balanceAmount,
-    paymentStatus: order.balanceAmount > 0 ? 'partial' : 'paid',
+    totalAmount: totalAmount,
+    balanceAmount: balanceAmount,
+    depositAmount: depositAmount,
+    paymentStatus: balanceAmount > 0 ? (depositAmount > 0 ? 'partial' : 'none') : 'paid',
     createdAt: new Date(order.createdAt).toISOString(),
     updatedAt: new Date(order.updatedAt).toISOString(),
     styleImageUrl: order.styleImageUrl,
@@ -864,17 +835,17 @@ const isDueSoon = (dueDate) => {
 const getStatusColor = (status) => {
   switch (status) {
     case 'Pending':
-      return 'gray';
+      return 'neutral';
     case 'In Progress':
-      return 'blue';
+      return 'primary';
     case 'Ready for Pickup':
-      return 'amber';
+      return 'warning';
     case 'Completed':
-      return 'green';
+      return 'success';
     case 'Cancelled':
-      return 'red';
+      return 'error';
     default:
-      return 'gray';
+      return 'neutral';
   }
 };
 

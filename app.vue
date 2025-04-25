@@ -2,7 +2,9 @@
   <UApp>
     <ClientOnly>
       <NuxtLayout :name="layout">
-        <NuxtPage />
+        <template #default>
+          <NuxtPage :route="$route" />
+        </template>
       </NuxtLayout>
       
       <template #fallback>

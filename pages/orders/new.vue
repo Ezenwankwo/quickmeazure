@@ -5,6 +5,7 @@
         icon="i-heroicons-arrow-left"
         color="gray"
         variant="ghost"
+        size="lg"
         to="/orders"
         class="mr-4"
       />
@@ -15,117 +16,177 @@
       <form @submit.prevent="saveOrder" class="space-y-6">
         <!-- Basic Information -->
         <div>
-          <h2 class="text-lg font-medium mb-4">Order Information</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Measurement Selection (instead of client) -->
-            <UFormField label="Measurement" name="measurementId" required>
-              <USelect
-                v-model="form.measurementId"
-                :options="measurementOptions"
-                placeholder="Select a measurement"
+          <div class="grid grid-cols-1 gap-6">
+            <!-- Client Selection -->
+            <UFormField label="Client" name="clientId" required>
+              <USelectMenu
+                v-model="form.clientId"
+                :items="clientOptions"
+                size="lg"
+                class="w-full"
+                placeholder="Select a client"
                 required
-                @update:model-value="updateClientId"
               />
             </UFormField>
             
-            <!-- Style Selection -->
-            <UFormField label="Style" name="styleId">
-              <USelect
-                v-model="form.styleId"
-                :options="styleOptions"
-                placeholder="Select a style (optional)"
-              />
-            </UFormField>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Style Selection -->
+              <UFormField label="Style" name="styleId">
+                <USelectMenu
+                  v-model="form.styleId"
+                  :items="styleOptions"
+                  size="lg"
+                  class="w-full"
+                  placeholder="Select a style (optional)"
+                />
+              </UFormField>
 
-            <!-- Order Status -->
-            <UFormField label="Status" name="status" required>
-              <USelect
-                v-model="form.status"
-                :options="statusOptions"
-                placeholder="Select status"
-                required
-              />
-            </UFormField>
-            
-            <!-- Due Date -->
-            <UFormField label="Due Date" name="dueDate">
-              <UInput
-                v-model="form.dueDate"
-                type="date"
-              />
-            </UFormField>
-          </div>
-        </div>
-        
-        <!-- Payment Information -->
-        <div>
-          <h2 class="text-lg font-medium mb-4">Payment Information</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <UFormField label="Total Amount" name="totalAmount" required>
-              <UInputGroup>
-                <template #prepend>
-                  <span class="text-gray-500">₦</span>
-                </template>
-                <UInput
-                  v-model.number="form.totalAmount"
-                  type="number"
-                  step="0.01"
-                  min="0"
+              <!-- Order Status -->
+              <UFormField label="Status" name="status" required>
+                <USelectMenu
+                  v-model="form.status"
+                  :items="statusOptions"
+                  size="lg"
+                  class="w-full"
+                  placeholder="Select status"
                   required
-                  @input="calculateBalance"
                 />
-              </UInputGroup>
-            </UFormField>
-            
-            <UFormField label="Deposit Amount" name="depositAmount">
-              <UInputGroup>
-                <template #prepend>
-                  <span class="text-gray-500">₦</span>
-                </template>
+              </UFormField>
+              
+              <!-- Due Date -->
+              <UFormField label="Due Date" name="dueDate">
                 <UInput
-                  v-model.number="form.depositAmount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  @input="calculateBalance"
+                  v-model="form.dueDate"
+                  type="date"
+                  size="lg"
+                  class="w-full"
                 />
-              </UInputGroup>
-            </UFormField>
-
-            <UFormField label="Balance Due" name="balanceAmount">
-              <UInputGroup>
-                <template #prepend>
-                  <span class="text-gray-500">₦</span>
-                </template>
-                <UInput
-                  :model-value="balanceAmount"
-                  type="number"
-                  disabled
-                  class="bg-gray-50"
-                />
-              </UInputGroup>
-            </UFormField>
+              </UFormField>
+            </div>
           </div>
         </div>
         
-        <!-- Additional Information -->
-        <div>
-          <h2 class="text-lg font-medium mb-4">Additional Information</h2>
-          <UFormField label="Notes" name="notes">
-            <UTextarea
-              v-model="form.notes"
-              placeholder="Add any additional notes about this order..."
-              rows="4"
-            />
-          </UFormField>
+        <!-- Collapsible Sections -->
+        <div class="mt-6 space-y-4">
+          <!-- Payment Section -->
+          <div class="border rounded-lg overflow-hidden shadow-sm transition-all hover:shadow-md">
+            <div 
+              @click="toggleSection('payment')" 
+              class="flex justify-between items-center p-4 cursor-pointer transition-colors"
+              :class="openSections.includes('payment') ? 'bg-primary-50 border-b border-primary-100' : 'bg-white'"
+            >
+              <div class="font-medium flex items-center">
+                <UIcon 
+                  name="i-heroicons-banknotes" 
+                  class="h-5 w-5 mr-2 text-primary-500"
+                />
+                Payment Information
+              </div>
+              <UIcon 
+                :name="openSections.includes('payment') ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" 
+                class="h-5 w-5 transition-transform text-primary-500"
+              />
+            </div>
+            
+            <div v-show="openSections.includes('payment')" class="p-6 bg-gray-50 rounded-b-lg space-y-6 border-t border-primary-100">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <UFormField label="Total Amount" name="totalAmount" required>
+                  <UInput
+                    v-model.number="form.totalAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    size="lg"
+                    class="w-full"
+                    required
+                    @input="calculateBalance"
+                  >
+                    <template #leading>
+                      <span class="inline-flex items-center text-primary-700 text-sm font-medium">
+                        ₦
+                      </span>
+                    </template>
+                  </UInput>
+                </UFormField>
+                
+                <UFormField label="Deposit Amount" name="depositAmount">
+                  <UInput
+                    v-model.number="form.depositAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    size="lg"
+                    class="w-full"
+                    @input="calculateBalance"
+                  >
+                    <template #leading>
+                      <span class="inline-flex items-center text-primary-700 text-sm font-medium">
+                        ₦
+                      </span>
+                    </template>
+                  </UInput>
+                </UFormField>
+
+                <UFormField label="Balance Due" name="balanceAmount">
+                  <UInput
+                    :model-value="balanceAmount"
+                    type="number"
+                    disabled
+                    class="w-full bg-gray-50"
+                    size="lg"
+                  >
+                    <template #leading>
+                      <span class="inline-flex items-center text-primary-700 text-sm font-medium">
+                        ₦
+                      </span>
+                    </template>
+                  </UInput>
+                </UFormField>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Additional Information Section -->
+          <div class="border rounded-lg overflow-hidden shadow-sm transition-all hover:shadow-md">
+            <div 
+              @click="toggleSection('notes')" 
+              class="flex justify-between items-center p-4 cursor-pointer transition-colors"
+              :class="openSections.includes('notes') ? 'bg-primary-50 border-b border-primary-100' : 'bg-white'"
+            >
+              <div class="font-medium flex items-center">
+                <UIcon 
+                  name="i-heroicons-document-text" 
+                  class="h-5 w-5 mr-2 text-primary-500"
+                />
+                Additional Information
+              </div>
+              <UIcon 
+                :name="openSections.includes('notes') ? 'i-heroicons-chevron-up' : 'i-heroicons-chevron-down'" 
+                class="h-5 w-5 transition-transform text-primary-500"
+              />
+            </div>
+            
+            <div v-show="openSections.includes('notes')" class="p-6 bg-gray-50 rounded-b-lg space-y-6 border-t border-primary-100">
+              <UFormField label="Notes" name="notes">
+                <UTextarea
+                  v-model="form.notes"
+                  placeholder="Add any additional notes about this order..."
+                  :rows="4"
+                  class="w-full"
+                  size="lg"
+                />
+              </UFormField>
+            </div>
+          </div>
         </div>
         
         <!-- Action Buttons -->
-        <div class="flex justify-end space-x-4">
+        <div class="flex justify-end space-x-4 pt-6 border-t mt-6">
           <UButton
             type="button"
-            color="gray"
+            color="neutral"
             variant="outline"
+            size="lg"
             to="/orders"
           >
             Cancel
@@ -134,6 +195,7 @@
             type="submit"
             color="primary"
             :loading="isSubmitting"
+            size="lg"
           >
             Create Order
           </UButton>
@@ -152,9 +214,20 @@ useHead({
 // Import auth composable
 import { useSessionAuth } from '~/composables/useSessionAuth';
 
+// Track which sections are open
+const openSections = ref(['payment']);
+
+// Toggle section visibility
+const toggleSection = (sectionValue) => {
+  if (!openSections.value.includes(sectionValue)) {
+    openSections.value.push(sectionValue);
+  } else {
+    openSections.value = openSections.value.filter(item => item !== sectionValue);
+  }
+};
+
 // Form state
 const form = ref({
-  measurementId: '',
   clientId: '',
   styleId: '',
   status: 'Pending',
@@ -180,43 +253,35 @@ const statusOptions = [
 
 // State variables
 const isSubmitting = ref(false);
-const measurements = ref([]);
+const clients = ref([]);
 const styles = ref([]);
 
-// Generate options for measurements dropdown
-const measurementOptions = computed(() => {
-  return measurements.value.map(measurement => ({
-    label: `${measurement.clientName} - ${formatMeasurementLabel(measurement)}`,
-    value: measurement.id
+// Generate options for clients dropdown
+const clientOptions = computed(() => {
+  if (!clients.value || !Array.isArray(clients.value) || clients.value.length === 0) {
+    console.log('No clients available to display');
+    return [];
+  }
+  
+  return clients.value.map(client => ({
+    label: client.name + (client.phone ? ` (${client.phone})` : ''),
+    value: client.id,
+    icon: 'i-heroicons-user'
   }));
 });
-
-// Format measurement label to show key measurements in the dropdown
-const formatMeasurementLabel = (measurement) => {
-  const keyMeasurements = [];
-  if (measurement.bust) keyMeasurements.push(`Bust: ${measurement.bust}"`);
-  if (measurement.waist) keyMeasurements.push(`Waist: ${measurement.waist}"`);
-  if (measurement.hip) keyMeasurements.push(`Hip: ${measurement.hip}"`);
-  
-  return keyMeasurements.length > 0 
-    ? keyMeasurements.join(', ') 
-    : 'Measurement ' + new Date(measurement.updatedAt).toLocaleDateString();
-};
 
 const styleOptions = computed(() => {
+  if (!styles.value || !Array.isArray(styles.value) || styles.value.length === 0) {
+    console.log('No styles available to display');
+    return [];
+  }
+  
   return styles.value.map(style => ({
-    label: style.name,
-    value: style.id
+    label: style.name || 'Unnamed Style',
+    value: style.id,
+    icon: 'i-heroicons-swatch'
   }));
 });
-
-// When measurement is selected, set the clientId
-const updateClientId = () => {
-  const selectedMeasurement = measurements.value.find(m => m.id === form.value.measurementId);
-  if (selectedMeasurement) {
-    form.value.clientId = selectedMeasurement.clientId;
-  }
-};
 
 // Calculate balance when total or deposit changes
 const calculateBalance = () => {
@@ -226,7 +291,7 @@ const calculateBalance = () => {
   }
 };
 
-// Fetch measurements and styles data
+// Fetch clients and styles data
 const fetchData = async () => {
   try {
     // Get auth token from the auth store
@@ -244,21 +309,37 @@ const fetchData = async () => {
       return;
     }
     
-    // Fetch measurements
-    const measurementsData = await $fetch('/api/measurements', {
+    // Fetch clients
+    console.log('Fetching clients data...');
+    const clientsData = await $fetch('/api/clients', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
-    measurements.value = measurementsData;
+    
+    if (clientsData && clientsData.data) {
+      clients.value = clientsData.data;
+      console.log(`Successfully loaded ${clients.value.length} clients`);
+    } else {
+      console.warn('Clients data is not in the expected format', clientsData);
+      clients.value = [];
+    }
     
     // Fetch styles
+    console.log('Fetching styles data...');
     const stylesData = await $fetch('/api/styles', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
-    styles.value = stylesData;
+    
+    if (stylesData && stylesData.data) {
+      styles.value = stylesData.data;
+      console.log(`Successfully loaded ${styles.value.length} styles`);
+    } else {
+      console.warn('Styles data is not in the expected format', stylesData);
+      styles.value = [];
+    }
   } catch (error) {
     console.error('Error fetching data:', error);
     useToast().add({
@@ -272,7 +353,7 @@ const fetchData = async () => {
 // Save the order
 const saveOrder = async () => {
   // Form validation
-  if (!form.value.measurementId || !form.value.clientId || form.value.totalAmount <= 0) {
+  if (!form.value.clientId || form.value.totalAmount <= 0) {
     useToast().add({
       title: 'Validation Error',
       description: 'Please fill in all required fields.',
@@ -301,9 +382,8 @@ const saveOrder = async () => {
         'Authorization': `Bearer ${token}`
       },
       body: {
-        clientId: form.value.clientId,
-        measurementId: form.value.measurementId,
-        styleId: form.value.styleId || null,
+        clientId: typeof form.value.clientId === 'object' ? form.value.clientId.value : form.value.clientId,
+        styleId: form.value.styleId ? (typeof form.value.styleId === 'object' ? form.value.styleId.value : form.value.styleId) : null,
         status: form.value.status,
         dueDate: dueDate,
         totalAmount: form.value.totalAmount,

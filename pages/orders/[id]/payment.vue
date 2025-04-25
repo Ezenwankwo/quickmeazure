@@ -69,54 +69,48 @@
               <h3 class="text-lg font-medium">Payment Details</h3>
             </template>
             
-            <!-- Payment Amount -->
-            <UFormGroup label="Payment Amount *" required>
-              <UInputGroup>
-                <template #prepend>
-                  <span class="text-gray-500">$</span>
-                </template>
+            <div class="space-y-6">
+              <!-- Payment Amount -->
+              <UFormField label="Amount" required>
                 <UInput
-                  v-model.number="form.amount"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  :max="order.balanceAmount"
+                  v-model="form.amount"
+                  type="text"
+                  placeholder="Enter amount"
+                  class="w-full"
+                  :ui="{ leading: 'pointer-events-none', base: 'pl-[40px] w-full' }"
+                >
+                  <template #leading>
+                    <p class="text-sm text-muted">₦</p>
+                  </template>
+                </UInput>
+              </UFormField>
+              
+              <!-- Payment Method -->
+              <UFormField label="Payment Method *" required>
+                <URadioGroup v-model="form.paymentMethod" :items="paymentMethodOptions" />
+              </UFormField>
+              
+              <!-- Date -->
+              <UFormField label="Payment Date *" required>
+                <UInput
+                  v-model="form.paymentDate"
+                  type="date"
+                  :max="todayFormatted"
                   required
+                  class="w-full"
                 />
-              </UInputGroup>
-              <template #hint>
-                <span class="text-sm text-gray-500">
-                  <span v-if="form.amount === order.balanceAmount">This will pay off the full balance.</span>
-                  <span v-else-if="form.amount">
-                    Remaining balance will be {{ formatPrice(order.balanceAmount - form.amount) }}.
-                  </span>
-                </span>
-              </template>
-            </UFormGroup>
-            
-            <!-- Payment Method -->
-            <UFormGroup label="Payment Method *" required>
-              <URadioGroup v-model="form.paymentMethod" :options="paymentMethodOptions" />
-            </UFormGroup>
-            
-            <!-- Date -->
-            <UFormGroup label="Payment Date *" required>
-              <UInput
-                v-model="form.paymentDate"
-                type="date"
-                :max="todayFormatted"
-                required
-              />
-            </UFormGroup>
-            
-            <!-- Notes -->
-            <UFormGroup label="Notes">
-              <UTextarea
-                v-model="form.notes"
-                placeholder="Add any additional notes about this payment..."
-                :ui="{ base: 'h-24' }"
-              />
-            </UFormGroup>
+              </UFormField>
+              
+              <!-- Notes -->
+              <UFormField label="Notes">
+                <UTextarea
+                  v-model="form.notes"
+                  class="w-full"
+                  placeholder="Add any additional notes about this payment..."
+                  :ui="{ base: 'h-24 w-full' }"
+                />
+              </UFormField>
+            </div>
             
             <!-- Submit Button -->
             <template #footer>
@@ -219,7 +213,7 @@ const formatDate = (timestamp) => {
 };
 
 const formatPrice = (amount) => {
-  return `$${amount.toFixed(2)}`;
+  return `₦${amount.toFixed(2)}`;
 };
 
 const getStatusColor = (status) => {
