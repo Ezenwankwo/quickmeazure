@@ -22,6 +22,9 @@ export default defineNuxtConfig({
   build: {
     transpile: ['@nuxt/ui']
   },
+  ui: {
+    colorMode: false
+  },
   vite: {
     optimizeDeps: {
       include: ['vue', '@nuxt/ui']
