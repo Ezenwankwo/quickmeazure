@@ -162,11 +162,11 @@ const handleLogin = async () => {
       // Only redirect if not already redirected by the auth service
       // The auth service redirects users without a subscription to the confirm page
       if (!result.redirected) {
-        // Redirect to the intended destination or dashboard
+        // Redirect to the intended destination or measure page
         if (route.query.redirect) {
           navigateTo(decodeURIComponent(route.query.redirect.toString()));
         } else {
-          navigateTo('/dashboard');
+          navigateTo('/clients/new');
         }
       }
     } else {

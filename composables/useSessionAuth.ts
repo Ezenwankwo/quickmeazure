@@ -279,11 +279,14 @@ export function useSessionAuth() {
   
   // Handle session expiry
   const handleSessionExpiry = async (showNotification = true) => {
+    // Check if this is an intentional logout
+    const isIntentionalLogout = process.client && localStorage.getItem('intentionalLogout') === 'true'
+    
     // Call logout
     await logout()
     
-    // Show notification
-    if (showNotification && process.client) {
+    // Show notification only if not an intentional logout
+    if (showNotification && process.client && !isIntentionalLogout) {
       const toast = useToast()
       toast.add({
         title: 'Session Expired',

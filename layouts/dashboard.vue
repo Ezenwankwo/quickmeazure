@@ -170,10 +170,21 @@ watch(route, () => {
 // Update the logout function
 const handleLogout = async () => {
   try {
+    // Set a flag in localStorage to indicate this is an intentional logout
+    // This will be used to prevent showing 'Session Expired' toasts
+    if (process.client) {
+      localStorage.setItem('intentionalLogout', 'true');
+    }
+    
     await auth.logout();
     navigateTo('/auth/login');
   } catch (error) {
     console.error('Error logging out:', error);
+  } finally {
+    // Clean up the flag after logout is complete
+    if (process.client) {
+      localStorage.removeItem('intentionalLogout');
+    }
   }
 };
 </script>
