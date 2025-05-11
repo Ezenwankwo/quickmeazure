@@ -146,7 +146,6 @@
                   />
                 </UTooltip>
               </div>
-              <p v-if="style.description" class="text-gray-600 line-clamp-1 text-xs sm:text-sm leading-relaxed">{{ style.description }}</p>
             </div>
             
             <template #footer>

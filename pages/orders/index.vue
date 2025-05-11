@@ -109,99 +109,139 @@
     <UCard class="bg-white">
       <!-- Desktop Table View (hidden on mobile) -->
       <div class="hidden md:block">
-        <UTable 
-          :columns="columns" 
-          :rows="paginatedOrders" 
-          :loading="isLoading"
-          :empty-state="{
-            icon: 'i-heroicons-shopping-bag',
-            label: 'No orders found',
-            description: search || isFilterApplied.value ? 'Try adjusting your search or filters' : 'Get started by creating your first order',
-            action: search || isFilterApplied.value ? { label: 'Reset filters', click: resetFilters } : { label: 'Create order', to: '/orders/new' }
-          }"
-        >
-          <template #client-data="{ row }">
-            <div class="flex items-center">
-              <div class="w-8 h-8 rounded-full bg-gray-50 shadow-sm flex items-center justify-center mr-3 border border-gray-200">
-                <span class="text-gray-700 font-semibold">{{ getInitials(row.client) }}</span>
-              </div>
-              <NuxtLink :to="`/orders/${row.id}/detail`" class="font-medium text-gray-800 hover:text-primary-700">
-                {{ row.clientName || row.client }}
-              </NuxtLink>
-            </div>
-          </template>
-          
-          <template #style-data="{ row }">
-            <span v-if="row.style">{{ row.style }}</span>
-            <span v-else class="text-gray-400">No style</span>
-          </template>
-          
-          <template #dueDate-data="{ row }">
-            <div v-if="row.dueDate" class="flex items-center">
-              <span :class="{
-                'text-red-600 font-medium': isOverdue(row.dueDate),
-                'text-amber-600 font-medium': !isOverdue(row.dueDate) && isDueSoon(row.dueDate)
-              }">
-                {{ formatDate(row.dueDate) }}
-              </span>
-              <UIcon v-if="isOverdue(row.dueDate)" name="i-heroicons-exclamation-circle" class="text-red-500 ml-1" />
-              <UIcon v-else-if="isDueSoon(row.dueDate)" name="i-heroicons-clock" class="text-amber-500 ml-1" />
-            </div>
-            <span v-else class="text-gray-400">Not set</span>
-          </template>
-          
-          <template #status-data="{ row }">
-            <UBadge
-              :color="getStatusColor(row.status)"
-              variant="subtle"
-              size="sm"
+        <!-- Loading state for desktop -->
+        <div v-if="isLoading" class="py-8 space-y-6">
+          <USkeleton class="h-8 w-full" />
+          <USkeleton v-for="i in 5" :key="i" class="h-12 w-full" />
+        </div>
+        
+        <!-- Empty state for desktop -->
+        <div v-else-if="paginatedOrders.length === 0" class="py-12 text-center">
+          <UIcon name="i-heroicons-shopping-bag" class="mx-auto h-12 w-12 text-gray-400" />
+          <h3 class="mt-2 text-sm font-semibold text-gray-900">No orders found</h3>
+          <p class="mt-1 text-sm text-gray-500">
+            {{ search || isFilterApplied ? 'Try adjusting your search or filters' : 'Get started by creating your first order' }}
+          </p>
+          <div class="mt-6">
+            <UButton
+              v-if="!search && !isFilterApplied"
+              to="/orders/new"
+              color="primary"
             >
-              {{ row.status }}
-            </UBadge>
-          </template>
-          
-          <template #payment-data="{ row }">
-            <div class="flex flex-col">
-              <div class="text-sm font-medium">{{ formatPrice(row.totalAmount) }}</div>
-              <div class="text-xs" :class="{
-                'text-green-600': row.balanceAmount <= 0,
-                'text-amber-600': row.depositAmount > 0 && row.balanceAmount > 0,
-                'text-gray-500': row.depositAmount <= 0 && row.balanceAmount > 0
-              }">
-                <template v-if="row.balanceAmount <= 0">Paid in full</template>
-                <template v-else-if="row.depositAmount > 0">{{ formatPrice(row.balanceAmount) }} balance</template>
-                <template v-else>No payment</template>
-              </div>
-            </div>
-          </template>
-          
-          <template #actions-data="{ row }">
-            <div class="flex space-x-2">
-              <UButton
-                icon="i-heroicons-eye"
-                color="gray"
-                variant="ghost"
-                size="xs"
-                :to="`/orders/${row.id}/detail`"
-              />
-              <UButton
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-pencil-square"
-                size="xs"
-                :to="`/orders/${row.id}/edit`"
-              />
-              <UButton
-                color="gray"
-                variant="ghost"
-                icon="i-heroicons-trash"
-                size="xs"
-                class="text-red-500 hover:text-red-700"
-                @click="confirmDelete(row)"
-              />
-            </div>
-          </template>
-        </UTable>
+              Create order
+            </UButton>
+            <UButton
+              v-else
+              color="gray"
+              variant="outline"
+              @click="resetFilters"
+            >
+              Reset filters
+            </UButton>
+          </div>
+        </div>
+        
+        <!-- Table for desktop -->
+        <table v-else class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th v-for="column in columns" :key="column.key" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {{ column.label }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="order in paginatedOrders" :key="order.id" class="hover:bg-gray-50">
+              <!-- Client column -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="w-8 h-8 rounded-full bg-gray-50 shadow-sm flex items-center justify-center mr-3 border border-gray-200">
+                    <span class="text-gray-700 font-semibold">{{ getInitials(order.client) }}</span>
+                  </div>
+                  <NuxtLink :to="`/orders/${order.id}/detail`" class="font-medium text-gray-800 hover:text-primary-700">
+                    {{ order.clientName || order.client }}
+                  </NuxtLink>
+                </div>
+              </td>
+              
+              <!-- Style column -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span v-if="order.style">{{ order.style }}</span>
+                <span v-else class="text-gray-400">No style</span>
+              </td>
+              
+              <!-- Due Date column -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div v-if="order.dueDate" class="flex items-center">
+                  <span :class="{
+                    'text-red-600 font-medium': isOverdue(order.dueDate),
+                    'text-amber-600 font-medium': !isOverdue(order.dueDate) && isDueSoon(order.dueDate)
+                  }">
+                    {{ formatDate(order.dueDate) }}
+                  </span>
+                  <UIcon v-if="isOverdue(order.dueDate)" name="i-heroicons-exclamation-circle" class="text-red-500 ml-1" />
+                  <UIcon v-else-if="isDueSoon(order.dueDate)" name="i-heroicons-clock" class="text-amber-500 ml-1" />
+                </div>
+                <span v-else class="text-gray-400">Not set</span>
+              </td>
+              
+              <!-- Status column -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <UBadge
+                  :color="getStatusColor(order.status)"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ order.status }}
+                </UBadge>
+              </td>
+              
+              <!-- Payment column -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex flex-col">
+                  <div class="text-sm font-medium">{{ formatPrice(order.totalAmount) }}</div>
+                  <div class="text-xs" :class="{
+                    'text-green-600': order.balanceAmount <= 0,
+                    'text-amber-600': order.depositAmount > 0 && order.balanceAmount > 0,
+                    'text-gray-500': order.depositAmount <= 0 && order.balanceAmount > 0
+                  }">
+                    <template v-if="order.balanceAmount <= 0">Paid in full</template>
+                    <template v-else-if="order.depositAmount > 0">{{ formatPrice(order.balanceAmount) }} balance</template>
+                    <template v-else>No payment</template>
+                  </div>
+                </div>
+              </td>
+              
+              <!-- Actions column -->
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex space-x-2">
+                  <UButton
+                    icon="i-heroicons-eye"
+                    color="gray"
+                    variant="ghost"
+                    size="xs"
+                    :to="`/orders/${order.id}/detail`"
+                  />
+                  <UButton
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-pencil-square"
+                    size="xs"
+                    :to="`/orders/${order.id}/edit`"
+                  />
+                  <UButton
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-trash"
+                    size="xs"
+                    class="text-red-500 hover:text-red-700"
+                    @click="confirmDelete(order)"
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       
       <!-- Mobile Card View -->
@@ -582,6 +622,8 @@ const showPagination = computed(() => {
   return totalPages.value > 1;
 });
 
+// This section intentionally left empty as the isFilterApplied computed property is already defined above
+
 // Fetch orders from API
 const fetchOrders = async () => {
   isLoading.value = true;
@@ -769,7 +811,8 @@ onMounted(() => {
 const isFilterApplied = computed(() => {
   return filters.value.status !== 'all' || 
          filters.value.dueDate !== 'all' || 
-         filters.value.paymentStatus !== 'any';
+         filters.value.paymentStatus !== 'any' ||
+         search.value.trim() !== '';
 });
 
 // Filter and sort orders
