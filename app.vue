@@ -1,14 +1,17 @@
 <template>
   <UApp>
+    <!-- Removed ClientOnly wrapper to fix navigation double-click issue -->
+    <NuxtLayout :name="layout">
+      <template #default>
+        <!-- Removed :route prop which was causing reactivity issues -->
+        <NuxtPage />
+      </template>
+    </NuxtLayout>
+    
+    <!-- Loading indicator moved outside the main navigation flow -->
     <ClientOnly>
-      <NuxtLayout :name="layout">
-        <template #default>
-          <NuxtPage :route="$route" />
-        </template>
-      </NuxtLayout>
-      
       <template #fallback>
-        <div class="flex justify-center items-center h-screen">
+        <div class="fixed inset-0 flex justify-center items-center bg-white bg-opacity-80 z-50">
           <UIcon name="i-heroicons-arrow-path" class="animate-spin text-5xl text-primary-500" />
         </div>
       </template>
