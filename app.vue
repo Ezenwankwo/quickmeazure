@@ -24,15 +24,4 @@ import { useLayout } from '~/composables/useLayout';
 
 // Get the current layout
 const { layout } = useLayout();
-
-// Set page metadata
-useHead({
-  title: 'QuickMeazure - Tailor Business Management',
-  meta: [
-    { name: 'description', content: 'Easily manage your clients\'s measurements, styles, and payments with QuickMeazure.' }
-  ],
-  link: [
-    { rel: 'icon', type: 'image/svg+xml', href: '/favicon.ico' }
-  ]
-});
 </script>

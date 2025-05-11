@@ -3,7 +3,7 @@ import { defineNuxtConfig } from 'nuxt/config'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ['@nuxt/ui', 'nuxt-auth-utils', '@nuxt/image'],
+  modules: ['@nuxt/ui', 'nuxt-auth-utils', '@nuxt/image', '@nuxtjs/seo'],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     // Keys within public are also exposed client-side
@@ -24,6 +24,12 @@ export default defineNuxtConfig({
   },
   ui: {
     colorMode: false
+  },
+  site: {
+    url: 'https://quickmeazure.com',
+    name: 'QuickMeazure - Tailor Business Management',
+    description: 'Easily manage your clients\'s measurements, styles, and payments with QuickMeazure.',
+    defaultLocale: 'en',
   },
   vite: {
     optimizeDeps: {
