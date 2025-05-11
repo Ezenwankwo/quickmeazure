@@ -33,10 +33,11 @@
       <form @submit.prevent="handleRegister" class="space-y-6">
         <div class="space-y-6">
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700">Full Name</label>
+            <label for="fullName" class="block text-sm font-medium text-gray-700">Full Name</label>
             <UInput
               v-model="name"
               name="name"
+              id="fullName"
               placeholder="Your full name"
               required
               size="lg"
@@ -46,10 +47,11 @@
           </div>
           
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700">Email</label>
+            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
             <UInput
               v-model="email"
               name="email"
+              id="email"
               type="email"
               placeholder="Your email address"
               required
@@ -60,10 +62,11 @@
           </div>
           
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700">Password</label>
+            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
             <UInput
               v-model="password"
               name="password"
+              id="password"
               :type="showPassword ? 'text' : 'password'"
               placeholder="Choose a strong password"
               required
@@ -109,10 +112,11 @@
           </div>
           
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
             <UInput
               v-model="confirmPassword"
               name="confirmPassword"
+              id="confirmPassword"
               :type="showConfirmPassword ? 'text' : 'password'"
               placeholder="Confirm your password"
               required
@@ -140,6 +144,7 @@
             <UCheckbox 
               v-model="agreeToTerms" 
               name="terms" 
+              id="terms"
               required
               size="lg"
             />

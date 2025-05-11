@@ -15,6 +15,14 @@ export function useApiAuth() {
   const auth = useSessionAuth();
   const route = useRoute();
   const toast = useToast();
+  const isMounted = ref(false);
+  
+  // Set mounted state when component mounts
+  if (process.client) {
+    onMounted(() => {
+      isMounted.value = true;
+    });
+  }
   
   /**
    * Get the authorization headers for API calls
@@ -102,17 +110,34 @@ export function useApiAuth() {
   };
   
   /**
-   * Wrapped version of useFetch with authentication support
+   * Wrapped version of fetch with authentication support
+   * Detects whether to use $fetch or useFetch based on mounted state
    * @param url API endpoint URL
-   * @param options UseFetch options
-   * @returns UseFetch response with added auth handling
+   * @param options Fetch options
+   * @returns API response
    */
-  const authFetch = <T>(url: string, options: any = {}) => {
+  const authFetch = async <T = any>(url: string, options: any = {}): Promise<any> => {
     // Make sure headers exist in options
-    options.headers = {
+    const headers = {
       ...options.headers,
       ...getAuthHeaders()
     };
+    
+    // If component is already mounted, use $fetch directly as recommended
+    if (process.client && isMounted.value) {
+      try {
+        return await $fetch(url, {
+          ...options,
+          headers
+        });
+      } catch (error: any) {
+        handleApiError(error);
+        throw error;
+      }
+    }
+    
+    // Otherwise use useFetch during SSR or initial render
+    options.headers = headers;
     
     // Add onResponse handler
     const onResponseError = options.onResponseError;
@@ -126,8 +151,15 @@ export function useApiAuth() {
       handleApiError(context.error);
     };
     
-    // Return the useFetch call with added auth headers
-    return useFetch<T>(url, options);
+    // Use useFetch during server-side rendering or initial client load
+    const { data, error } = await useFetch<T>(url, options);
+    
+    if (error.value) {
+      handleApiError(error.value);
+      throw error.value;
+    }
+    
+    return data.value;
   };
   
   /**

@@ -59,7 +59,7 @@ export const monthlyPlans: SubscriptionPlan[] = [
 export const annualPlans: SubscriptionPlan[] = [
   {
     ...monthlyPlans[0],
-    id: 1, // Use ID 101 for annual Growth plan
+    id: 1, // Use ID 1 for annual Growth plan
     price: Math.round(monthlyPlans[0].price * 10), // Annual price = 10 months (2 months free)
     interval: "year"
   },

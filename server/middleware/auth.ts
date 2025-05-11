@@ -26,7 +26,8 @@ export default defineEventHandler(async (event) => {
     path.startsWith('/api/auth') || 
     path.startsWith('/api/public') ||
     path.includes('reset-password') ||
-    path === '/api/test/config'
+    path === '/api/test/config' ||
+    path.startsWith('/api/_nuxt_icon')  // Add exception for Nuxt UI icons
   ) {
     return
   }

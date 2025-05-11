@@ -32,13 +32,13 @@
       <div 
         v-for="plan in displayedPlans" 
         :key="plan.id" 
-        class="bg-white rounded-lg shadow-md overflow-hidden"
+        class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col"
         :class="{ 'transform scale-[1.05] border-2 border-primary-500': plan.isFeatured }"
       >
         <div v-if="plan.isFeatured" class="bg-primary-500 text-white text-center py-[0.5rem] text-[0.875rem] font-medium">
           MOST POPULAR
         </div>
-        <div class="p-[1.5rem]">
+        <div class="p-[1.5rem] flex-grow">
           <h3 class="text-[1.5rem] font-bold mb-[0.5rem]">{{ plan.name }}</h3>
           <p class="text-[#4B5563] mb-[1rem]">{{ plan.description }}</p>
           <div class="text-[2.25rem] font-bold mb-[1.5rem]">
@@ -51,7 +51,7 @@
               <UIcon name="i-heroicons-check-circle" class="text-[#10B981] mr-[0.5rem]" />
               <span>{{ plan.maxClients === -1 ? 'Unlimited' : `Up to ${plan.maxClients}` }} clients</span>
             </li>
-            <li v-for="feature in Array.isArray(plan.features) ? plan.features : []" :key="feature" class="flex items-center">
+            <li v-for="feature in Array.isArray(plan.features) ? plan.features.filter(f => !f.toLowerCase().includes('clients')) : []" :key="feature" class="flex items-center">
               <UIcon :name="featureIcons[(feature || '').toLowerCase()] || 'i-heroicons-check-circle'" class="text-[#10B981] mr-[0.5rem]" />
               <span>{{ feature }}</span>
             </li>
@@ -62,7 +62,7 @@
           </ul>
         </div>
         
-        <div class="p-[1.5rem] bg-[#F9FAFB]">
+        <div class="p-[1.5rem] bg-[#F9FAFB] mt-auto">
           <UButton
             size="lg"
             :to="`/auth/register${plan.name !== 'Growth' ? `?plan=${plan.name.toLowerCase()}${isAnnual ? '-annual' : ''}&billing=${isAnnual ? 'annual' : 'monthly'}` : ''}`"

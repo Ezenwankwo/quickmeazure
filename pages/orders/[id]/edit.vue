@@ -26,30 +26,32 @@
         <div>
           <div class="grid grid-cols-1 gap-6">
             <!-- Client (read-only) -->
-            <UFormField label="Client" name="clientId" required>
+            <UFormField for="clientId" label="Client" name="clientId" required>
               <UInput
                 :model-value="clientName"
                 disabled
                 class="bg-gray-50 w-full"
                 icon="i-heroicons-user"
                 size="lg"
+                id="clientId"
               />
             </UFormField>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Style Selection -->
-              <UFormField label="Style" name="styleId">
+              <UFormField for="styleId" label="Style" name="styleId">
                 <USelectMenu
                   v-model="form.styleId"
                   :items="styleOptions"
                   size="lg"
                   class="w-full"
                   placeholder="Select a style (optional)"
+                  id="styleId"
                 />
               </UFormField>
 
               <!-- Order Status -->
-              <UFormField label="Status" name="status" required>
+              <UFormField for="status" label="Status" name="status" required>
                 <USelectMenu
                   v-model="form.status"
                   :items="statusOptions"
@@ -57,17 +59,19 @@
                   class="w-full"
                   placeholder="Select status"
                   required
+                  id="status"
                 />
               </UFormField>
               
               <!-- Due Date -->
-              <UFormField label="Due Date" name="dueDate">
+              <UFormField for="dueDate" label="Due Date" name="dueDate">
                 <UInput
                   v-model="form.dueDate"
                   type="date"
                   size="lg"
                   class="w-full"
                   icon="i-heroicons-calendar"
+                  id="dueDate"
                 />
               </UFormField>
             </div>
@@ -98,7 +102,7 @@
             
             <div v-show="openSections.includes('payment')" class="p-6 bg-gray-50 rounded-b-lg space-y-6 border-t border-primary-100">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <UFormField label="Total Amount" name="totalAmount" required>
+                <UFormField for="totalAmount" label="Total Amount" name="totalAmount" required>
                   <UInput
                     v-model.number="form.totalAmount"
                     type="number"
@@ -108,6 +112,7 @@
                     class="w-full"
                     required
                     @input="calculateBalance"
+                    id="totalAmount"
                   >
                     <template #leading>
                       <span class="inline-flex items-center text-primary-700 text-sm font-medium">
@@ -117,7 +122,7 @@
                   </UInput>
                 </UFormField>
                 
-                <UFormField label="Deposit Amount" name="depositAmount">
+                <UFormField for="depositAmount" label="Deposit Amount" name="depositAmount">
                   <UInput
                     v-model.number="form.depositAmount"
                     type="number"
@@ -126,6 +131,7 @@
                     size="lg"
                     class="w-full"
                     @input="calculateBalance"
+                    id="depositAmount"
                   >
                     <template #leading>
                       <span class="inline-flex items-center text-primary-700 text-sm font-medium">
@@ -135,13 +141,14 @@
                   </UInput>
                 </UFormField>
 
-                <UFormField label="Balance Due" name="balanceAmount">
+                <UFormField for="balanceAmount" label="Balance Due" name="balanceAmount">
                   <UInput
                     :model-value="balanceAmount"
                     type="number"
                     disabled
                     class="w-full bg-gray-50"
                     size="lg"
+                    id="balanceAmount"
                   >
                     <template #leading>
                       <span class="inline-flex items-center text-primary-700 text-sm font-medium">
@@ -175,13 +182,14 @@
             </div>
             
             <div v-show="openSections.includes('notes')" class="p-6 bg-gray-50 rounded-b-lg space-y-6 border-t border-primary-100">
-              <UFormField label="Notes" name="notes">
+              <UFormField for="notes" label="Notes" name="notes">
                 <UTextarea
                   v-model="form.notes"
                   placeholder="Add any additional notes about this order..."
                   :rows="4"
                   class="w-full"
                   size="lg"
+                  id="notes"
                 />
               </UFormField>
             </div>
@@ -263,7 +271,6 @@ const clientName = ref('');
 // State variables
 const isLoading = ref(true);
 const isSubmitting = ref(false);
-const measurements = ref([]);
 const styles = ref([]);
 
 // Computed for balance amount
@@ -454,7 +461,32 @@ const fetchData = async () => {
       return;
     }
     
-    // Fetch the order data
+    // Fetch styles first, so we have style data available when processing the order
+    let stylesData;
+    try {
+      stylesData = await $fetch('/api/styles', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Retrieved styles data:', stylesData);
+      
+      // Process the styles data
+      if (Array.isArray(stylesData)) {
+        styles.value = stylesData;
+      } else if (stylesData && stylesData.data && Array.isArray(stylesData.data)) {
+        styles.value = stylesData.data;
+      } else {
+        console.warn('Unexpected styles data format:', stylesData);
+        styles.value = [];
+      }
+    } catch (stylesError) {
+      console.error('Error fetching styles:', stylesError);
+      styles.value = [];
+    }
+    
+    // Then fetch the order data
     console.log(`Fetching order with ID: ${orderId}`);
     let orderData;
     
@@ -487,31 +519,6 @@ const fetchData = async () => {
     
     if (!orderData || !orderData.id) {
       throw new Error('Invalid order data received');
-    }
-    
-    // Fetch styles
-    let stylesData;
-    try {
-      stylesData = await $fetch('/api/styles', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      console.log('Retrieved styles data:', stylesData);
-      
-      // Process the styles data
-      if (Array.isArray(stylesData)) {
-        styles.value = stylesData;
-      } else if (stylesData && stylesData.data && Array.isArray(stylesData.data)) {
-        styles.value = stylesData.data;
-      } else {
-        console.warn('Unexpected styles data format:', stylesData);
-        styles.value = [];
-      }
-    } catch (stylesError) {
-      console.error('Error fetching styles:', stylesError);
-      styles.value = [];
     }
     
     // Now populate the form with existing data

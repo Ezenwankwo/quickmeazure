@@ -25,9 +25,10 @@
             <!-- Client Detail Section -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Full Name <span class="text-red-500">*</span></label>
+                <label for="clientName" class="block text-sm font-medium text-gray-700">Full Name <span class="text-red-500">*</span></label>
                 <UInput
                   v-model="form.name"
+                  id="clientName"
                   placeholder="Client name"
                   class="w-full"
                   icon="i-heroicons-user"
@@ -38,9 +39,10 @@
               </div>
               
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Phone Number</label>
+                <label for="clientPhone" class="block text-sm font-medium text-gray-700">Phone Number</label>
                 <UInput
                   v-model="form.phone"
+                  id="clientPhone"
                   placeholder="Phone number"
                   class="w-full"
                   icon="i-heroicons-phone"
@@ -51,9 +53,10 @@
               </div>
               
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Email</label>
+                <label for="clientEmail" class="block text-sm font-medium text-gray-700">Email</label>
                 <UInput
                   v-model="form.email"
+                  id="clientEmail"
                   placeholder="Email address"
                   class="w-full"
                   icon="i-heroicons-envelope"
@@ -64,9 +67,10 @@
               </div>
               
               <div class="space-y-2">
-                <label class="block text-sm font-medium text-gray-700">Address</label>
+                <label for="clientAddress" class="block text-sm font-medium text-gray-700">Address</label>
                 <UInput
                   v-model="form.address"
+                  id="clientAddress"
                   placeholder="Physical address"
                   class="w-full"
                   icon="i-heroicons-home"
@@ -102,10 +106,11 @@
                   <div v-if="item.value === 'upper'">
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Bust</label>
+                        <label for="edit-bust" class="block text-sm font-medium text-gray-700">Bust</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.bust" 
+                            id="edit-bust"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -119,10 +124,11 @@
                       </div>
                       
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Shoulder</label>
+                        <label for="edit-shoulder" class="block text-sm font-medium text-gray-700">Shoulder</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.shoulder" 
+                            id="edit-shoulder"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -136,10 +142,11 @@
                       </div>
                       
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Sleeve</label>
+                        <label for="edit-sleeve" class="block text-sm font-medium text-gray-700">Sleeve</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.sleeve" 
+                            id="edit-sleeve"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -153,10 +160,11 @@
                       </div>
                       
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Neck</label>
+                        <label for="edit-neck" class="block text-sm font-medium text-gray-700">Neck</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.neck" 
+                            id="edit-neck"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -170,10 +178,11 @@
                       </div>
                       
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Chest</label>
+                        <label for="edit-chest" class="block text-sm font-medium text-gray-700">Chest</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.chest" 
+                            id="edit-chest"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -192,10 +201,11 @@
                   <div v-if="item.value === 'lower'">
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Waist</label>
+                        <label for="edit-waist" class="block text-sm font-medium text-gray-700">Waist</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.waist" 
+                            id="edit-waist"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -209,10 +219,11 @@
                       </div>
                       
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Hip</label>
+                        <label for="edit-hip" class="block text-sm font-medium text-gray-700">Hip</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.hip" 
+                            id="edit-hip"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -226,10 +237,11 @@
                       </div>
                       
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Inseam</label>
+                        <label for="edit-inseam" class="block text-sm font-medium text-gray-700">Inseam</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.inseam" 
+                            id="edit-inseam"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -243,10 +255,11 @@
                       </div>
                       
                       <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700">Thigh</label>
+                        <label for="edit-thigh" class="block text-sm font-medium text-gray-700">Thigh</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.thigh" 
+                            id="edit-thigh"
                             type="number" 
                             step="0.1" 
                             placeholder="0.0" 
@@ -265,17 +278,18 @@
                   <div v-if="item.value === 'custom'">
                     <div v-for="(value, key) in form.measurements.additionalMeasurements" :key="key" class="flex gap-4 items-end mb-4 p-3 rounded-lg bg-white border border-gray-200 shadow-sm">
                       <div class="space-y-2 w-1/2">
-                        <label class="block text-sm font-medium text-gray-700">Measurement Name</label>
+                        <label :for="`custom-name-${key}`" class="block text-sm font-medium text-gray-700">Measurement Name</label>
                         <UInput 
                           v-model="customMeasurementKeys[key]" 
                           placeholder="e.g., Ankle width" 
                           class="w-full focus:ring-primary-500"
                           size="lg"
+                          :id="`custom-name-${key}`"
                         />
                       </div>
                       
                       <div class="space-y-2 w-1/3">
-                        <label class="block text-sm font-medium text-gray-700">Value</label>
+                        <label :for="`custom-value-${key}`" class="block text-sm font-medium text-gray-700">Value</label>
                         <div class="flex">
                           <UInput 
                             v-model="form.measurements.additionalMeasurements[key]" 
@@ -284,6 +298,7 @@
                             placeholder="0.0" 
                             class="w-full rounded-r-none focus:ring-primary-500"
                             size="lg"
+                            :id="`custom-value-${key}`"
                           />
                           <span class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md">
                             in
@@ -326,9 +341,10 @@
                   <!-- Notes Content -->
                   <div v-if="item.value === 'notes'">
                     <div class="space-y-2">
-                      <label class="block text-sm font-medium text-gray-700">Measurement Notes</label>
+                      <label for="measurement-notes" class="block text-sm font-medium text-gray-700">Measurement Notes</label>
                       <UTextarea
                         v-model="form.measurements.notes"
+                        id="measurement-notes"
                         placeholder="Add any special instructions or notes about these measurements"
                         :rows="5"
                         class="w-full focus:ring-primary-500"

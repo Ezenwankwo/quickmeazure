@@ -30,7 +30,7 @@ export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) =>
     // Get database connection
     const db = useDrizzle()
     
-    // Get orders due within the next 7 days
+    // Get orders due within the next 7 days with active statuses (Pending or In Progress)
     const dueOrders = await db
       .select({
         id: tables.orders.id,
@@ -45,19 +45,19 @@ export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) =>
       .where(
         and(
           eq(tables.clients.userId, userId),
-          inArray(tables.orders.status, ['Pending', 'In Progress']),
-          sql`${tables.orders.dueDate} <= ${formattedDate}`
+          sql`(${tables.orders.status} ILIKE '%pending%' OR ${tables.orders.status} ILIKE '%progress%')`,
+          sql`(${tables.orders.dueDate} IS NULL OR ${tables.orders.dueDate} <= ${formattedDate})`
         )
       )
       .orderBy(tables.orders.dueDate)
-      .limit(5)
+      .limit(10)
 
     // Format orders for the dashboard
     const formattedOrders: Order[] = dueOrders.map(order => ({
       id: order.id,
       client: order.clientName,
       dueDate: order.dueDate,
-      amount: order.totalAmount,
+      amount: order.totalAmount || 0,
       status: order.status
     }))
 

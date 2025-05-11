@@ -1,13 +1,14 @@
 <template>
-  <section class="text-center space-y-[1.5rem]">
-    <h1 class="text-[2.25rem] md:text-[3rem] font-bold text-[#111827]">
-      Manage Your Tailor Business <span class="text-primary-600">Effortlessly</span>
+  <section class="py-12 sm:py-16 text-center">
+    <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
+      Manage Your Tailoring Business <span class="text-primary-600">Efficiently</span>
     </h1>
-    <p class="text-[1.25rem] text-[#4B5563] max-w-[48rem] mx-auto">
-      QuickMeazure helps tailors store client measurements, track orders, and manage payments all in one place.
+    <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+      QuickMeazure helps you track clients, measurements, orders, and more - all in one place.
     </p>
-    <div class="flex justify-center gap-[1rem]">
+    <div class="flex flex-row gap-4 justify-center">
       <UButton
+        v-if="!isLoggedIn"
         to="/auth/register"
         color="primary"
         size="xl"
@@ -15,20 +16,26 @@
         Get Started Free
       </UButton>
       <UButton
+        v-else
+        to="/dashboard"
+        color="primary"
+        size="xl"
+      >
+        Go to Dashboard
+      </UButton>
+      <UButton
         to="#features"
-        color="gray"
+        color="neutral"
         variant="outline"
         size="xl"
       >
         Learn More
       </UButton>
     </div>
-    <div class="mt-[2rem]">
-      <NuxtImg src="/dashboard.png" alt="QuickMeazure Dashboard" class="rounded-lg shadow-xl mx-auto" style="max-width: 100%; height: auto; display: block;" />
-    </div>
+    <NuxtImg src="/dashboard.png" alt="Example Dashboard" class="w-full h-auto mt-8" />
   </section>
 </template>
 
 <script setup>
-// No props needed for this component
+const { isLoggedIn } = useSessionAuth();
 </script> 

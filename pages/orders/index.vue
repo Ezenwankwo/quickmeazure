@@ -16,6 +16,7 @@
         <div class="relative w-full sm:w-80 group">
           <UInput
             v-model="search"
+            id="search-input"
             placeholder="Search client name..."
             icon="i-heroicons-magnifying-glass"
             size="lg"
@@ -30,6 +31,7 @@
         <div class="flex gap-2 w-full sm:w-auto sm:ml-auto">
           <USelect
             v-model="sortBy"
+            id="sort-select"
             :items="sortOptions"
             placeholder="Sort by"
             size="lg"
@@ -57,6 +59,7 @@
         <UFormField label="Status">
           <USelect
             v-model="filters.status"
+            id="status-filter"
             :items="statusOptions"
             placeholder="All statuses"
             size="lg"
@@ -68,6 +71,7 @@
         <UFormField label="Due Date">
           <USelect
             v-model="filters.dueDate"
+            id="due-date-filter"
             :items="dueDateOptions"
             placeholder="Any time"
             size="lg"
@@ -79,6 +83,7 @@
         <UFormField label="Payment Status">
           <USelect
             v-model="filters.paymentStatus"
+            id="payment-status-filter"
             :items="paymentStatusOptions"
             placeholder="All payment statuses"
             size="lg"

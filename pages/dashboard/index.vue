@@ -20,10 +20,10 @@
             <UIcon name="i-heroicons-users" class="text-primary-500" />
           </div>
         </template>
-        <div class="text-3xl font-bold">{{ stats.totalClients }}</div>
+        <div class="text-3xl font-bold">{{ stats?.totalClients || 0 }}</div>
         <template #footer>
           <div class="text-sm text-gray-500">
-            <span class="text-green-500 font-medium">+{{ stats.newClientsThisMonth }}</span> this month
+            <span class="text-green-500 font-medium">+{{ stats?.newClientsThisMonth || 0 }}</span> this month
           </div>
         </template>
       </UCard>
@@ -35,10 +35,10 @@
             <UIcon name="i-heroicons-shopping-bag" class="text-primary-500" />
           </div>
         </template>
-        <div class="text-3xl font-bold">{{ stats.activeOrders }}</div>
+        <div class="text-3xl font-bold">{{ stats?.activeOrders || 0 }}</div>
         <template #footer>
           <div class="text-sm text-gray-500">
-            <span class="font-medium">{{ stats.completedOrdersThisMonth }}</span> completed this month
+            <span class="font-medium">{{ stats?.completedOrdersThisMonth || 0 }}</span> completed this month
           </div>
         </template>
       </UCard>
@@ -50,10 +50,10 @@
             <UIcon name="i-heroicons-currency-dollar" class="text-primary-500" />
           </div>
         </template>
-        <div class="text-3xl font-bold">₦{{ formatNumber(stats.totalRevenue) }}</div>
+        <div class="text-3xl font-bold">₦{{ formatNumber(stats?.totalRevenue || 0) }}</div>
         <template #footer>
           <div class="text-sm text-gray-500">
-            <span class="text-green-500 font-medium">+{{ stats.revenueGrowth }}%</span> vs last month
+            <span class="text-green-500 font-medium">+{{ stats?.revenueGrowth || 0 }}%</span> vs last month
           </div>
         </template>
       </UCard>
@@ -65,10 +65,15 @@
             <UIcon name="i-heroicons-credit-card" class="text-primary-500" />
           </div>
         </template>
-        <div class="text-xl font-bold">{{ stats.subscriptionPlan }}</div>
+        <div class="text-xl font-bold">{{ stats?.subscriptionPlan || 'Free Plan' }}</div>
         <template #footer>
           <div class="text-sm text-gray-500">
-            {{ stats.clientsRemaining }} clients remaining
+            <template v-if="stats?.clientsRemaining === Infinity">
+              Unlimited clients
+            </template>
+            <template v-else>
+              {{ stats?.clientsRemaining || 0 }} clients remaining
+            </template>
           </div>
         </template>
       </UCard>
@@ -93,22 +98,24 @@
         </template>
         
         <div class="space-y-4">
+          <div v-if="recentActivity.length > 0">
           <div v-for="activity in recentActivity" :key="activity.id" class="flex items-start space-x-3 py-2">
             <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-              <UIcon :name="activity.icon" class="text-primary-600" />
+                <UIcon :name="activity.icon || 'i-heroicons-bell'" class="text-primary-600" />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900" v-html="activity.message"></p>
-              <p class="text-xs text-gray-500">{{ activity.time }}</p>
+                <p class="text-sm font-medium text-gray-900" v-html="activity.message || 'Activity'"></p>
+                <p class="text-xs text-gray-500">{{ activity.time || 'Recently' }}</p>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <template #footer>
-          <div v-if="recentActivity.length === 0" class="text-center py-4">
+          <div v-else-if="!isLoading" class="text-center py-4">
             <p class="text-gray-500">No recent activity</p>
           </div>
-        </template>
+          <div v-if="isLoading" class="text-center py-4">
+            <UIcon name="i-heroicons-arrow-path" class="animate-spin text-primary-500" />
+          </div>
+        </div>
       </UCard>
       
       <!-- Due Orders -->
@@ -127,55 +134,67 @@
           </div>
         </template>
         
-        <UTable
-          :columns="orderColumns"
-          :rows="dueOrders"
-          :ui="{ 
-            td: { 
-              padding: 'py-2 px-3' 
-            } 
-          }"
-        >
-          <template #client-data="{ row }">
-            <div class="font-medium text-gray-900">{{ row.client }}</div>
-          </template>
-          
-          <template #dueDate-data="{ row }">
+        <div v-if="isLoading" class="text-center py-8">
+          <UIcon name="i-heroicons-arrow-path" class="animate-spin text-primary-500 mx-auto mb-2" />
+          <p class="text-sm text-gray-500">Loading orders...</p>
+        </div>
+        
+        <div v-else-if="safeOrders.length === 0" class="text-center py-8">
+          <p class="text-gray-500">No orders due soon</p>
+        </div>
+        
+        <div v-else>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="order in safeOrders" :key="order.id">
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="font-medium text-gray-900">{{ order.client }}</div>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
             <UBadge
-              :color="getDueDateColor(row.dueDate)"
+                      :color="getDueDateColor(order.dueDate)"
               variant="subtle"
               size="sm"
             >
-              {{ formatDueDate(row.dueDate) }}
+                      {{ formatDueDate(order.dueDate) }}
             </UBadge>
-          </template>
-          
-          <template #status-data="{ row }">
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    ₦{{ formatNumber(order.amount) }}
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
             <UBadge
-              :color="getStatusColor(row.status)"
+                      :color="getStatusColor(order.status)"
               variant="subtle"
               size="sm"
             >
-              {{ row.status }}
+                      {{ order.status }}
             </UBadge>
-          </template>
-          
-          <template #actions-data="{ row }">
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap text-right">
             <UButton
               icon="i-heroicons-eye"
               color="gray"
               variant="ghost"
               size="xs"
-              :to="`/orders/${row.id}/detail`"
-            />
-          </template>
-        </UTable>
-        
-        <template #footer>
-          <div v-if="dueOrders.length === 0" class="text-center py-4">
-            <p class="text-gray-500">No orders due soon</p>
+                      :to="`/orders/${order.id}`"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-        </template>
+        </div>
       </UCard>
     </div>
     
@@ -186,19 +205,28 @@
           <h3 class="font-medium">Client Growth</h3>
           <USelect
             v-model="chartPeriod"
-            :options="chartPeriodOptions"
+            :items="chartPeriodOptions"
             size="sm"
+            @update:modelValue="updateChartData"
           />
         </div>
       </template>
       
-      <div class="h-64 flex items-center justify-center">
-        <!-- Placeholder for chart - in a real app, we'd use a charting library -->
-        <div class="text-center text-gray-500">
-          <UIcon name="i-heroicons-chart-bar" class="text-5xl mb-2" />
-          <p>Client growth chart would be displayed here</p>
-        </div>
+      <div class="h-64">
+        <ClientGrowthChart
+          ref="growthChart"
+          :period="chartPeriod"
+          :real-data="clientGrowth"
+          :has-real-data="hasChartData"
+        />
       </div>
+      
+      <template #footer>
+        <div class="flex justify-between text-sm">
+          <span class="text-gray-600">Total new clients: <span class="font-medium">{{ chartStats.totalGrowth }}</span></span>
+          <span class="text-gray-600">Growth: <span class="font-medium text-green-600">+{{ chartStats.percentGrowth }}%</span></span>
+        </div>
+      </template>
     </UCard>
   </div>
 </template>
@@ -206,6 +234,8 @@
 <script setup>
 // Import the API auth composable
 import { useApiAuth } from '~/composables/useApiAuth';
+import { ref, computed, onMounted, watch } from 'vue';
+import ClientGrowthChart from '~/components/charts/ClientGrowthChart.vue';
 
 // Set page metadata
 useHead({
@@ -215,113 +245,40 @@ useHead({
 // Set up auth composable for API calls
 const { authFetch } = useApiAuth();
 
-// Mock data for dashboard
-const stats = {
-  totalClients: 87,
-  newClientsThisMonth: 12,
-  activeOrders: 24,
-  completedOrdersThisMonth: 18,
-  totalRevenue: 450000,
-  revenueGrowth: 15,
-  subscriptionPlan: 'Standard Plan',
-  clientsRemaining: 413, // 500 - 87
-};
+// Data for dashboard
+const stats = ref({
+  totalClients: 0,
+  newClientsThisMonth: 0,
+  activeOrders: 0,
+  completedOrdersThisMonth: 0,
+  totalRevenue: 0,
+  revenueGrowth: 0,
+  subscriptionPlan: 'Free Plan',
+  clientsRemaining: 0,
+});
 
 // Recent activity
-const recentActivity = [
-  {
-    id: 1,
-    icon: 'i-heroicons-user-plus',
-    message: 'Added new client <strong>John Doe</strong>',
-    time: '2 hours ago',
-  },
-  {
-    id: 2,
-    icon: 'i-heroicons-variable',
-    message: 'Updated measurements for <strong>Sarah Williams</strong>',
-    time: '4 hours ago',
-  },
-  {
-    id: 3,
-    icon: 'i-heroicons-shopping-bag',
-    message: 'New order created for <strong>Michael Brown</strong>',
-    time: 'Yesterday',
-  },
-  {
-    id: 4,
-    icon: 'i-heroicons-currency-dollar',
-    message: 'Received payment of <strong>₦25,000</strong> from <strong>Jane Smith</strong>',
-    time: 'Yesterday',
-  },
-  {
-    id: 5,
-    icon: 'i-heroicons-check-circle',
-    message: 'Completed order for <strong>Emily Davis</strong>',
-    time: '2 days ago',
-  },
-];
+const recentActivity = ref([]);
 
 // Due orders
-const orderColumns = [
-  {
-    key: 'client',
-    label: 'Client',
-    id: 'client'
-  },
-  {
-    key: 'dueDate',
-    label: 'Due Date',
-    id: 'dueDate'
-  },
-  {
-    key: 'amount',
-    label: 'Amount',
-    id: 'amount'
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    id: 'status'
-  },
-  {
-    key: 'actions',
-    label: '',
-    id: 'actions'
-  },
-];
+const dueOrders = ref([]);
 
-const dueOrders = [
-  {
-    id: 1,
-    client: 'John Doe',
-    dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Tomorrow
-    amount: '₦35,000',
-    status: 'In Progress',
-  },
-  {
-    id: 2,
-    client: 'Sarah Williams',
-    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-    amount: '₦42,000',
-    status: 'In Progress',
-  },
-  {
-    id: 3,
-    client: 'Robert Johnson',
-    dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-    amount: '₦28,500',
-    status: 'Pending Payment',
-  },
-  {
-    id: 4,
-    client: 'Emily Davis',
-    dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Yesterday (overdue)
-    amount: '₦15,000',
-    status: 'Overdue',
-  },
-];
+// Safe version of orders with validation to prevent rendering errors
+const safeOrders = computed(() => {
+  if (!dueOrders.value || !Array.isArray(dueOrders.value)) {
+    return [];
+  }
+  
+  return dueOrders.value.map(order => ({
+    id: order?.id || 0,
+    client: order?.client || 'Unknown Client',
+    dueDate: order?.dueDate || null,
+    amount: order?.amount || 0,
+    status: order?.status || 'Unknown'
+  }));
+});
 
-// Chart period options
+// Chart period options and data
 const chartPeriodOptions = [
   { label: 'Last 7 days', value: '7days' },
   { label: 'Last 30 days', value: '30days' },
@@ -329,18 +286,57 @@ const chartPeriodOptions = [
   { label: 'Last year', value: 'year' },
 ];
 const chartPeriod = ref('30days');
+const clientGrowth = ref({
+  labels: [],
+  data: [],
+  totalGrowth: 0,
+  percentGrowth: 0
+});
+
+// Helper computed property to check if we have chart data to display
+const hasChartData = computed(() => {
+  return (
+    clientGrowth.value && 
+    Array.isArray(clientGrowth.value.data) && 
+    clientGrowth.value.data.length > 0 &&
+    Array.isArray(clientGrowth.value.labels) && 
+    clientGrowth.value.labels.length > 0 &&
+    clientGrowth.value.data.some(value => value > 0)
+  );
+});
+
+// Loading state
+const isLoading = ref(false);
+
+// Helper function to update chart data when period changes
+const updateChartData = async () => {
+  try {
+    // Log period change
+    console.log(`Changing to period: ${chartPeriod.value}`);
+    
+    // Try to fetch real data
+    await fetchClientGrowth();
+  } catch (error) {
+    console.error('Error updating chart data:', error);
+  }
+};
 
 // Helper functions
 const formatNumber = (number) => {
+  if (number === null || number === undefined) return '0';
   return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
 const formatDueDate = (date) => {
+  if (!date) return 'No date set';
+  
+  try {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dueDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dueDate = new Date(date);
+    const dueDateNoTime = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
   
-  const diffTime = dueDate - today;
+    const diffTime = dueDateNoTime - today;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
   if (diffDays < 0) {
@@ -351,16 +347,24 @@ const formatDueDate = (date) => {
     return 'Due tomorrow';
   } else {
     return `Due in ${diffDays} days`;
+    }
+  } catch (error) {
+    console.error('Error formatting due date:', error);
+    return 'Invalid date';
   }
 };
 
 // Get color for due date badge
 const getDueDateColor = (date) => {
+  if (!date) return 'gray';
+  
+  try {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dueDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dueDate = new Date(date);
+    const dueDateNoTime = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
   
-  const diffTime = dueDate - today;
+    const diffTime = dueDateNoTime - today;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
   if (diffDays < 0) {
@@ -371,44 +375,38 @@ const getDueDateColor = (date) => {
     return 'yellow';
   } else {
     return 'green';
+    }
+  } catch (error) {
+    console.error('Error getting due date color:', error);
+    return 'gray';
   }
 };
 
 // Get color for status badge
 const getStatusColor = (status) => {
-  if (status === 'Completed') {
+  if (!status) return 'gray';
+  
+  switch (status.toLowerCase()) {
+    case 'completed':
     return 'green';
-  } else if (status === 'In Progress') {
+    case 'in progress':
     return 'blue';
-  } else if (status === 'Pending Payment') {
+    case 'pending payment':
     return 'yellow';
-  } else if (status === 'Overdue') {
+    case 'overdue':
     return 'red';
-  } else {
+    default:
     return 'gray';
   }
 };
 
-// Add standard date formatting function for consistency
-const formatDate = (timestamp) => {
-  return new Date(timestamp).toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    year: 'numeric'
-  });
-};
-
-// Add layout for dashboard pages
-definePageMeta({
-  layout: 'dashboard'
-});
-
-// Update fetch functions to use authFetch
+// Fetch functions
 const fetchStats = async () => {
-  isLoading.value = true;
   try {
     const data = await authFetch('/api/dashboard/stats');
+    if (data && typeof data === 'object') {
     stats.value = data;
+    }
   } catch (error) {
     console.error('Error loading dashboard stats:', error);
     useToast().add({
@@ -416,28 +414,114 @@ const fetchStats = async () => {
       description: 'Failed to load dashboard statistics',
       color: 'red'
     });
+  }
+};
+
+const fetchRecentActivity = async () => {
+  try {
+    const data = await authFetch('/api/dashboard/recent-activity?limit=5');
+    if (data && Array.isArray(data)) {
+      recentActivity.value = data;
+    } else {
+      recentActivity.value = [];
+    }
+  } catch (error) {
+    console.error('Error loading recent activity:', error);
+    recentActivity.value = [];
+  }
+};
+
+const fetchDueOrders = async () => {
+  try {
+    const data = await authFetch('/api/dashboard/orders-due-soon');
+    if (data && Array.isArray(data)) {
+      dueOrders.value = data;
+    } else {
+      dueOrders.value = [];
+    }
+  } catch (error) {
+    console.error('Error loading due orders:', error);
+    dueOrders.value = [];
+  }
+};
+
+const fetchClientGrowth = async () => {
+  try {
+    // Save previous values to restore in case of error
+    const prevChartData = { ...clientGrowth.value };
+    
+    // Set loading state for chart
+    isLoading.value = true;
+    
+    // Debug: log the request
+    console.log('Fetching client growth with period:', chartPeriod.value);
+    
+    const data = await authFetch(`/api/dashboard/client-growth?period=${chartPeriod.value}`);
+    
+    // Debug: log the response
+    console.log('Client growth response:', data);
+    
+    if (data && typeof data === 'object') {
+      // Ensure we have valid arrays for labels and data
+      const labels = Array.isArray(data.labels) ? data.labels : [];
+      const chartData = Array.isArray(data.data) ? data.data : [];
+      
+      // Ensure growth values are numbers
+      const totalGrowth = typeof data.totalGrowth === 'number' ? data.totalGrowth : 0;
+      const percentGrowth = typeof data.percentGrowth === 'number' ? data.percentGrowth : 0;
+      
+      // Debug: log processed data
+      console.log('Processed chart data:', { labels, data: chartData });
+      
+      // Update the chart data
+      clientGrowth.value = {
+        labels,
+        data: chartData,
+        totalGrowth,
+        percentGrowth
+      };
+    } else {
+      console.error('Invalid client growth data format:', data);
+      // Restore previous values if data format is invalid
+      clientGrowth.value = prevChartData;
+    }
+  } catch (error) {
+    console.error('Error loading client growth data:', error);
   } finally {
+    // Always clear loading state
     isLoading.value = false;
   }
 };
 
-const fetchRecentClients = async () => {
-  try {
-    const data = await authFetch('/api/clients?limit=5&sortField=date&sortOrder=desc');
-    recentClients.value = data.data || [];
-  } catch (error) {
-    console.error('Error loading recent clients:', error);
-    recentClients.value = [];
-  }
-};
+// On mount, try to fetch real data but show demo data immediately
+onMounted(() => {
+  // Show demo data immediately
+  console.log('Dashboard mounted, showing initial demo chart data');
+  
+  // Then try to fetch real data
+  fetchStats().catch(err => console.error('Error fetching stats:', err));
+  fetchRecentActivity().catch(err => console.error('Error fetching activity:', err));
+  fetchDueOrders().catch(err => console.error('Error fetching orders:', err));
+  fetchClientGrowth().catch(err => console.error('Error fetching growth data:', err));
+});
 
-const fetchRecentMeasurements = async () => {
-  try {
-    const data = await authFetch('/api/measurements?limit=5&sortField=date&sortOrder=desc');
-    recentMeasurements.value = data.data || [];
-  } catch (error) {
-    console.error('Error loading recent measurements:', error);
-    recentMeasurements.value = [];
+// Add layout for dashboard pages
+definePageMeta({
+  layout: 'dashboard'
+});
+
+// Reference to the growth chart component
+const growthChart = ref(null);
+
+// Get stats from the chart component
+const chartStats = computed(() => {
+  if (growthChart.value) {
+    return growthChart.value.clientStats;
   }
-};
+  
+  return {
+    totalGrowth: hasChartData.value ? clientGrowth.value.totalGrowth : 0,
+    percentGrowth: hasChartData.value ? clientGrowth.value.percentGrowth : 0
+  };
+});
 </script>

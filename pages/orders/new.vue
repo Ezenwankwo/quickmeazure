@@ -18,7 +18,7 @@
         <div>
           <div class="grid grid-cols-1 gap-6">
             <!-- Client Selection -->
-            <UFormField label="Client" name="clientId" required>
+            <UFormField label="Client" name="clientId" id="clientId" required>
               <USelectMenu
                 v-model="form.clientId"
                 :items="clientOptions"
@@ -26,23 +26,25 @@
                 class="w-full"
                 placeholder="Select a client"
                 required
+                id="clientId"
               />
             </UFormField>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Style Selection -->
-              <UFormField label="Style" name="styleId">
+              <UFormField label="Style" name="styleId" id="styleId">
                 <USelectMenu
                   v-model="form.styleId"
                   :items="styleOptions"
                   size="lg"
                   class="w-full"
                   placeholder="Select a style (optional)"
+                  id="styleId"
                 />
               </UFormField>
 
               <!-- Order Status -->
-              <UFormField label="Status" name="status" required>
+              <UFormField label="Status" name="status" id="status" required>
                 <USelectMenu
                   v-model="form.status"
                   :items="statusOptions"
@@ -50,16 +52,18 @@
                   class="w-full"
                   placeholder="Select status"
                   required
+                  id="status"
                 />
               </UFormField>
               
               <!-- Due Date -->
-              <UFormField label="Due Date" name="dueDate">
+              <UFormField label="Due Date" name="dueDate" id="dueDate">
                 <UInput
                   v-model="form.dueDate"
                   type="date"
                   size="lg"
                   class="w-full"
+                  id="dueDate"
                 />
               </UFormField>
             </div>
@@ -90,7 +94,7 @@
             
             <div v-show="openSections.includes('payment')" class="p-6 bg-gray-50 rounded-b-lg space-y-6 border-t border-primary-100">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <UFormField label="Total Amount" name="totalAmount" required>
+                <UFormField label="Total Amount" name="totalAmount" id="totalAmount" required>
                   <UInput
                     v-model.number="form.totalAmount"
                     type="number"
@@ -100,6 +104,7 @@
                     class="w-full"
                     required
                     @input="calculateBalance"
+                    id="totalAmount"
                   >
                     <template #leading>
                       <span class="inline-flex items-center text-primary-700 text-sm font-medium">
@@ -109,7 +114,7 @@
                   </UInput>
                 </UFormField>
                 
-                <UFormField label="Deposit Amount" name="depositAmount">
+                <UFormField label="Deposit Amount" name="depositAmount" id="depositAmount">
                   <UInput
                     v-model.number="form.depositAmount"
                     type="number"
@@ -118,6 +123,7 @@
                     size="lg"
                     class="w-full"
                     @input="calculateBalance"
+                    id="depositAmount"
                   >
                     <template #leading>
                       <span class="inline-flex items-center text-primary-700 text-sm font-medium">
@@ -127,13 +133,14 @@
                   </UInput>
                 </UFormField>
 
-                <UFormField label="Balance Due" name="balanceAmount">
+                <UFormField label="Balance Due" name="balanceAmount" id="balanceAmount">
                   <UInput
                     :model-value="balanceAmount"
                     type="number"
                     disabled
                     class="w-full bg-gray-50"
                     size="lg"
+                    id="balanceAmount"
                   >
                     <template #leading>
                       <span class="inline-flex items-center text-primary-700 text-sm font-medium">
@@ -167,13 +174,14 @@
             </div>
             
             <div v-show="openSections.includes('notes')" class="p-6 bg-gray-50 rounded-b-lg space-y-6 border-t border-primary-100">
-              <UFormField label="Notes" name="notes">
+              <UFormField label="Notes" name="notes" id="notes">
                 <UTextarea
                   v-model="form.notes"
                   placeholder="Add any additional notes about this order..."
                   :rows="4"
                   class="w-full"
                   size="lg"
+                  id="notes"
                 />
               </UFormField>
             </div>

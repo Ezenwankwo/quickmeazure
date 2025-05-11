@@ -24,7 +24,7 @@ const { layout } = useLayout();
 
 // Set page metadata
 useHead({
-  title: 'QuickMeazure - Tailor business Management',
+  title: 'QuickMeazure - Tailor Business Management',
   meta: [
     { name: 'description', content: 'Easily manage your clients\'s measurements, styles, and payments with QuickMeazure.' }
   ],

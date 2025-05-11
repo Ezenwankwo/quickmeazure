@@ -30,27 +30,32 @@
         <div>
           <h2 class="text-lg font-medium mb-4">Style Information</h2>
           <div class="grid grid-cols-1 gap-6">
-            <UFormField label="Style Name" name="name" required>
+            <div class="space-y-2">
+              <label for="styleName" class="block text-sm font-medium text-gray-700">Style Name <span class="text-red-500">*</span></label>
               <UInput
                 v-model="style.name"
                 placeholder="Enter style name"
+                id="styleName"
                 size="lg"
                 class="w-full"
                 required
               />
-            </UFormField>
+            </div>
             
-            <UFormField label="Description" name="description">
+            <div class="space-y-2">
+              <label for="styleDescription" class="block text-sm font-medium text-gray-700">Description</label>
               <UTextarea
                 v-model="style.description"
+                id="styleDescription"
                 placeholder="Describe the style"
                 size="lg"
                 class="w-full"
                 :rows="4"
               />
-            </UFormField>
+            </div>
             
-            <UFormField label="Image" name="image" required>
+            <div class="space-y-2">
+              <label for="styleImage" class="block text-sm font-medium text-gray-700">Image <span class="text-red-500">*</span></label>
               <div class="border-2 border-dashed border-gray-300 rounded-lg p-6">
                 <div v-if="imagePreview" class="mb-4">
                   <img :src="imagePreview" alt="Preview" class="max-h-64 mx-auto rounded" />
@@ -71,6 +76,7 @@
                   
                   <input
                     ref="fileInput"
+                    id="styleImage"
                     type="file"
                     accept="image/*"
                     class="hidden"
@@ -82,7 +88,7 @@
                   </p>
                 </div>
               </div>
-            </UFormField>
+            </div>
           </div>
         </div>
         
@@ -113,6 +119,7 @@
 
 <script setup>
 import { useRoute, useRouter } from 'vue-router';
+import { useApiAuth } from '~/composables/useApiAuth';
 
 // Set page metadata
 useHead({
@@ -122,6 +129,7 @@ useHead({
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const { authFetch } = useApiAuth();
 
 // Style data
 const style = ref({
@@ -161,27 +169,14 @@ onMounted(async () => {
     
     console.log('Fetching style with ID:', styleId);
     
-    // Use useFetch with correct headers
-    const { data: fetchData, error: fetchError } = await useFetch(`/api/styles/${styleId}`, {
-      key: `style-edit-${styleId}`,
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-    
-    // Check for error
-    if (fetchError.value) {
-      console.error('Fetch error:', fetchError.value);
-      error.value = `Error: ${fetchError.value.message || 'Failed to load style'}`;
-      isLoading.value = false;
-      return;
-    }
+    // Use authFetch instead of useFetch directly
+    const fetchData = await authFetch(`/api/styles/${styleId}`);
     
     // Check if we have data
-    if (fetchData.value) {
-      console.log('API response data:', fetchData.value);
+    if (fetchData) {
+      console.log('API response data:', fetchData);
       style.value = {
-        ...fetchData.value.style,
+        ...fetchData.style,
         imageFile: null
       };
       

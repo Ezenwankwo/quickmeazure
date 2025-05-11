@@ -40,10 +40,11 @@
         
         <div class="space-y-4 flex flex-col">
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700">Email address</label>
+            <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
             <UInput
               v-model="form.email"
               type="email"
+              id="email"
               placeholder="Email address"
               required
               class="w-full"
@@ -52,9 +53,10 @@
           </div>
           
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-700">Password</label>
+            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
             <UInput
               v-model="form.password"
+              id="password"
               :type="showPassword ? 'text' : 'password'"
               placeholder="Password"
               required
@@ -74,7 +76,7 @@
             </UInput>
             <div class="flex justify-between mt-1">
               <div class="flex items-center">
-                <UCheckbox v-model="form.rememberMe" name="remember" color="primary" />
+                <UCheckbox v-model="form.rememberMe" name="remember" id="remember" color="primary" />
                 <label for="remember" class="ml-2 text-sm text-gray-600">Remember me</label>
               </div>
               <NuxtLink to="/auth/forgot-password" class="text-sm font-medium text-primary hover:text-primary">
@@ -117,8 +119,6 @@ definePageMeta({
   layout: 'auth'
 });
 
-// Explicitly import UI components 
-import { UInput, UButton, UIcon, ULink, UCheckbox } from '#components'
 import { useSessionAuth } from '~/composables/useSessionAuth';
 
 const route = useRoute();

@@ -21,6 +21,8 @@
             size="lg"
             class="w-full focus-within:ring-2 ring-primary-200"
             @input="handleSearchInput"
+            id="client-search"
+            name="client-search"
           />
           <span v-if="search" class="absolute right-2 top-2.5 cursor-pointer text-gray-400 hover:text-gray-600" @click="resetSearch">
             <UIcon name="i-heroicons-x-mark" class="w-5 h-5" />
@@ -35,6 +37,8 @@
             size="lg"
             class="w-full sm:w-52 py-2"
             @update:model-value="filterClients"
+            id="sort-select"
+            name="sort-select"
           />
           
           <UButton
@@ -54,7 +58,7 @@
     <!-- Filter Panel -->
     <UCard v-if="isFilterOpen" class="bg-white border border-gray-100 shadow-sm mt-2 relative z-10">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <UFormField label="Date Added">
+        <UFormField label="Date Added" name="date-added-filter" id="date-added-filter">
           <USelect
             v-model="filters.dateAdded"
             :items="dateOptions"
@@ -62,10 +66,12 @@
             placeholder="Any time"
             class="w-full py-2"
             @update:model-value="filterClients"
+            id="date-added-select"
+            name="date-added-select"
           />
         </UFormField>
         
-        <UFormField label="Has Orders">
+        <UFormField label="Has Orders" name="has-orders-filter" id="has-orders-filter">
           <USelect
             v-model="filters.hasOrders"
             :items="booleanOptions"
@@ -73,6 +79,8 @@
             placeholder="All clients"
             class="w-full py-2"
             @update:model-value="filterClients"
+            id="has-orders-select"
+            name="has-orders-select"
           />
         </UFormField>
       </div>
@@ -776,11 +784,11 @@ const handleSort = (column) => {
 // Get the appropriate sort icon based on current sort state
 const getSortIcon = (columnKey) => {
   if (!sortBy.value.startsWith(columnKey)) {
-    return 'i-heroicons-arrows-up-down-mini';
+    return 'i-heroicons-arrows-up-down';
   }
   
   return sortBy.value.endsWith('-asc') 
-    ? 'i-heroicons-arrow-up-mini' 
-    : 'i-heroicons-arrow-down-mini';
+    ? 'i-heroicons-arrow-up' 
+    : 'i-heroicons-arrow-down';
 };
 </script>

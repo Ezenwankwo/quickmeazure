@@ -229,30 +229,25 @@ onMounted(async () => {
     
     console.log('Fetching style with ID:', styleId);
     
-    // Use useFetch with correct headers
-    const { data: fetchData, error: fetchError } = await useFetch(`/api/styles/${styleId}`, {
-      key: `style-${styleId}`,
-      headers: {
-        'Authorization': `Bearer ${token}`
+    // Use $fetch instead of useFetch
+    try {
+      const response = await $fetch(`/api/styles/${styleId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response) {
+        console.log('API response data:', response);
+        style.value = response.style;
+        relatedOrders.value = response.relatedOrders || [];
+      } else {
+        console.error('No data in API response');
+        error.value = 'Failed to load style data. Please try again.';
       }
-    });
-    
-    // Check for error
-    if (fetchError.value) {
-      console.error('Fetch error:', fetchError.value);
-      error.value = `Error: ${fetchError.value.message || 'Failed to load style'}`;
-      isLoading.value = false;
-      return;
-    }
-    
-    // Check if we have data
-    if (fetchData.value) {
-      console.log('API response data:', fetchData.value);
-      style.value = fetchData.value.style;
-      relatedOrders.value = fetchData.value.relatedOrders || [];
-    } else {
-      console.error('No data in API response');
-      error.value = 'Failed to load style data. Please try again.';
+    } catch (fetchError) {
+      console.error('Fetch error:', fetchError);
+      error.value = `Error: ${fetchError.message || 'Failed to load style'}`;
     }
     
     isLoading.value = false;

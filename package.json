@@ -19,7 +19,9 @@
     "@nuxt/image": "^1.10.0",
     "@nuxt/ui": "3.0.2",
     "bcryptjs": "^2.4.3",
+    "chart.js": "^4.4.9",
     "cookie-es": "^2.0.0",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.42.0",
     "jsonwebtoken": "^9.0.2",
@@ -31,6 +33,7 @@
     "userland": "^0.4.3",
     "uuid": "^9.0.1",
     "vue": "^3.4.21",
+    "vue-chartjs": "^5.3.2",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {

@@ -16,6 +16,7 @@
       <div class="flex flex-col space-y-3 sm:space-y-0 sm:flex-row sm:gap-4 items-center">
         <div class="relative w-full sm:w-80 group">
           <UInput
+            id="style-search"
             v-model="search"
             placeholder="Search styles..."
             icon="i-heroicons-magnifying-glass"
@@ -30,6 +31,7 @@
         
         <div class="flex gap-2 w-full sm:w-auto sm:ml-auto">
           <USelect
+            id="style-sort"
             v-model="sortBy"
             :items="sortOptions"
             placeholder="Sort by"
