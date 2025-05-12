@@ -37,48 +37,24 @@ export default defineNuxtConfig({
     // Only generate service worker in production
     enabled: process.env.NODE_ENV === 'production',
     // Disable service worker registration completely
-    disableServiceWorker: process.env.NODE_ENV !== 'production',
-    // Disable dev SW
+    disableServiceWorker: false,
+    // Use auto for service worker registration
     injectRegister: 'auto',
     // Ensure manifest is included in the build
     includeManifestIcons: true,
     includeAssets: ['/favicons/**/*'],
-    manifest: {
-      name: 'QuickMeazure - Tailor Business Management',
-      short_name: 'QuickMeazure',
-      description: 'Easily manage your clients\'s measurements, styles, and payments with QuickMeazure.',
-      theme_color: '#ffffff',
-      background_color: '#ffffff',
-      display: 'standalone',
-      start_url: '/',
-      icons: [
-        {
-          src: '/favicons/android-chrome-192x192.png',
-          sizes: '192x192',
-          type: 'image/png'
-        },
-        {
-          src: '/favicons/android-chrome-512x512.png',
-          sizes: '512x512',
-          type: 'image/png'
-        },
-        {
-          src: '/favicons/apple-touch-icon.png',
-          sizes: '180x180',
-          type: 'image/png'
-        },
-        {
-          src: '/favicons/android-chrome-512x512.png',
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'maskable'
-        }
-      ]
-    },
+    // Use the external manifest file instead of defining it here
+    manifest: false,
+    strategies: 'generateSW',
+    registerWebManifestInRouteRules: true,
+    
     workbox: {
       // When enabled in production, use these settings
       navigateFallback: '/',
-      globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+      globPatterns: ['**/*.{js,css,html,png,svg,ico,json}'],
+      cleanupOutdatedCaches: true,
+      clientsClaim: true,
+      skipWaiting: true,
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -93,13 +69,52 @@ export default defineNuxtConfig({
               statuses: [0, 200]
             }
           }
+        },
+        {
+          urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'google-fonts-assets-cache',
+            expiration: {
+              maxEntries: 10,
+              maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+            },
+            cacheableResponse: {
+              statuses: [0, 200]
+            }
+          }
+        },
+        {
+          urlPattern: /\.(png|jpg|jpeg|svg|gif|webp)$/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'images-cache',
+            expiration: {
+              maxEntries: 50,
+              maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+            }
+          }
+        },
+        {
+          urlPattern: /\/api\/.*/i,
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'api-cache',
+            expiration: {
+              maxEntries: 50,
+              maxAgeSeconds: 60 * 60 // 1 hour
+            },
+            networkTimeoutSeconds: 10
+          }
         }
       ]
     },
     devOptions: {
       // Completely disable in development
       enabled: false,
-      type: 'module'
+      type: 'module',
+      navigateFallback: '/',
+      navigateFallbackAllowlist: [/^\/$/]
     }
   },
   site: {
