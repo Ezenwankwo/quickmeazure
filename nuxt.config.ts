@@ -45,16 +45,25 @@ export default defineNuxtConfig({
     includeAssets: ['/favicons/**/*'],
     // Use the external manifest file instead of defining it here
     manifest: false,
-    strategies: 'generateSW',
+    strategies: 'injectManifest',
     registerWebManifestInRouteRules: true,
+    injectManifest: {
+      injectionPoint: undefined,
+      rollupFormat: 'iife',
+    },
     
     workbox: {
       // When enabled in production, use these settings
       navigateFallback: '/',
+      navigateFallbackDenylist: [/\/api\//],
       globPatterns: ['**/*.{js,css,html,png,svg,ico,json}'],
       cleanupOutdatedCaches: true,
       clientsClaim: true,
       skipWaiting: true,
+      // Explicitly precache the root URL
+      precacheManifest: [
+        { url: '/', revision: null }
+      ],
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
