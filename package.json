@@ -19,6 +19,7 @@
     "@nuxt/image": "^1.10.0",
     "@nuxt/ui": "3.0.2",
     "@nuxtjs/seo": "^3.0.3",
+    "@vite-pwa/nuxt": "^1.0.0",
     "bcryptjs": "^2.4.3",
     "chart.js": "^4.4.9",
     "cookie-es": "^2.0.0",

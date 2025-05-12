@@ -3,7 +3,7 @@ import { defineNuxtConfig } from 'nuxt/config'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ['@nuxt/ui', 'nuxt-auth-utils', '@nuxt/image', '@nuxtjs/seo'],
+  modules: ['@nuxt/ui', 'nuxt-auth-utils', '@nuxt/image', '@nuxtjs/seo', '@vite-pwa/nuxt'],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     // Keys within public are also exposed client-side
@@ -24,6 +24,27 @@ export default defineNuxtConfig({
   },
   ui: {
     colorMode: false
+  },
+  pwa: {
+    manifest: {
+      name: 'QuickMeazure - Tailor Business Management',
+      short_name: 'QuickMeazure',
+      description: 'Easily manage your clients\'s measurements, styles, and payments with QuickMeazure.',
+      theme_color: '#ffffff',
+      background_color: '#ffffff',
+      icons: [
+        {
+          src: '/android-chrome-192x192.png',
+          sizes: '192x192',
+          type: 'image/png'
+        },
+        {
+          src: '/android-chrome-512x512.png',
+          sizes: '512x512',
+          type: 'image/png'
+        }
+      ]
+    }
   },
   site: {
     url: 'https://quickmeazure.com',
