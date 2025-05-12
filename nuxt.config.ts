@@ -67,8 +67,6 @@ export default defineNuxtConfig({
       ]
     },
     workbox: {
-      // Only for production
-      enabled: process.env.NODE_ENV === 'production',
       // When enabled in production, use these settings
       navigateFallback: '/',
       globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
