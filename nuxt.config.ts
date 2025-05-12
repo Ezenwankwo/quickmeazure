@@ -40,6 +40,9 @@ export default defineNuxtConfig({
     disableServiceWorker: process.env.NODE_ENV !== 'production',
     // Disable dev SW
     injectRegister: 'auto',
+    // Ensure manifest is included in the build
+    includeManifestIcons: true,
+    includeAssets: ['/favicons/**/*'],
     manifest: {
       name: 'QuickMeazure - Tailor Business Management',
       short_name: 'QuickMeazure',
@@ -63,6 +66,12 @@ export default defineNuxtConfig({
           src: '/favicons/apple-touch-icon.png',
           sizes: '180x180',
           type: 'image/png'
+        },
+        {
+          src: '/favicons/android-chrome-512x512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable'
         }
       ]
     },
