@@ -3,7 +3,14 @@ import { defineNuxtConfig } from 'nuxt/config'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ['@nuxt/ui', 'nuxt-auth-utils', '@nuxt/image', '@nuxtjs/seo', '@vite-pwa/nuxt'],
+  modules: [
+    '@nuxt/ui', 
+    'nuxt-auth-utils', 
+    '@nuxt/image', 
+    '@nuxtjs/seo', 
+    // Only include PWA module in production
+    ...(process.env.NODE_ENV === 'production' ? ['@vite-pwa/nuxt'] : [])
+  ],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     // Keys within public are also exposed client-side
@@ -26,24 +33,66 @@ export default defineNuxtConfig({
     colorMode: false
   },
   pwa: {
+    registerType: 'autoUpdate',
+    // Only generate service worker in production
+    enabled: process.env.NODE_ENV === 'production',
+    // Disable service worker registration completely
+    disableServiceWorker: process.env.NODE_ENV !== 'production',
+    // Disable dev SW
+    injectRegister: 'auto',
     manifest: {
       name: 'QuickMeazure - Tailor Business Management',
       short_name: 'QuickMeazure',
       description: 'Easily manage your clients\'s measurements, styles, and payments with QuickMeazure.',
       theme_color: '#ffffff',
       background_color: '#ffffff',
+      display: 'standalone',
+      start_url: '/',
       icons: [
         {
-          src: '/android-chrome-192x192.png',
+          src: '/favicons/android-chrome-192x192.png',
           sizes: '192x192',
           type: 'image/png'
         },
         {
-          src: '/android-chrome-512x512.png',
+          src: '/favicons/android-chrome-512x512.png',
           sizes: '512x512',
+          type: 'image/png'
+        },
+        {
+          src: '/favicons/apple-touch-icon.png',
+          sizes: '180x180',
           type: 'image/png'
         }
       ]
+    },
+    workbox: {
+      // Only for production
+      enabled: process.env.NODE_ENV === 'production',
+      // When enabled in production, use these settings
+      navigateFallback: '/',
+      globPatterns: ['**/*.{js,css,html,png,svg,ico}'],
+      runtimeCaching: [
+        {
+          urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'google-fonts-cache',
+            expiration: {
+              maxEntries: 10,
+              maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+            },
+            cacheableResponse: {
+              statuses: [0, 200]
+            }
+          }
+        }
+      ]
+    },
+    devOptions: {
+      // Completely disable in development
+      enabled: false,
+      type: 'module'
     }
   },
   site: {
@@ -58,10 +107,6 @@ export default defineNuxtConfig({
     },
     build: {
       sourcemap: false
-    },
-    // Disable service worker registration
-    worker: {
-      plugins: () => []
     }
   },
   nitro: {
