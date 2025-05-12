@@ -54,6 +54,7 @@
 <script setup>
 // Get authenticated user with useSessionAuth composable
 import { useSessionAuth } from '~/composables/useSessionAuth';
+
 const { isLoggedIn } = useSessionAuth();
 const route = useRoute();
 

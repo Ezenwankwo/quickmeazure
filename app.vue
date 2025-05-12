@@ -16,11 +16,17 @@
         </div>
       </template>
     </ClientOnly>
+    
+    <!-- PWA Install Prompt - Added at the app level to avoid hydration issues -->
+    <ClientOnly>
+      <InstallPrompt />
+    </ClientOnly>
   </UApp>
 </template>
 
 <script setup>
 import { useLayout } from '~/composables/useLayout';
+import InstallPrompt from '~/components/InstallPrompt.vue';
 
 // Get the current layout
 const { layout } = useLayout();
