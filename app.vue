@@ -1,5 +1,5 @@
 <template>
-  <UApp>
+  <UApp :toaster="{position: 'top-center'}">
     <!-- Removed ClientOnly wrapper to fix navigation double-click issue -->
     <NuxtLayout :name="layout">
       <template #default>
