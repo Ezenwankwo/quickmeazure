@@ -26,7 +26,9 @@ function createDrizzleClient() {
   // Create a PostgreSQL connection pool
   const pool = new Pool({ 
     connectionString,
-    ssl: process.env.NODE_ENV === 'production' // Only use SSL in production
+    ssl: process.env.NODE_ENV === 'production' ? {
+      rejectUnauthorized: false // Allow self-signed certificates in production
+    } : false
   });
   
   // Set up error handling for the pool
