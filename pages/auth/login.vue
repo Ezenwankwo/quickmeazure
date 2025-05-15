@@ -33,11 +33,6 @@
       </div>
       
       <form class="space-y-6" @submit.prevent="handleLogin">
-        <!-- Error Message -->
-        <UAlert v-if="error" color="red" variant="soft" icon="i-heroicons-exclamation-triangle" class="mb-4">
-          {{ error }}
-        </UAlert>
-        
         <div class="space-y-4 flex flex-col">
           <div class="space-y-2">
             <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
@@ -156,7 +151,8 @@ const handleLogin = async () => {
       useToast().add({
         title: 'Welcome back!',
         description: 'You have been logged in successfully.',
-        color: 'green'
+        color: 'primary',
+        icon: 'i-heroicons-check-circle'
       });
       
       // Only redirect if not already redirected by the auth service
@@ -177,7 +173,7 @@ const handleLogin = async () => {
       toast.add({
         title: 'Login Failed',
         description: result.error || 'Invalid email or password',
-        color: 'red',
+        color: 'error',
         icon: 'i-heroicons-exclamation-triangle'
       });
     }
@@ -189,7 +185,7 @@ const handleLogin = async () => {
     toast.add({
       title: 'Login Error',
       description: 'An unexpected error occurred. Please try again.',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle'
     });
   } finally {
@@ -206,7 +202,7 @@ async function handleGoogleLogin() {
     toast.add({
       title: 'Google Login',
       description: 'Google login is currently not available. Please use email and password.',
-      color: 'blue',
+      color: 'warning',
       icon: 'i-heroicons-information-circle'
     });
   } catch (e) {
@@ -218,7 +214,7 @@ async function handleGoogleLogin() {
     toast.add({
       title: 'Login Error',
       description: errorMessage,
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle'
     });
   } finally {

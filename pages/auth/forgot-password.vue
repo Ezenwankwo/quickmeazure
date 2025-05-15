@@ -69,7 +69,8 @@ const sendResetLink = async () => {
       toast.add({
         title: 'Success',
         description: 'If there is an account with that email, we have sent a password reset link.',
-        color: 'green'
+        color: 'primary',
+        icon: 'i-heroicons-check-circle'
       });
       
       // For development, log the reset URL to the console
@@ -85,7 +86,8 @@ const sendResetLink = async () => {
     toast.add({
       title: 'Success',
       description: 'If there is an account with that email, we have sent a password reset link.',
-      color: 'green'
+      color: 'primary',
+      icon: 'i-heroicons-check-circle'
     });
   } finally {
     loading.value = false;

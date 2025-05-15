@@ -18,11 +18,6 @@
       </div>
 
       <form v-else class="mt-8 space-y-6" @submit.prevent="resetPassword">
-        <!-- Error Message -->
-        <UAlert v-if="error" color="red" variant="soft" icon="i-heroicons-exclamation-triangle" class="mb-4">
-          {{ error }}
-        </UAlert>
-        
         <div class="space-y-4 flex flex-col">
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700">New Password</label>
@@ -182,7 +177,8 @@ const resetPassword = async () => {
       toast.add({
         title: 'Success',
         description: 'Your password has been reset successfully.',
-        color: 'green'
+        color: 'primary',
+        icon: 'i-heroicons-check-circle'
       });
       
       // Wait a moment then redirect to login

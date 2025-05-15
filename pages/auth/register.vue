@@ -292,7 +292,8 @@ async function handleRegister() {
       toast.add({
         title: 'Registration Successful',
         description: 'Your account has been created!',
-        color: 'green'
+        color: 'primary',
+        icon: 'i-heroicons-check-circle'
       });
       
       // Navigate to subscription confirmation page instead of dashboard
@@ -315,7 +316,7 @@ async function handleRegister() {
         toast.add({
           title: 'Registration Error',
           description: errorMessage,
-          color: 'red',
+          color: 'error',
           icon: 'i-heroicons-exclamation-triangle'
         });
       }
@@ -327,7 +328,7 @@ async function handleRegister() {
     toast.add({
       title: 'Registration Error',
       description: 'An unexpected error occurred. Please try again.',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle'
     });
   } finally {
@@ -342,7 +343,7 @@ async function handleGoogleRegister() {
     toast.add({
       title: 'Google Sign-up',
       description: 'Google sign-up is currently not available. Please use email and password.',
-      color: 'blue',
+      color: 'warning',
       icon: 'i-heroicons-information-circle'
     });
   } catch (error) {
