@@ -8,8 +8,7 @@ export default defineNuxtConfig({
     'nuxt-auth-utils', 
     '@nuxt/image', 
     '@nuxtjs/seo', 
-    // Only include PWA module in production
-    ...(process.env.NODE_ENV === 'production' ? ['@vite-pwa/nuxt'] : [])
+    '@vite-pwa/nuxt',
   ],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
@@ -34,10 +33,6 @@ export default defineNuxtConfig({
   },
   pwa: {
     registerType: 'autoUpdate',
-    // Only generate service worker in production
-    enabled: process.env.NODE_ENV === 'production',
-    // Disable service worker registration completely
-    disableServiceWorker: false,
     // Use auto for service worker registration
     injectRegister: 'auto',
     // Ensure manifest is included in the build
@@ -60,10 +55,6 @@ export default defineNuxtConfig({
       cleanupOutdatedCaches: true,
       clientsClaim: true,
       skipWaiting: true,
-      // Explicitly precache the root URL
-      precacheManifest: [
-        { url: '/', revision: null }
-      ],
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -142,7 +133,12 @@ export default defineNuxtConfig({
   },
   nitro: {
     preset: 'vercel',
-    sourceMap: false
+    sourceMap: false,
+    routeRules: {
+      '/.well-known/appspecific/com.chrome.devtools.json': {
+        redirect: { to: '/', statusCode: 404 }
+      }
+    }
   },
   sourcemap: false,
   compatibilityDate: '2025-04-08',

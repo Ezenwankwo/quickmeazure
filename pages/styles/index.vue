@@ -121,10 +121,11 @@
             class="bg-white border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden group flex flex-col"
           >
             <div class="aspect-w-3 aspect-h-4 bg-gray-100 overflow-hidden flex-grow rounded-md">
-              <img 
+              <NuxtImg 
                 v-if="style.imageUrl" 
                 :src="style.imageUrl" 
                 :alt="style.name" 
+                placeholder
                 class="w-full h-full object-contain transition-transform duration-500 p-2 rounded-md"
               />
               <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">

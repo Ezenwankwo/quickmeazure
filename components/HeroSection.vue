@@ -32,7 +32,7 @@
         Learn More
       </UButton>
     </div>
-    <NuxtImg src="/dashboard.png" alt="Example Dashboard" class="w-full h-auto mt-8" />
+    <NuxtImg src="/dashboard.png" placeholder preload alt="Example Dashboard" class="w-full h-auto mt-8" />
   </section>
 </template>
 
