@@ -129,11 +129,27 @@ export default defineEventHandler(async (event) => {
         const newSubscription = await db
           .insert(tables.subscriptions)
           .values({
-            userId: Number(userId),
+            userId: userId as number,
+            planId: planId as number,
             status: 'active',
-            ...subscriptionData
+            startDate: new Date(),
+            billingPeriod,
+            amount: amount || 0,
+            paymentReference: paymentReference || null,
+            paymentMethod: paymentReference ? 'paystack' : 'free',
+            nextBillingDate: billingPeriod === 'monthly' 
+              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+              : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
           })
           .returning();
+
+        // Update user's hasCompletedSetup to false to ensure they complete the setup
+        await db.update(tables.users)
+          .set({ 
+            hasCompletedSetup: false,
+            updatedAt: new Date() 
+          })
+          .where(eq(tables.users.id, userId));
 
         return {
           success: true,

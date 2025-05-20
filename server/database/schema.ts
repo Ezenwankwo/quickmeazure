@@ -7,7 +7,9 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   password: text('password').notNull(),
   avatar: text('avatar'),
+  hasCompletedSetup: boolean('has_completed_setup').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 })
 
 // Plans table
@@ -169,6 +171,61 @@ export const payments = pgTable('payments', {
   createdBy: text('created_by').notNull(), // User ID who created the payment
 })
 
+// Measurement Templates
+export const measurementTemplates = pgTable('measurement_templates', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  isDefault: boolean('is_default').notNull().default(false),
+  isArchived: boolean('is_archived').notNull().default(false),
+  gender: text('gender').notNull(), // 'male', 'female', or 'unisex'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  // Ensure unique template names per user
+  uniqueNamePerUser: unique().on(table.userId, table.name),
+}));
+
+// Measurement Fields
+export const measurementFields = pgTable('measurement_fields', {
+  id: serial('id').primaryKey(),
+  templateId: integer('template_id').notNull().references(() => measurementTemplates.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  unit: text('unit').notNull().default('cm'),
+  isRequired: boolean('is_required').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+}, (table) => ({
+  // Ensure unique field names per template
+  uniqueFieldPerTemplate: unique().on(table.templateId, table.name),
+}));
+
+// Client Measurements
+export const clientMeasurements = pgTable('client_measurements', {
+  id: serial('id').primaryKey(),
+  clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  templateId: integer('template_id').notNull().references(() => measurementTemplates.id, { onDelete: 'cascade' }),
+  values: jsonb('values').notNull(), // JSON object with fieldId: value pairs
+  notes: text('notes'),
+  takenAt: timestamp('taken_at').defaultNow().notNull(),
+  takenBy: integer('taken_by').references(() => users.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  // Ensure one measurement record per client per template
+  uniqueClientTemplate: unique().on(table.clientId, table.templateId),
+}));
+
+// User Measurement Settings
+export const userMeasurementSettings = pgTable('user_measurement_settings', {
+  userId: integer('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  defaultUnit: text('default_unit').notNull().default('cm'),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // Export types
 export type User = typeof users.$inferSelect
 export type Plan = typeof plans.$inferSelect
@@ -179,4 +236,12 @@ export type Client = typeof clients.$inferSelect
 export type Order = typeof orders.$inferSelect
 export type Style = typeof styles.$inferSelect
 export type Measurement = typeof measurements.$inferSelect
-export type Payment = typeof payments.$inferSelect 
+export type Payment = typeof payments.$inferSelect
+export type MeasurementTemplate = typeof measurementTemplates.$inferSelect
+export type NewMeasurementTemplate = typeof measurementTemplates.$inferInsert
+export type MeasurementField = typeof measurementFields.$inferSelect
+export type NewMeasurementField = typeof measurementFields.$inferInsert
+export type ClientMeasurement = typeof clientMeasurements.$inferSelect
+export type NewClientMeasurement = typeof clientMeasurements.$inferInsert
+export type UserMeasurementSettings = typeof userMeasurementSettings.$inferSelect
+export type NewUserMeasurementSettings = typeof userMeasurementSettings.$inferInsert 

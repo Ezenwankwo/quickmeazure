@@ -8,6 +8,7 @@ interface User {
   email: string;
   subscriptionPlan?: string;
   subscriptionExpiry?: number | null;
+  hasCompletedSetup?: boolean;
 }
 
 // Create a local JWT token storage (for backward compatibility)

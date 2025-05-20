@@ -20,6 +20,13 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo(`/auth/login?redirect=${redirectTo}`);
   }
   
+  // Check if user needs to complete setup
+  const user = auth.user.value;
+  if (user && user.hasCompletedSetup === false && to.path !== '/auth/setup-measurements') {
+    console.log('User needs to complete setup, redirecting to setup page');
+    return navigateTo('/auth/setup-measurements');
+  }
+
   // If we're on a dashboard or other authenticated route, ensure we use the dashboard layout
   if (!to.meta.layout && isAuthenticatedRoute(to.path)) {
     to.meta.layout = 'dashboard';
@@ -36,6 +43,7 @@ function isPublicRoute(path: string): boolean {
     '/auth/login', 
     '/auth/register', 
     '/auth/forgot-password',
+    '/auth/setup-measurements',
     '/legal/terms',
     '/legal/privacy'
   ];
@@ -66,7 +74,8 @@ function isAuthenticatedRoute(path: string): boolean {
     '/styles',
     '/settings',
     '/profile',
-    '/subscription'
+    '/auth/confirm',
+    '/auth/setup-measurements'
   ];
   
   return authPrefixes.some(prefix => path.startsWith(prefix));

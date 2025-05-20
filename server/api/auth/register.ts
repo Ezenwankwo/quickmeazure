@@ -87,6 +87,7 @@ export default defineEventHandler(async (event) => {
           id: Math.floor(Math.random() * 1000).toString(),
           name: trimmedName,
           email: email.toLowerCase(),
+          hasCompletedSetup: false
         }
         
         // Set mock user session
@@ -135,6 +136,7 @@ export default defineEventHandler(async (event) => {
       name: trimmedName,
       email: email.toLowerCase(),
       password: hashedPassword,
+      hasCompletedSetup: false,  // New users need to complete setup
       createdAt: new Date()
     }
     
@@ -148,6 +150,7 @@ export default defineEventHandler(async (event) => {
           id: tables.users.id,
           name: tables.users.name,
           email: tables.users.email,
+          hasCompletedSetup: tables.users.hasCompletedSetup,
           createdAt: tables.users.createdAt
         })
       
@@ -180,6 +183,7 @@ export default defineEventHandler(async (event) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        hasCompletedSetup: user.hasCompletedSetup || false,
         subscriptionPlan
       },
       // Add any additional session data here

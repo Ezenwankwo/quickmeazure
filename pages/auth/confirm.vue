@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-[calc(100vh-80px)] flex items-center justify-center py-12">
+  <div class="subscription-confirm-page">
     <div class="max-w-3xl w-full space-y-8 bg-white py-8 px-4 rounded-xl shadow">
       <div class="text-center">
         <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Confirm Your Plan</h2>
@@ -69,7 +69,7 @@
             size="lg"
             @click="skipPayment"
           >
-            Continue to Dashboard
+            Continue
           </UButton>
         </template>
       </div>
@@ -197,8 +197,8 @@ useHead({
 
 // Set layout for this page
 definePageMeta({
-  layout: 'auth',
-  middleware: ['subscription']
+  layout: 'subscription',
+  middleware: 'subscription'
 });
 
 const route = useRoute();
@@ -268,10 +268,10 @@ const skipPayment = async () => {
     toast.add({
       title: 'Plan Selected',
       description: `You have selected the ${selectedPlan.value.label} plan!`,
-      color: 'green'
+      color: 'primary'
     });
     
-    navigateTo('/dashboard');
+    navigateTo('/settings/measurements');
   } catch (error) {
     console.error('Error:', error);
     
@@ -291,8 +291,8 @@ const onPaymentSuccess = async () => {
   // Reload subscription data
   await loadSubscription();
   
-  // Navigate to dashboard after successful payment
-  navigateTo('/dashboard');
+  // Navigate to setup measurements after successful subscription
+  navigateTo('/auth/setup-measurements');
 };
 
 // Process payment with Paystack
@@ -309,11 +309,11 @@ const processPaystackPayment = () => {
       toast.add({
         title: 'Payment Successful',
         description: `Your payment for the ${selectedPlan.value.label} plan was successful!`,
-        color: 'green'
+        color: 'primary'
       });
       
       // Navigate to dashboard
-      navigateTo('/dashboard');
+      navigateTo('/auth/setup-measurements');
     },
     onError: (error) => {
       // Payment failed
@@ -381,7 +381,7 @@ const changePlan = () => {
   toast.add({
     title: 'Plan Changed',
     description: `You've selected the ${newPlan ? newPlan.label : tempSelectedPlan.value} plan.`,
-    color: 'green'
+    color: 'primary'
   });
 };
 
@@ -437,3 +437,31 @@ watch(isAnnualBilling, () => {
   }
 });
 </script>
+
+<style scoped>
+/* Hide all navigation elements */
+.subscription-confirm-page :deep(nav),
+.subscription-confirm-page :deep(header),
+.subscription-confirm-page :deep([class*="navigation"]),
+.subscription-confirm-page :deep([class*="nav-"]),
+.subscription-confirm-page :deep([class*="-nav"]) {
+  display: none !important;
+}
+
+/* Ensure content takes full viewport */
+:global(html),
+:global(body),
+:global(#__nuxt) {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.subscription-confirm-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+</style>

@@ -297,7 +297,7 @@ async function handleRegister() {
       });
       
       // Navigate to subscription confirmation page instead of dashboard
-      router.push('/subscription/confirm');
+      router.push('/auth/confirm');
     } else {
       // Handle registration failure
       const errorMessage = result.error || 'Registration failed';
