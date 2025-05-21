@@ -1,10 +1,17 @@
 <template>
-  <div class="subscription-confirm-page">
-    <div class="max-w-3xl w-full space-y-8 bg-white py-8 px-4 rounded-xl shadow">
-      <div class="text-center">
-        <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Confirm Your Plan</h2>
-        <p class="mt-2 text-gray-600">Confirm your subscription plan to continue.</p>
-      </div>
+  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Signup Steps - First Item -->
+    <div class="max-w-3xl w-full mb-6">
+      <SignupSteps :current-step="2" />
+    </div>
+    
+    <!-- Title and Subtitle - Outside Card -->
+    <div class="text-center mb-6 w-full max-w-3xl">
+      <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Confirm Your Plan</h2>
+      <p class="mt-2 text-gray-600">Confirm your subscription plan to continue.</p>
+    </div>
+    
+    <div class="max-w-3xl w-full space-y-6 bg-white py-8 px-6 rounded-xl shadow">
       
       <!-- Selected Plan Card -->
       <div v-if="selectedPlan" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -271,7 +278,7 @@ const skipPayment = async () => {
       color: 'primary'
     });
     
-    navigateTo('/settings/measurements');
+    navigateTo('/auth/setup-measurements');
   } catch (error) {
     console.error('Error:', error);
     
@@ -290,7 +297,6 @@ const skipPayment = async () => {
 const onPaymentSuccess = async () => {
   // Reload subscription data
   await loadSubscription();
-  
   // Navigate to setup measurements after successful subscription
   navigateTo('/auth/setup-measurements');
 };

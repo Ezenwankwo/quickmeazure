@@ -1,12 +1,14 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50">
-    <div class="w-full max-w-md space-y-8 p-10 bg-white rounded-xl shadow">
-      <div class="text-center">
-        <h2 class="text-2xl md:text-3xl font-bold">Sign in to your account</h2>
-        <p class="mt-2 text-sm text-gray-600">
-          to start managing your clients and orders
-        </p>
-      </div>
+  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Title and Subtitle - Outside Card -->
+    <div class="text-center mb-6 w-full max-w-md">
+      <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Sign in to your account</h2>
+      <p class="mt-2 text-gray-600">
+        to start managing your clients and orders
+      </p>
+    </div>
+    
+    <div class="w-full max-w-md space-y-6 p-8 bg-white rounded-xl shadow">
       
       <!-- Google Sign In Button -->
       <div class="mt-8">

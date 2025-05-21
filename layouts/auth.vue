@@ -13,7 +13,7 @@
         <!-- Navigation for guests -->
         <div class="flex items-center space-x-2 sm:space-x-4">
           <UButton
-            v-if="route.path !== '/auth/login' && !isSubscriptionConfirmPage"
+            v-if="route.path !== '/auth/login' && !isSubscriptionConfirmPage && route.path !== '/auth/setup-measurements'"
             to="/auth/login"
             color="neutral"
             variant="outline"
@@ -21,7 +21,7 @@
             Login
           </UButton>
           <UButton
-            v-if="route.path !== '/auth/register' && !isSubscriptionConfirmPage"
+            v-if="route.path !== '/auth/register' && !isSubscriptionConfirmPage && route.path !== '/auth/setup-measurements'"
             to="/auth/register"
             color="primary"
           >

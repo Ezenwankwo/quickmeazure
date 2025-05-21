@@ -60,18 +60,40 @@
         
         <!-- Template Selection Section -->
         <div class="space-y-4">
-          <div class="max-w-md">
-            <div class="space-y-2">
-              <label for="template-select" class="block text-sm font-medium text-gray-700">Select a template</label>
-              <USelect
-                v-model="selectedTemplateId"
-                id="template-select"
-                :options="templateOptions"
-                placeholder="Choose a measurement template"
-                class="w-full"
-                size="lg"
-                @update:modelValue="selectTemplate"
-              />
+          <h2 class="text-lg font-medium text-gray-900 border-b pb-2">Measurement Template</h2>
+          
+          <div v-if="templatesLoading" class="flex justify-center py-4">
+            <UIcon name="i-heroicons-arrow-path" class="animate-spin h-6 w-6 text-primary-500" />
+            <span class="ml-2 text-gray-600">Loading templates...</span>
+          </div>
+          
+          <div v-else-if="templates.length === 0" class="text-center py-6 bg-gray-50 rounded-lg border border-gray-200">
+            <UIcon name="i-heroicons-document-text" class="h-10 w-10 mx-auto text-gray-400 mb-3" />
+            <p class="text-gray-600 mb-2">No measurement templates found.</p>
+            <p class="text-sm text-gray-500">You can create templates in your account settings.</p>
+          </div>
+          
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div v-for="template in templates" :key="template.id" 
+              class="p-4 border rounded-lg cursor-pointer transition-all" 
+              :class="selectedTemplateId === template.id ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white hover:border-primary-300 hover:bg-primary-50/30'"
+              @click="selectTemplate(template.id)">
+              <div class="flex justify-between items-center">
+                <div>
+                  <h3 class="font-medium text-gray-900">{{ template.name }}</h3>
+                  <div class="flex items-center mt-1">
+                    <UBadge :color="template.gender === 'male' ? 'blue' : template.gender === 'female' ? 'pink' : 'gray'" size="sm" class="mr-2">
+                      {{ template.gender.charAt(0).toUpperCase() + template.gender.slice(1) }}
+                    </UBadge>
+                    <span class="text-xs text-gray-500">{{ template.fields?.length || 0 }} measurements</span>
+                  </div>
+                </div>
+                <UIcon 
+                  :name="selectedTemplateId === template.id ? 'i-heroicons-check-circle' : 'i-heroicons-circle'" 
+                  class="h-6 w-6" 
+                  :class="selectedTemplateId === template.id ? 'text-primary-500' : 'text-gray-300'" 
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -307,20 +329,6 @@ onMounted(async () => {
 // Selected template
 const selectedTemplateId = ref(null);
 
-// Computed property for template options in the select dropdown
-const templateOptions = computed(() => {
-  return templates.value.map(template => ({
-    label: `${template.name} (${template.gender.charAt(0).toUpperCase() + template.gender.slice(1)})`,
-    value: template.id
-  }));
-});
-
-// Computed property for selected template name
-const selectedTemplateName = computed(() => {
-  const template = templates.value.find(t => t.id === selectedTemplateId.value);
-  return template ? template.name : '';
-});
-
 // Client data
 const client = ref({
   name: '',
@@ -351,6 +359,8 @@ const isFormValid = computed(() => {
 
 // Function to select a template
 const selectTemplate = (templateId) => {
+  selectedTemplateId.value = templateId;
+  
   // Find the selected template
   const template = templates.value.find(t => t.id === templateId);
   
@@ -370,12 +380,6 @@ const selectTemplate = (templateId) => {
         }
       });
     }
-    
-    useToast().add({
-      title: 'Template Selected',
-      description: `Using ${template.name} template`,
-      color: 'green'
-    });
   }
 };
 

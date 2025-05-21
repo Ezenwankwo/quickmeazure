@@ -1,12 +1,14 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50">
-    <div class="w-full max-w-md space-y-8 p-10 bg-white rounded-xl shadow">
-      <div class="text-center">
-        <h2 class="text-2xl md:text-3xl font-bold">Forgot your password?</h2>
-        <p class="mt-2 text-sm text-gray-600">
-          Enter your email address and we'll send you a link to reset your password.
-        </p>
-      </div>
+  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Title and Subtitle - Outside Card -->
+    <div class="text-center mb-6 w-full max-w-md">
+      <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Forgot your password?</h2>
+      <p class="mt-2 text-gray-600">
+        Enter your email address and we'll send you a link to reset your password.
+      </p>
+    </div>
+    
+    <div class="w-full max-w-md space-y-6 p-8 bg-white rounded-xl shadow">
 
       <form class="mt-8 space-y-6">
         <div class="space-y-4 flex flex-col">

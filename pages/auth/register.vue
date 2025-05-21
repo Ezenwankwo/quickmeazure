@@ -1,10 +1,17 @@
 <template>
-  <div class="min-h-[calc(100vh-80px)] flex items-center justify-center py-12">
-    <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow">
-      <div class="text-center">
-        <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Create your account</h2>
-        <p class="mt-2 text-gray-600">Start managing your tailor business.</p>
-      </div>
+  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Signup Steps - First Item -->
+    <div class="max-w-3xl w-full mb-6">
+      <SignupSteps :current-step="1" />
+    </div>
+    
+    <!-- Title and Subtitle - Outside Card -->
+    <div class="text-center mb-6 w-full max-w-md">
+      <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Create your account</h2>
+      <p class="mt-2 text-gray-600">Start managing your tailor business.</p>
+    </div>
+    
+    <div class="max-w-md w-full space-y-6 bg-white p-8 rounded-xl shadow">
       
       <!-- Google Sign Up Button -->
       <div class="mt-8">
