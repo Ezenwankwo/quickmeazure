@@ -298,7 +298,9 @@ const { templates, fetchTemplates, loading: templatesLoading } = useMeasurementT
 // Fetch templates on component mount
 onMounted(async () => {
   try {
+    console.log('Fetching measurement templates...');
     await fetchTemplates();
+    console.log('Templates fetched:', templates.value);
   } catch (error) {
     console.error('Failed to fetch measurement templates:', error);
   }
@@ -309,6 +311,7 @@ const selectedTemplateId = ref(null);
 
 // Computed property for template options in the select dropdown
 const templateOptions = computed(() => {
+  console.log('Computing template options, templates:', templates.value);
   return templates.value.map(template => ({
     label: `${template.name} (${template.gender.charAt(0).toUpperCase() + template.gender.slice(1)})`,
     value: template.id

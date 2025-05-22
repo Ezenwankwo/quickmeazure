@@ -1,95 +1,137 @@
 <template>
-  <div class="space-y-8">
-    <div>
-      <h2 class="text-lg font-medium text-gray-900">Measurement Units</h2>
-      <p class="mt-1 text-sm text-gray-500">
-        Configure your preferred unit of measurement for all measurements.
-      </p>
-    </div>
+  <div class="max-w-4xl mx-auto">
+    <!-- Settings Container -->
+    <UCard class="mb-8">
+      <template #header>
+        <div class="flex items-center">
+          <UIcon name="i-heroicons-cog-6-tooth" class="mr-2 text-primary-500 h-5 w-5" />
+          <h2 class="text-xl font-semibold text-gray-900">Measurement Settings</h2>
+        </div>
+        <p class="mt-1 text-sm text-gray-500">
+          Configure your preferred unit of measurement for all measurements.
+        </p>
+      </template>
 
-    <UForm :state="settings" class="space-y-6" @submit="saveSettings">
-      <!-- Default Unit -->
-      <UFormGroup label="Default Unit" name="defaultUnit">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md">
-          <UCard
-            v-for="unit in unitOptions"
-            :key="unit.value"
-            :class="[
-              'cursor-pointer transition-all',
-              { 'ring-2 ring-primary-500 border-primary-500': settings.defaultUnit === unit.value },
-            ]"
-            @click="settings.defaultUnit = unit.value"
-          >
-            <div class="flex items-center">
-              <div class="flex-shrink-0">
-                <div
-                  :class="[
-                    'h-5 w-5 rounded-full border-2 flex items-center justify-center',
-                    settings.defaultUnit === unit.value
-                      ? 'border-primary-500 bg-primary-500'
-                      : 'border-gray-300',
-                  ]"
-                >
-                  <UIcon
-                    v-if="settings.defaultUnit === unit.value"
-                    name="i-heroicons-check"
-                    class="h-3.5 w-3.5 text-white"
-                  />
+      <UForm :state="settings" class="space-y-6" @submit="saveSettings">
+        <!-- Default Unit -->
+        <UFormGroup label="Default Unit" name="defaultUnit" help="This will be used for all new measurements">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
+            <UCard
+              v-for="unit in unitOptions"
+              :key="unit.value"
+              :ui="{
+                body: {
+                  padding: 'p-4'
+                }
+              }"
+              :class="[
+                'cursor-pointer transition-all hover:shadow-md',
+                settings.defaultUnit === unit.value
+                  ? 'ring-2 ring-primary-500 border-primary-500 bg-primary-50'
+                  : 'hover:border-gray-300',
+              ]"
+              @click="settings.defaultUnit = unit.value"
+            >
+              <div class="flex items-center">
+                <div class="flex-shrink-0">
+                  <div
+                    :class="[
+                      'h-5 w-5 rounded-full border-2 flex items-center justify-center',
+                      settings.defaultUnit === unit.value
+                        ? 'border-primary-500 bg-primary-500'
+                        : 'border-gray-300',
+                    ]"
+                  >
+                    <UIcon
+                      v-if="settings.defaultUnit === unit.value"
+                      name="i-heroicons-check"
+                      class="h-3.5 w-3.5 text-white"
+                    />
+                  </div>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-gray-900">
+                    {{ unit.label }}
+                  </h3>
+                  <p class="text-xs text-gray-500">
+                    {{ unit.description }}
+                  </p>
                 </div>
               </div>
-              <div class="ml-3">
-                <h3 class="text-sm font-medium text-gray-900">
-                  {{ unit.label }}
-                </h3>
-                <p class="text-xs text-gray-500">
-                  {{ unit.description }}
-                </p>
-              </div>
-            </div>
-          </UCard>
-        </div>
-      </UFormGroup>
+            </UCard>
+          </div>
+        </UFormGroup>
 
-      <!-- Form Actions -->
-      <div class="flex justify-end pt-6 border-t border-gray-200">
-        <UButton type="submit" :loading="isSaving">
-          Save Changes
-        </UButton>
-      </div>
-    </UForm>
+        <!-- Form Actions -->
+        <div class="flex justify-end pt-6">
+          <UButton 
+            type="submit" 
+            :loading="isSaving"
+            icon="i-heroicons-check"
+            color="primary"
+          >
+            Save Changes
+          </UButton>
+        </div>
+      </UForm>
+    </UCard>
 
     <!-- Danger Zone -->
-    <div class="pt-8 border-t border-gray-200">
-      <h3 class="text-lg font-medium text-red-600">Danger Zone</h3>
-      <p class="mt-1 text-sm text-gray-500">
-        Reset all measurement templates to default. This cannot be undone.
-      </p>
-      
-      <div class="mt-4">
+    <UCard class="border-red-200 bg-red-50">
+      <template #header>
+        <div class="flex items-center">
+          <UIcon name="i-heroicons-exclamation-triangle" class="mr-2 text-red-500 h-5 w-5" />
+          <h3 class="text-lg font-medium text-red-600">Danger Zone</h3>
+        </div>
+        <p class="mt-1 text-sm text-gray-600">
+          Actions in this section can result in irreversible changes to your data.
+        </p>
+      </template>
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h4 class="font-medium text-gray-900">Reset Templates</h4>
+          <p class="text-sm text-gray-600">
+            Reset all measurement templates to their default values. This cannot be undone.
+          </p>
+        </div>
         <UButton
           color="red"
-          variant="outline"
+          variant="soft"
+          icon="i-heroicons-arrow-path"
           :loading="isResetting"
           @click="confirmReset"
         >
-          Reset to Default Templates
+          Reset to Default
         </UButton>
       </div>
-    </div>
+    </UCard>
   </div>
 
-  <!-- Reset Confirmation -->
+  <!-- Reset Confirmation Modal -->
   <UModal v-model="showResetConfirm">
-    <UCard>
+    <UCard :ui="{ ring: 'ring-1 ring-red-100', divide: 'divide-y divide-red-100' }">
       <template #header>
-        <h3 class="text-lg font-semibold text-red-600">Reset Templates</h3>
+        <div class="flex items-center">
+          <UIcon name="i-heroicons-exclamation-triangle" class="mr-2 text-red-500 h-6 w-6" />
+          <h3 class="text-lg font-semibold text-red-600">Confirm Reset</h3>
+        </div>
       </template>
 
-      <p class="text-gray-700">
-        Are you sure you want to reset all measurement templates to their default values?
-        This will remove all custom templates and reset the default templates to their original state.
-        This action cannot be undone.
-      </p>
+      <div class="py-4">
+        <p class="text-gray-700 mb-3">
+          Are you sure you want to reset all measurement templates to their default values?
+        </p>
+        <UAlert
+          icon="i-heroicons-exclamation-triangle"
+          color="red"
+          variant="soft"
+          title="This action cannot be undone"
+          class="mt-2"
+        >
+          This will remove all custom templates and reset the default templates to their original state.
+        </UAlert>
+      </div>
 
       <template #footer>
         <div class="flex justify-end gap-3">
@@ -102,6 +144,7 @@
           </UButton>
           <UButton
             color="red"
+            icon="i-heroicons-arrow-path"
             :loading="isResetting"
             @click="resetToDefault"
           >
@@ -129,12 +172,12 @@ const unitOptions = [
   {
     value: 'in',
     label: 'Inches (in)',
-    description: 'Use inches for all measurements',
+    description: 'Imperial system - standard in the US',
   },
   {
     value: 'cm',
     label: 'Centimeters (cm)',
-    description: 'Use centimeters for all measurements',
+    description: 'Metric system - used worldwide',
   },
 ];
 
@@ -156,7 +199,9 @@ const saveSettings = async () => {
     
     useToast().add({
       title: 'Settings saved',
+      description: 'Your measurement preferences have been updated',
       icon: 'i-heroicons-check-circle',
+      color: 'green',
     });
   } catch (err) {
     console.error('Error saving settings:', err);
@@ -192,7 +237,9 @@ const resetToDefault = async () => {
     
     useToast().add({
       title: 'Templates reset successfully',
+      description: 'All measurement templates have been restored to defaults',
       icon: 'i-heroicons-check-circle',
+      color: 'green',
     });
     
     emit('saved');

@@ -12,19 +12,31 @@ export const useMeasurementTemplates = () => {
     error.value = null;
     
     try {
+      console.log('Fetching templates from API...');
       const { data, error: fetchError } = await useFetch('/api/measurement-templates', {
         params: { includeArchived },
       });
 
+      console.log('API response:', data.value);
+      
       if (fetchError.value) {
         throw new Error(fetchError.value.message || 'Failed to fetch templates');
       }
 
-      templates.value = data.value?.data || [];
+      // Fix: Ensure we're correctly accessing the data property from the API response
+      if (data.value && data.value.success) {
+        templates.value = data.value.data || [];
+        console.log('Templates set:', templates.value);
+      } else {
+        console.error('Invalid API response format:', data.value);
+        templates.value = [];
+      }
+      
       return templates.value;
     } catch (err: any) {
       console.error('Error fetching measurement templates:', err);
       error.value = err.message || 'Failed to fetch measurement templates';
+      templates.value = [];
       throw err;
     } finally {
       loading.value = false;
@@ -179,6 +191,32 @@ export const useMeasurementTemplates = () => {
     return templates.value.find(t => t.id === templateId);
   };
 
+  // Reset templates to default
+  const resetTemplates = async () => {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      const { data, error: resetError } = await useFetch('/api/measurement-templates/reset', {
+        method: 'POST',
+      });
+
+      if (resetError.value) {
+        throw new Error(resetError.value.message || 'Failed to reset templates');
+      }
+
+      // Refresh the templates list
+      await fetchTemplates();
+      return data.value?.data;
+    } catch (err: any) {
+      console.error('Error resetting measurement templates:', err);
+      error.value = err.message || 'Failed to reset measurement templates';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
   return {
     // State
     loading,
@@ -193,6 +231,7 @@ export const useMeasurementTemplates = () => {
     unarchiveTemplate,
     deleteTemplate,
     getTemplateById,
+    resetTemplates,
   };
 };
 
