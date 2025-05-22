@@ -61,6 +61,10 @@ export function useApiAuth() {
   const handleApiError = (error: any): void => {
     if (!error) return;
     
+    // Check if this is an intentional logout
+    const isIntentionalLogout = process.client && localStorage.getItem('intentionalLogout') === 'true';
+    if (isIntentionalLogout) return; // Skip all error toasts during intentional logout
+    
     // Extract status code
     const statusCode = error.statusCode || error.status || 500;
     

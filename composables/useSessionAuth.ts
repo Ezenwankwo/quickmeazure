@@ -228,10 +228,20 @@ export function useSessionAuth() {
       
       // Remove from localStorage
       if (process.client) {
+        // Keep the intentionalLogout flag until the end of the logout process
+        // to ensure all components respect it
+        const intentionalLogout = localStorage.getItem('intentionalLogout')
+        
         localStorage.removeItem('auth')
         localStorage.removeItem('isHandlingAuthError')
         localStorage.removeItem('lastLoginTime')
         console.log('Local storage cleared')
+        
+        // If this was an intentional logout, restore the flag
+        // It will be removed after navigation completes
+        if (intentionalLogout === 'true') {
+          localStorage.setItem('intentionalLogout', 'true')
+        }
       }
       
       // Call server logout endpoint (uses nuxt-auth-utils)
@@ -253,9 +263,17 @@ export function useSessionAuth() {
       sessionExpiry.value = null
       
       if (process.client) {
+        // Keep the intentionalLogout flag until the end of the logout process
+        const intentionalLogout = localStorage.getItem('intentionalLogout')
+        
         localStorage.removeItem('auth')
         localStorage.removeItem('isHandlingAuthError')
         localStorage.removeItem('lastLoginTime')
+        
+        // If this was an intentional logout, restore the flag
+        if (intentionalLogout === 'true') {
+          localStorage.setItem('intentionalLogout', 'true')
+        }
       }
       
       return { success: true, error }

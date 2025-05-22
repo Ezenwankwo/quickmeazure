@@ -25,14 +25,8 @@
               <div v-if="isDropdownOpen"
                 class="absolute right-0 mt-1 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-gray-300 ring-opacity-5 focus:outline-none z-10">
                 <div class="py-1">
-                  <ULink to="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    <UIcon name="i-heroicons-user" class="mr-2" />Profile
-                  </ULink>
                   <ULink to="/settings" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     <UIcon name="i-heroicons-cog-6-tooth" class="mr-2" />Settings
-                  </ULink>
-                  <ULink to="/subscription" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    <UIcon name="i-heroicons-credit-card" class="mr-2" />Subscription
                   </ULink>
                   <div class="border-t border-gray-200 my-1"></div>
                   <button class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -171,17 +165,27 @@ watch(route, () => {
 const handleLogout = async () => {
   try {
     // Set a flag in localStorage to indicate this is an intentional logout
-    // This will be used to prevent showing 'Session Expired' toasts
+    // This will be used to prevent showing any toasts during logout
     if (process.client) {
       localStorage.setItem('intentionalLogout', 'true');
     }
     
     await auth.logout();
-    navigateTo('/auth/login');
+    
+    // Use navigateTo with onFinish callback to clean up the flag after navigation completes
+    navigateTo('/auth/login', {
+      onFinish: () => {
+        // Clean up the flag after navigation is complete
+        if (process.client) {
+          setTimeout(() => {
+            localStorage.removeItem('intentionalLogout');
+          }, 500); // Small delay to ensure all components have finished processing
+        }
+      }
+    });
   } catch (error) {
     console.error('Error logging out:', error);
-  } finally {
-    // Clean up the flag after logout is complete
+    // Clean up the flag in case of error
     if (process.client) {
       localStorage.removeItem('intentionalLogout');
     }
