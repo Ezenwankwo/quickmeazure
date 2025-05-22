@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-6 sm:py-10 px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen bg-gray-50 py-5 sm:py-10 px-3 sm:px-6 lg:px-8">
     <div class="max-w-4xl mx-auto">
       <!-- Signup Steps - First Item -->
       <div class="max-w-3xl mx-auto mb-8">
@@ -31,46 +31,50 @@
         <div class="border-b border-gray-200 bg-gray-50/80">
           <nav class="flex -mb-px overflow-x-auto" aria-label="Tabs">
             <div class="flex w-full px-4 sm:px-6">
-              <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                @click="activeTab = tab.id"
-                :class="[
-                  'whitespace-nowrap py-4 px-4 sm:px-6 border-b-2 font-medium text-sm flex items-center justify-center flex-1 transition-all duration-200',
-                  activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600 bg-white shadow-sm'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                ]"
-              >
-                <UIcon :name="tab.icon" class="w-5 h-5 mr-2" />
-                {{ tab.name }} Template
-                <span v-if="activeTab === tab.id" class="ml-2 bg-primary-100 text-primary-700 text-xs px-2 py-0.5 rounded-full hidden sm:inline-block">Active</span>
-              </button>
+                <button
+                  v-for="tab in tabs"
+                  :key="tab.id"
+                  @click="switchTab(tab.id)"
+                  :class="[
+                    'whitespace-nowrap py-3 sm:py-4 px-2 sm:px-6 border-b-2 font-medium text-xs sm:text-sm flex items-center justify-center flex-1 transition-all duration-200',
+                    activeTab === tab.id
+                      ? 'border-primary-500 text-primary-600 bg-white shadow-sm'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ]"
+                  role="tab"
+                  :aria-selected="activeTab === tab.id"
+                  :aria-controls="`${tab.id}-panel`"
+                  :id="`${tab.id}-tab`"
+                >
+                  <UIcon :name="tab.icon" class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" aria-hidden="true" />
+                  <span>{{ tab.name }}</span>
+                  <span class="sr-only">Template</span>
+                  <span v-if="activeTab === tab.id" class="ml-1 sm:ml-2 bg-primary-100 text-primary-700 text-xs px-1 sm:px-2 py-0.5 rounded-full hidden sm:inline-block">Active</span>
+                  <span v-if="hasUnsavedChanges(tab.id)" class="ml-1 sm:ml-2 bg-amber-100 text-amber-700 text-xs px-1 sm:px-2 py-0.5 rounded-full">Unsaved</span>
+                </button>
             </div>
           </nav>
         </div>
         
         <div class="p-4 sm:p-6 lg:p-8">
-          <!-- Loading State -->
-          <div v-if="!isClient || !isTemplatesLoaded" class="space-y-6">
+          <!-- Loading State - Only show briefly during initial load -->
+          <div v-if="loading" class="space-y-6">
             <div class="text-center py-12">
-              <div class="space-y-6 max-w-md mx-auto">
+              <div class="animate-pulse space-y-6 max-w-md mx-auto">
                 <div class="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
                 <div class="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                <div class="flex justify-center">
+                  <div class="w-10 h-10 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
+                </div>
+                <p class="text-sm text-gray-500">Loading your templates...</p>
               </div>
             </div>
           </div>
 
-          <!-- Saving State -->
-          <div v-else-if="isSaving" class="space-y-6">
-            <div class="text-center py-12">
-              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-primary-500 mx-auto"></div>
-              <p class="mt-3 text-sm text-gray-500">Saving your measurements...</p>
-            </div>
-          </div>
+          <!-- We're removing the separate saving state and will show loading in the button instead -->
           
           <!-- Main Content -->
-          <div v-else class="space-y-6">
+          <div v-else-if="!loading" class="space-y-6">
             <div class="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 shadow-sm">
               <div class="flex items-center justify-between mb-2">
                 <label for="template-name" class="block text-sm font-medium text-gray-700">Template Name</label>
@@ -84,9 +88,10 @@
                 type="text"
                 class="w-full"
                 :placeholder="`Standard ${activeTab === 'male' ? 'Male' : 'Female'} Measurements`"
-                :state="formErrors[`${activeTab}-name`] ? 'error' : undefined"
+                :state="formErrors[`${activeTab}-name`] || (attemptedSave && !templates[activeTab].name.trim()) ? 'error' : undefined"
                 :ui="{ icon: { trailing: { pointer: '' } } }"
                 required
+                @blur="validateTemplateName(activeTab)"
               >
                 <template #leading>
                   <UIcon name="i-heroicons-document-text" class="text-gray-400" />
@@ -98,8 +103,11 @@
               <p v-if="formErrors[`${activeTab}-name`]" class="mt-1 text-xs text-red-500">
                 {{ formErrors[`${activeTab}-name`] }}
               </p>
+              <p v-else-if="attemptedSave && !templates[activeTab].name.trim()" class="mt-1 text-xs text-red-500">
+                Template name is required
+              </p>
               <p v-else class="mt-1 text-xs text-gray-500">
-                This name will be used to identify this measurement template
+                <span class="text-red-500">*</span> This name is required and will be used to identify this measurement template
               </p>
             </div>
 
@@ -114,17 +122,23 @@
                     type="button"
                     @click="addField(activeTab, 'upperBody')"
                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-primary-700 bg-primary-50 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500 transition-colors"
+                    :disabled="templates[activeTab].upperBody.length >= maxFieldsPerSection"
+                    :class="{'opacity-50 cursor-not-allowed': templates[activeTab].upperBody.length >= maxFieldsPerSection}"
                   >
                     <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5 mr-1.5" />
                     <span>Add Upper Body</span>
+                    <span v-if="templates[activeTab].upperBody.length >= maxFieldsPerSection" class="ml-1 text-xs">(Max)</span>
                   </button>
                   <button
                     type="button"
                     @click="addField(activeTab, 'lowerBody')"
                     class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-primary-700 bg-primary-50 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary-500 transition-colors"
+                    :disabled="templates[activeTab].lowerBody.length >= maxFieldsPerSection"
+                    :class="{'opacity-50 cursor-not-allowed': templates[activeTab].lowerBody.length >= maxFieldsPerSection}"
                   >
                     <UIcon name="i-heroicons-plus" class="w-3.5 h-3.5 mr-1.5" />
                     <span>Add Lower Body</span>
+                    <span v-if="templates[activeTab].lowerBody.length >= maxFieldsPerSection" class="ml-1 text-xs">(Max)</span>
                   </button>
                 </div>
               </div>
@@ -150,17 +164,21 @@
                         </span>
                       </div>
                       <template v-if="templates[activeTab]?.upperBody?.length">
-                        <div v-for="(field, index) in templates[activeTab].upperBody" :key="'upper-' + index" class="flex items-center gap-2 group bg-white rounded-md p-3 hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm">
+                        <div v-for="(field, index) in templates[activeTab].upperBody" :key="'upper-' + index" class="flex items-center gap-2 group bg-white rounded-md p-3 hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm" :class="{'border-red-200 bg-red-50': !field.name.trim() && (attemptedSave || field.validated)}">
                           <div class="flex-1">
                             <UInput
                               v-model="field.name"
                               type="text"
                               class="w-full"
                               :placeholder="`Upper body ${index + 1}`"
-                              :state="!field.name.trim() && formErrors[`${activeTab}-fieldnames`] ? 'error' : undefined"
+                              :state="!field.name.trim() && (formErrors[`${activeTab}-fieldnames`] || attemptedSave || field.validated) ? 'error' : undefined"
                               :ui="{ base: 'relative', input: { base: 'peer w-full' } }"
                               required
+                              @blur="validateField(field)"
                             />
+                            <p v-if="!field.name.trim() && (attemptedSave || field.validated)" class="text-xs text-red-500 mt-1">
+                              Field name is required
+                            </p>
                           </div>
                           <div class="flex items-center">
                             <span class="text-xs font-medium bg-gray-100 text-gray-500 rounded-full w-5 h-5 flex items-center justify-center mr-2">{{ index + 1 }}</span>
@@ -201,17 +219,21 @@
                         </span>
                       </div>
                       <template v-if="templates[activeTab]?.lowerBody?.length">
-                        <div v-for="(field, index) in templates[activeTab].lowerBody" :key="'lower-' + index" class="flex items-center gap-2 group bg-white rounded-md p-3 hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm">
+                        <div v-for="(field, index) in templates[activeTab].lowerBody" :key="'lower-' + index" class="flex items-center gap-2 group bg-white rounded-md p-3 hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm" :class="{'border-red-200 bg-red-50': !field.name.trim() && (attemptedSave || field.validated)}">
                           <div class="flex-1">
                             <UInput
                               v-model="field.name"
                               type="text"
                               class="w-full"
                               :placeholder="`Lower body ${index + 1}`"
-                              :state="!field.name.trim() && formErrors[`${activeTab}-fieldnames`] ? 'error' : undefined"
+                              :state="!field.name.trim() && (formErrors[`${activeTab}-fieldnames`] || attemptedSave || field.validated) ? 'error' : undefined"
                               :ui="{ base: 'relative', input: { base: 'peer w-full' } }"
                               required
+                              @blur="validateField(field)"
                             />
+                            <p v-if="!field.name.trim() && (attemptedSave || field.validated)" class="text-xs text-red-500 mt-1">
+                              Field name is required
+                            </p>
                           </div>
                           <div class="flex items-center">
                             <span class="text-xs font-medium bg-gray-100 text-gray-500 rounded-full w-5 h-5 flex items-center justify-center mr-2">{{ index + 1 }}</span>
@@ -266,7 +288,10 @@
                       :disabled="isSaving || !isTemplatesValid"
                       :ui="{ rounded: 'rounded-lg', padding: { xs: 'px-4 py-2.5', sm: 'px-5 py-2.5' } }"
                     >
-                      {{ isSaving ? 'Saving...' : 'Save Templates and Continue' }}
+                      <div class="flex items-center justify-center">
+                        <div v-if="isSaving" class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                        <span>{{ isSaving ? 'Saving...' : 'Save Templates and Continue' }}</span>
+                      </div>
                     </UButton>
                   </div>
                 </div>
@@ -281,7 +306,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useToast, useHead, useRouter, useSessionAuth } from '#imports';
+import { useToast, useHead, useRouter, useSessionAuth, navigateTo } from '#imports';
 import { useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates';
 
 // Mark component as client-only
@@ -307,8 +332,8 @@ const { user } = useSessionAuth();
 const toast = useToast();
 const router = useRouter();
 
-// Initialize measurement templates API
-const { createTemplate, loading: apiLoading } = useMeasurementTemplates();
+// Initialize API loading state
+const apiLoading = ref(false);
 
 // Define tabs
 const tabs = [
@@ -319,12 +344,124 @@ const tabs = [
 // Active tab
 const activeTab = ref('male');
 
-// Loading state
-const isTemplatesLoaded = ref(false);
-const isSaving = ref(false);
-
 // Form errors
 const formErrors = ref<Record<string, string>>({});
+
+// Processing state
+const isProcessing = ref(false);
+const isSaving = ref(false);
+const loading = ref(true);
+
+// Track if user has attempted to save
+const attemptedSave = ref(false);
+
+// Track original template state for detecting changes
+const originalTemplates = ref({});
+
+// Maximum number of fields allowed per section
+const maxFieldsPerSection = 15;
+
+// Validate field on blur
+function validateField(field) {
+  field.validated = true;
+  return !!field.name.trim();
+}
+
+// Validate template name
+function validateTemplateName(gender) {
+  if (!templates.value[gender].name.trim()) {
+    formErrors.value[`${gender}-name`] = 'Template name is required';
+    return false;
+  }
+  delete formErrors.value[`${gender}-name`];
+  return true;
+}
+
+// Check if template has unsaved changes
+function hasUnsavedChanges(tabId) {
+  if (!originalTemplates.value[tabId]) return false;
+  
+  const original = JSON.stringify(originalTemplates.value[tabId]);
+  const current = JSON.stringify(templates.value[tabId]);
+  
+  return original !== current;
+}
+
+// Switch between tabs with confirmation if there are unsaved changes
+function switchTab(newTabId) {
+  if (activeTab.value === newTabId) return;
+  
+  if (hasUnsavedChanges(activeTab.value)) {
+    // Show confirmation dialog
+    if (confirm(`You have unsaved changes in your ${activeTab.value === 'male' ? 'Male' : 'Female'} template. Save changes before switching?`)) {
+      // Save current tab first
+      saveCurrentTab().then(() => {
+        activeTab.value = newTabId;
+      });
+    } else {
+      // Discard changes and switch
+      if (originalTemplates.value[activeTab.value]) {
+        templates.value[activeTab.value] = JSON.parse(JSON.stringify(originalTemplates.value[activeTab.value]));
+      }
+      activeTab.value = newTabId;
+    }
+  } else {
+    // No unsaved changes, switch directly
+    activeTab.value = newTabId;
+  }
+}
+
+// Save just the current tab
+async function saveCurrentTab() {
+  const gender = activeTab.value;
+  
+  // Validate template name
+  if (!validateTemplateName(gender)) {
+    toast.add({
+      title: 'Error',
+      description: `Please provide a name for your ${gender === 'male' ? 'Male' : 'Female'} template`,
+      color: 'red'
+    });
+    return false;
+  }
+  
+  // Validate all fields have names
+  const emptyUpperFields = templates.value[gender].upperBody.filter(field => !field.name.trim()).length;
+  const emptyLowerFields = templates.value[gender].lowerBody.filter(field => !field.name.trim()).length;
+  
+  if (emptyUpperFields > 0 || emptyLowerFields > 0) {
+    formErrors.value[`${gender}-fieldnames`] = true;
+    toast.add({
+      title: 'Error',
+      description: `Please provide names for all measurement fields`,
+      color: 'red'
+    });
+    return false;
+  }
+  
+  try {
+    const templateToSave = templates.value[gender];
+    
+    // Save to backend would go here
+    // For now, just update the original template reference
+    originalTemplates.value[gender] = JSON.parse(JSON.stringify(templateToSave));
+    
+    toast.add({
+      title: 'Success',
+      description: `${gender === 'male' ? 'Male' : 'Female'} template saved successfully`,
+      color: 'green'
+    });
+    return true;
+  } catch (error) {
+    console.error(`Error saving ${gender} template:`, error);
+    toast.add({
+      title: 'Error',
+      description: `Failed to save ${gender === 'male' ? 'Male' : 'Female'} template`,
+      color: 'red'
+    });
+    return false;
+  }
+}
 
 // Generate a unique ID
 const generateId = () => {
@@ -377,12 +514,35 @@ const isTemplatesValid = computed(() => {
          templates.value.female.lowerBody.every(field => field.name.trim() !== '');
 });
 
-// Simulate loading templates
+// Initialize loading state and templates
 onMounted(async () => {
-  // In a real app, you would fetch templates from the API here
-  setTimeout(() => {
-    isTemplatesLoaded.value = true;
-  }, 1000);
+  // Set loading state
+  loading.value = true;
+  
+  try {
+    // In a real app, you would fetch templates from the API here
+    // For now, just use the default templates
+    console.log('Initializing templates...');
+    
+    // Store original templates to track changes
+    originalTemplates.value = {
+      male: JSON.parse(JSON.stringify(templates.value.male)),
+      female: JSON.parse(JSON.stringify(templates.value.female))
+    };
+    
+    // Short timeout to simulate API call
+    await new Promise(resolve => setTimeout(resolve, 500));
+  } catch (error) {
+    console.error('Error loading templates:', error);
+    toast.add({
+      title: 'Error',
+      description: 'Failed to load measurement templates',
+      color: 'red'
+    });
+  } finally {
+    // Set loading to false to show the content
+    loading.value = false;
+  }
 });
 
 // Add a new field
@@ -428,57 +588,57 @@ const removeField = (gender: string, section: 'upperBody' | 'lowerBody', index: 
 };
 
 // Save templates and complete setup
-const saveTemplates = async () => {
-  // Reset errors
+async function saveTemplates() {
+  // Set attempted save flag to trigger validation UI
+  attemptedSave.value = true;
+  
+  // Clear previous errors
   formErrors.value = {};
   
   // Validate template names
   if (!templates.value.male.name.trim()) {
-    formErrors.value['male-name'] = 'Please enter a name for the male template';
+    formErrors.value['male-name'] = 'Please provide a name for your male template';
   }
   
   if (!templates.value.female.name.trim()) {
-    formErrors.value['female-name'] = 'Please enter a name for the female template';
+    formErrors.value['female-name'] = 'Please provide a name for your female template';
   }
   
-  // Validate field names
-  let hasEmptyMaleFields = false;
-  let hasEmptyFemaleFields = false;
+  // Check if all fields have names
+  const maleEmptyFields = templates.value.male.upperBody.concat(templates.value.male.lowerBody)
+    .filter(field => !field.name.trim()).length;
   
-  // Check male fields
-  templates.value.male.upperBody.forEach(field => {
-    if (!field.name.trim()) hasEmptyMaleFields = true;
-  });
+  const femaleEmptyFields = templates.value.female.upperBody.concat(templates.value.female.lowerBody)
+    .filter(field => !field.name.trim()).length;
   
-  templates.value.male.lowerBody.forEach(field => {
-    if (!field.name.trim()) hasEmptyMaleFields = true;
-  });
-  
-  // Check female fields
-  templates.value.female.upperBody.forEach(field => {
-    if (!field.name.trim()) hasEmptyFemaleFields = true;
-  });
-  
-  templates.value.female.lowerBody.forEach(field => {
-    if (!field.name.trim()) hasEmptyFemaleFields = true;
-  });
-  
-  if (hasEmptyMaleFields) {
-    formErrors.value['male-fieldnames'] = 'All field names must be filled in';
+  if (maleEmptyFields > 0) {
+    formErrors.value['male-fieldnames'] = 'Please provide names for all measurement fields';
+    // Mark all empty fields as validated to show errors
+    templates.value.male.upperBody.forEach(field => {
+      if (!field.name.trim()) field.validated = true;
+    });
+    templates.value.male.lowerBody.forEach(field => {
+      if (!field.name.trim()) field.validated = true;
+    });
   }
   
-  if (hasEmptyFemaleFields) {
-    formErrors.value['female-fieldnames'] = 'All field names must be filled in';
+  if (femaleEmptyFields > 0) {
+    formErrors.value['female-fieldnames'] = 'Please provide names for all measurement fields';
+    // Mark all empty fields as validated to show errors
+    templates.value.female.upperBody.forEach(field => {
+      if (!field.name.trim()) field.validated = true;
+    });
+    templates.value.female.lowerBody.forEach(field => {
+      if (!field.name.trim()) field.validated = true;
+    });
   }
   
   // If there are errors, don't proceed
   if (Object.keys(formErrors.value).length > 0) {
     toast.add({
-      title: 'Validation Error',
+      title: 'Error',
       description: 'Please fix the highlighted errors before continuing.',
-      color: 'red',
-      icon: 'i-heroicons-x-circle',
-      timeout: 3000
+      color: 'red'
     });
     return;
   }
@@ -487,61 +647,114 @@ const saveTemplates = async () => {
   isSaving.value = true;
   
   try {
-    // Save male template
-    await createTemplate({
+    // API endpoint URL
+    const apiUrl = '/api/measurement-templates';
+    
+    // Prepare male template data
+    const maleTemplateData = {
       name: templates.value.male.name,
       gender: 'male',
       fields: [
-        ...templates.value.male.upperBody.map(field => ({
+        ...templates.value.male.upperBody.map((field, index) => ({
           name: field.name,
           category: 'upperBody',
-          order: templates.value.male.upperBody.indexOf(field)
+          order: index
         })),
-        ...templates.value.male.lowerBody.map(field => ({
+        ...templates.value.male.lowerBody.map((field, index) => ({
           name: field.name,
           category: 'lowerBody',
-          order: templates.value.male.lowerBody.indexOf(field)
+          order: index
         }))
       ]
-    });
+    };
     
-    // Save female template
-    await createTemplate({
+    // Prepare female template data
+    const femaleTemplateData = {
       name: templates.value.female.name,
       gender: 'female',
       fields: [
-        ...templates.value.female.upperBody.map(field => ({
+        ...templates.value.female.upperBody.map((field, index) => ({
           name: field.name,
           category: 'upperBody',
-          order: templates.value.female.upperBody.indexOf(field)
+          order: index
         })),
-        ...templates.value.female.lowerBody.map(field => ({
+        ...templates.value.female.lowerBody.map((field, index) => ({
           name: field.name,
           category: 'lowerBody',
-          order: templates.value.female.lowerBody.indexOf(field)
+          order: index
         }))
       ]
-    });
+    };
+    
+    // Save both templates using direct API calls with setup context
+    const [maleResponse, femaleResponse] = await Promise.all([
+      $fetch(apiUrl, {
+        method: 'POST',
+        body: maleTemplateData,
+        headers: {
+          'x-setup-process': 'true'
+        }
+      }),
+      $fetch(apiUrl, {
+        method: 'POST',
+        body: femaleTemplateData,
+        headers: {
+          'x-setup-process': 'true'
+        }
+      })
+    ]);
+    
+    console.log('Templates saved:', { maleResponse, femaleResponse });
+
+    // Save original templates to track changes
+    originalTemplates.value = {
+      male: JSON.parse(JSON.stringify(templates.value.male)),
+      female: JSON.parse(JSON.stringify(templates.value.female))
+    };
     
     // Show success message
     toast.add({
-      title: 'Templates Saved',
+      title: 'Success',
       description: 'Your measurement templates have been saved successfully.',
-      color: 'green',
-      icon: 'i-heroicons-check-circle',
-      timeout: 3000
+      color: 'green'
     });
     
-    // Navigate to dashboard
-    router.push('/dashboard');
+    // Navigate to dashboard using direct window.location approach
+    console.log('Attempting to navigate to dashboard...');
+    console.log('User status:', user.value);
+    console.log('Has completed setup:', user.value?.hasCompletedSetup);
+    
+    // Force a small delay to ensure state updates are processed
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Use the most direct approach - window.location
+    window.location.href = '/dashboard';
+    
+    // The code below won't execute due to the page redirect above
+    // Keeping as fallback in case the redirect doesn't happen
+    try {
+      console.log('Trying router navigation...');
+      await router.push('/dashboard');
+      console.log('Navigation with router.push completed');
+    } catch (navError) {
+      console.error('Error with router navigation:', navError);
+      try {
+        console.log('Trying navigateTo...');
+        await navigateTo('/dashboard', { replace: true });
+        console.log('Fallback navigation with navigateTo completed');
+      } catch (finalError) {
+        console.error('All navigation methods failed:', finalError);
+      }
+    }
   } catch (error: any) {
-    // Show error message
+    console.error('Error saving templates:', error);
+    
+    // Show error message with details if available
+    const errorMessage = error.data?.message || error.message || 'There was a problem saving your templates. Please try again.';
     toast.add({
-      title: 'Error Saving Templates',
-      description: error.message || 'There was a problem saving your templates. Please try again.',
-      color: 'red',
-      icon: 'i-heroicons-x-circle',
-      timeout: 3000
+      title: 'Error',
+      description: errorMessage,
+      color: 'red'
     });
   } finally {
     isSaving.value = false;

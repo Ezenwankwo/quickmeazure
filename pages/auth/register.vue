@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-8 sm:py-12 px-3 sm:px-6 lg:px-8">
     <!-- Signup Steps - First Item -->
     <div class="max-w-3xl w-full mb-6">
       <SignupSteps :current-step="1" />
@@ -11,7 +11,7 @@
       <p class="mt-2 text-gray-600">Start managing your tailor business.</p>
     </div>
     
-    <div class="max-w-md w-full space-y-6 bg-white p-8 rounded-xl shadow">
+    <div class="max-w-md w-full space-y-6 bg-white p-5 sm:p-8 rounded-xl shadow">
       
       <!-- Google Sign Up Button -->
       <div class="mt-8">
@@ -40,7 +40,9 @@
       <form @submit.prevent="handleRegister" class="space-y-6">
         <div class="space-y-6">
           <div class="space-y-2">
-            <label for="fullName" class="block text-sm font-medium text-gray-700">Full Name</label>
+            <label for="fullName" class="block text-sm font-medium text-gray-700">
+              Full Name <span class="text-red-500">*</span>
+            </label>
             <UInput
               v-model="name"
               name="name"
@@ -49,12 +51,20 @@
               required
               size="lg"
               class="w-full"
-            />
+              :state="formErrors.name ? 'error' : undefined"
+              :ui="{ icon: { trailing: { pointer: '' } } }"
+            >
+              <template #trailing>
+                <UIcon v-if="name" name="i-heroicons-check-circle" class="text-green-500" />
+              </template>
+            </UInput>
             <p v-if="formErrors.name" class="mt-1 text-sm text-red-600">{{ formErrors.name }}</p>
           </div>
           
           <div class="space-y-2">
-            <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+            <label for="email" class="block text-sm font-medium text-gray-700">
+              Email <span class="text-red-500">*</span>
+            </label>
             <UInput
               v-model="email"
               name="email"
@@ -64,12 +74,20 @@
               required
               size="lg"
               class="w-full"
-            />
+              :state="formErrors.email ? 'error' : undefined"
+              :ui="{ icon: { trailing: { pointer: '' } } }"
+            >
+              <template #trailing>
+                <UIcon v-if="email && email.includes('@')" name="i-heroicons-check-circle" class="text-green-500" />
+              </template>
+            </UInput>
             <p v-if="formErrors.email" class="mt-1 text-sm text-red-600">{{ formErrors.email }}</p>
           </div>
           
           <div class="space-y-2">
-            <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+            <label for="password" class="block text-sm font-medium text-gray-700">
+              Password <span class="text-red-500">*</span>
+            </label>
             <UInput
               v-model="password"
               name="password"
@@ -111,15 +129,58 @@
                   :class="[passwordStrength >= 4 ? 'bg-green-500' : 'bg-gray-200']"
                 ></div>
               </div>
-              <p class="text-xs mt-1 text-gray-600">
-                Password should be at least 8 characters with uppercase, lowercase, number and special character
-              </p>
+              
+              <!-- Password criteria checklist -->
+              <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-1">
+                <div class="flex items-center">
+                  <UIcon 
+                    :name="password.length >= 8 ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'" 
+                    class="mr-1.5 text-xs" 
+                    :class="password.length >= 8 ? 'text-green-500' : 'text-gray-400'"
+                  />
+                  <span class="text-xs" :class="password.length >= 8 ? 'text-green-600' : 'text-gray-500'">8+ characters</span>
+                </div>
+                <div class="flex items-center">
+                  <UIcon 
+                    :name="hasUpperCase(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'" 
+                    class="mr-1.5 text-xs" 
+                    :class="hasUpperCase(password) ? 'text-green-500' : 'text-gray-400'"
+                  />
+                  <span class="text-xs" :class="hasUpperCase(password) ? 'text-green-600' : 'text-gray-500'">Uppercase letter</span>
+                </div>
+                <div class="flex items-center">
+                  <UIcon 
+                    :name="hasLowerCase(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'" 
+                    class="mr-1.5 text-xs" 
+                    :class="hasLowerCase(password) ? 'text-green-500' : 'text-gray-400'"
+                  />
+                  <span class="text-xs" :class="hasLowerCase(password) ? 'text-green-600' : 'text-gray-500'">Lowercase letter</span>
+                </div>
+                <div class="flex items-center">
+                  <UIcon 
+                    :name="hasNumber(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'" 
+                    class="mr-1.5 text-xs" 
+                    :class="hasNumber(password) ? 'text-green-500' : 'text-gray-400'"
+                  />
+                  <span class="text-xs" :class="hasNumber(password) ? 'text-green-600' : 'text-gray-500'">Number</span>
+                </div>
+                <div class="flex items-center col-span-2">
+                  <UIcon 
+                    :name="hasSpecialChar(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'" 
+                    class="mr-1.5 text-xs" 
+                    :class="hasSpecialChar(password) ? 'text-green-500' : 'text-gray-400'"
+                  />
+                  <span class="text-xs" :class="hasSpecialChar(password) ? 'text-green-600' : 'text-gray-500'">Special character</span>
+                </div>
+              </div>
             </div>
             <p v-if="formErrors.password" class="mt-1 text-sm text-red-600">{{ formErrors.password }}</p>
           </div>
           
           <div class="space-y-2">
-            <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700">
+              Confirm Password <span class="text-red-500">*</span>
+            </label>
             <UInput
               v-model="confirmPassword"
               name="confirmPassword"
@@ -156,7 +217,7 @@
               size="lg"
             />
             <label for="terms" class="ml-2 block text-sm text-gray-700">
-              I agree to the <ULink to="/legal/terms" class="font-medium">terms</ULink> and <ULink to="/legal/privacy" class="font-medium">privacy policies.</ULink>
+              I agree to the <ULink to="/legal/terms" class="font-medium">terms</ULink> and <ULink to="/legal/privacy" class="font-medium">privacy policies</ULink> <span class="text-red-500">*</span>
             </label>
           </div>
         </div>
@@ -170,6 +231,7 @@
             size="lg"
             :loading="isLoading"
             :disabled="!isFormValid"
+            aria-label="Create account with email"
           >
             Create Account with Email
           </UButton>
@@ -235,16 +297,77 @@ const passwordStrength = computed(() => {
 });
 
 // Form validation
+// Validate form fields in real-time
 const isFormValid = computed(() => {
-  return (
-    name.value.trim() !== '' &&
-    email.value.trim() !== '' &&
-    password.value.length >= 8 &&
-    password.value === confirmPassword.value &&
-    agreeToTerms.value &&
-    passwordStrength.value >= 3
-  );
+  // Check if all required fields are filled
+  const fieldsValid = !!name.value && !!email.value && !!password.value && 
+    password.value === confirmPassword.value && agreeToTerms.value;
+  
+  // Check if password meets all criteria
+  const passwordValid = password.value.length >= 8 && 
+    hasUpperCase(password.value) && 
+    hasLowerCase(password.value) && 
+    hasNumber(password.value) && 
+    hasSpecialChar(password.value);
+  
+  return fieldsValid && passwordValid;
 });
+
+const validateForm = () => {
+  const errors = {};
+  
+  // Validate name
+  if (!name.value.trim()) {
+    errors.name = 'Name is required';
+  }
+  
+  // Validate email
+  if (!email.value.trim()) {
+    errors.email = 'Email is required';
+  } else if (!/^\S+@\S+\.\S+$/.test(email.value)) {
+    errors.email = 'Please enter a valid email address';
+  }
+  
+  // Validate password
+  if (!password.value) {
+    errors.password = 'Password is required';
+  } else {
+    const passwordIssues = [];
+    
+    if (password.value.length < 8) {
+      passwordIssues.push('at least 8 characters');
+    }
+    if (!hasUpperCase(password.value)) {
+      passwordIssues.push('an uppercase letter');
+    }
+    if (!hasLowerCase(password.value)) {
+      passwordIssues.push('a lowercase letter');
+    }
+    if (!hasNumber(password.value)) {
+      passwordIssues.push('a number');
+    }
+    if (!hasSpecialChar(password.value)) {
+      passwordIssues.push('a special character');
+    }
+    
+    if (passwordIssues.length > 0) {
+      errors.password = `Password must include ${passwordIssues.join(', ')}`;
+    }
+  }
+  
+  // Validate password confirmation
+  if (password.value !== confirmPassword.value) {
+    errors.confirmPassword = 'Passwords do not match';
+  }
+  
+  // Validate terms agreement
+  if (!agreeToTerms.value) {
+    errors.terms = 'You must agree to the terms and privacy policy';
+  }
+  
+  formErrors.value = errors;
+  return Object.keys(errors).length === 0;
+};
 
 // Handle registration
 async function handleRegister() {
@@ -252,38 +375,7 @@ async function handleRegister() {
   formErrors.value = {};
   
   // Validate form
-  if (!name.value.trim()) {
-    formErrors.value.name = 'Name is required';
-    return;
-  }
-  
-  // Simple email validation
-  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  if (!emailRegex.test(email.value)) {
-    formErrors.value.email = 'Please enter a valid email address';
-    return;
-  }
-  
-  // Password validation
-  if (password.value.length < 8) {
-    formErrors.value.password = 'Password must be at least 8 characters long';
-    return;
-  }
-  
-  if (passwordStrength.value < 3) {
-    formErrors.value.password = 'Password is too weak';
-    return;
-  }
-  
-  // Confirm password validation
-  if (password.value !== confirmPassword.value) {
-    formErrors.value.confirmPassword = 'Passwords do not match';
-    return;
-  }
-  
-  // Terms validation
-  if (!agreeToTerms.value) {
-    formErrors.value.terms = 'You must agree to the terms and privacy policy';
+  if (!validateForm()) {
     return;
   }
   

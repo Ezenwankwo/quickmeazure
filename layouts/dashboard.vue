@@ -13,8 +13,42 @@
         <ClientOnly>
           <!-- Navigation for authenticated users -->
           <div class="flex items-center space-x-2 sm:space-x-4">
-            <UButton icon="i-heroicons-bell" color="gray" variant="ghost" aria-label="Notifications"
-              class="hidden sm:flex" />
+            <UDrawer v-model="isNotificationsOpen" direction="right">
+              <template #default>
+                <UChip :text="notifications.length" size="3xl">
+                  <UButton icon="i-heroicons-bell" color="neutral" variant="subtle" aria-label="Notifications" />
+                </UChip>
+              </template>
+              
+              <template #content>
+                <div class="p-4 min-w-96">
+                  <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold">Notifications</h2>
+                    <UButton icon="i-heroicons-x-mark" color="gray" variant="ghost" @click="isNotificationsOpen = false" />
+                  </div>
+                  
+                  <div class="space-y-3">
+                    <div v-for="(notification, index) in notifications" :key="index" 
+                      class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                      <div class="flex items-start gap-3">
+                        <UIcon :name="notification.icon" class="text-primary-600 mt-0.5 size-5" />
+                        <div class="flex-1">
+                          <div class="font-medium">{{ notification.title }}</div>
+                          <p class="text-sm text-gray-600">{{ notification.message }}</p>
+                          <div class="text-xs text-gray-500 mt-1">{{ notification.time }}</div>
+                        </div>
+                        <UBadge v-if="!notification.read" color="primary" variant="solid" size="xs" class="ml-2">New</UBadge>
+                      </div>
+                    </div>
+                    
+                    <div v-if="notifications.length === 0" class="text-center py-8 text-gray-500">
+                      <UIcon name="i-heroicons-inbox" class="mx-auto mb-2 size-8" />
+                      <p>No notifications</p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </UDrawer>
             <div class="relative dropdown-container">
               <UButton color="gray" variant="ghost" class="truncate max-w-[100px] sm:max-w-none"
                 trailing-icon="i-heroicons-chevron-down" @click="isDropdownOpen = !isDropdownOpen">
@@ -143,8 +177,45 @@ const auth = useSessionAuth();
 const user = computed(() => auth.user.value);
 const route = useRoute();
 
-// Dropdown state
+// State for dropdowns and drawers
 const isDropdownOpen = ref(false);
+const isNotificationsOpen = ref(false);
+
+// Dummy notifications data
+const notifications = ref([
+  {
+    id: 1,
+    title: 'New Order',
+    message: 'You have received a new order from John Doe',
+    time: '10 minutes ago',
+    icon: 'i-heroicons-shopping-bag',
+    read: false
+  },
+  {
+    id: 2,
+    title: 'Measurement Updated',
+    message: 'Client Sarah Johnson updated her measurements',
+    time: '2 hours ago',
+    icon: 'i-heroicons-variable',
+    read: false
+  },
+  {
+    id: 3,
+    title: 'Payment Received',
+    message: 'Payment of $150 received for order #1234',
+    time: 'Yesterday',
+    icon: 'i-heroicons-banknotes',
+    read: true
+  },
+  {
+    id: 4,
+    title: 'Style Added',
+    message: 'New style "Summer Collection" has been added',
+    time: '3 days ago',
+    icon: 'i-heroicons-swatch',
+    read: true
+  }
+]);
 
 // Close dropdown when clicking outside or on route change
 onMounted(() => {

@@ -1,15 +1,30 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center">
+    <div class="flex items-center justify-between mb-8">
+      <div class="flex items-center">
+        <UButton
+          icon="i-heroicons-arrow-left"
+          color="gray"
+          variant="ghost"
+          size="lg"
+          to="/orders"
+          class="mr-2"
+        />
+        <h1 class="text-xl font-bold">Create New Order</h1>
+      </div>
+      
+      <!-- Save Button at Top Right -->
       <UButton
-        icon="i-heroicons-arrow-left"
-        color="gray"
-        variant="ghost"
+        type="submit"
+        color="primary"
+        variant="solid"
+        @click="saveOrder"
+        class="px-6"
+        :loading="isSubmitting"
         size="lg"
-        to="/orders"
-        class="mr-4"
-      />
-      <h1 class="text-xl font-bold">Create New Order</h1>
+      >
+        Create Order
+      </UButton>
     </div>
     
     <UCard class="bg-white">
@@ -188,26 +203,7 @@
           </div>
         </div>
         
-        <!-- Action Buttons -->
-        <div class="flex justify-end space-x-4 pt-6 border-t mt-6">
-          <UButton
-            type="button"
-            color="neutral"
-            variant="outline"
-            size="lg"
-            to="/orders"
-          >
-            Cancel
-          </UButton>
-          <UButton
-            type="submit"
-            color="primary"
-            :loading="isSubmitting"
-            size="lg"
-          >
-            Create Order
-          </UButton>
-        </div>
+        <!-- No action buttons here as we moved the save button to the top -->
       </form>
     </UCard>
   </div>

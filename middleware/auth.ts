@@ -22,6 +22,25 @@ export default defineNuxtRouteMiddleware((to) => {
   
   // Check if user needs to complete setup
   const user = auth.user.value;
+  
+  // Add detailed logging for debugging
+  console.log('Auth middleware - User state:', {
+    path: to.path,
+    userId: user?.id,
+    hasCompletedSetup: user?.hasCompletedSetup,
+    isSetupPage: to.path === '/auth/setup-measurements',
+    isDashboard: to.path === '/dashboard'
+  });
+  
+  // Special case: If we're coming from setup-measurements and going to dashboard,
+  // allow it regardless of hasCompletedSetup status (which might not be updated yet)
+  const fromSetup = document.referrer.includes('/auth/setup-measurements');
+  if (fromSetup && to.path === '/dashboard') {
+    console.log('Coming from setup page to dashboard, allowing navigation');
+    return;
+  }
+  
+  // Regular check for setup completion
   if (user && user.hasCompletedSetup === false && to.path !== '/auth/setup-measurements') {
     console.log('User needs to complete setup, redirecting to setup page');
     return navigateTo('/auth/setup-measurements');
