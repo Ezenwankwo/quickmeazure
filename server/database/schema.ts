@@ -1,4 +1,16 @@
-import { pgTable, serial, text, timestamp, integer, real, jsonb, date, unique, boolean, varchar } from 'drizzle-orm/pg-core'
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  integer,
+  real,
+  jsonb,
+  date,
+  unique,
+  boolean,
+  varchar,
+} from 'drizzle-orm/pg-core'
 
 // Users table
 export const users = pgTable('users', {
@@ -32,8 +44,12 @@ export const plans = pgTable('plans', {
 // Subscriptions table to track user subscriptions
 export const subscriptions = pgTable('subscriptions', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.id),
-  planId: integer('plan_id').notNull().references(() => plans.id),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  planId: integer('plan_id')
+    .notNull()
+    .references(() => plans.id),
   status: text('status').notNull().default('active'), // active, canceled, expired, pending
   startDate: timestamp('start_date').notNull().defaultNow(),
   endDate: timestamp('end_date'), // When the subscription expires
@@ -49,33 +65,39 @@ export const subscriptions = pgTable('subscriptions', {
 })
 
 // Business table (one-to-one with users)
-export const businesses = pgTable('businesses', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.id),
-  name: text('name').notNull(),
-  logo: text('logo'),
-  address: text('address'),
-  city: text('city'),
-  state: text('state'),
-  country: text('country'),
-  zipCode: text('zip_code'),
-  phone: text('phone'),
-  email: text('email'),
-  website: text('website'),
-  taxId: text('tax_id'),
-  businessType: text('business_type'),
-  description: text('description'),
-  socialMedia: jsonb('social_media'), // Store social media links as JSON
-  operatingHours: jsonb('operating_hours'), // Store hours as JSON
-  settings: jsonb('settings'), // Store business settings as JSON
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => {
-  return {
-    // Ensure one-to-one relationship with user
-    userIdUnique: unique().on(table.userId),
+export const businesses = pgTable(
+  'businesses',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    name: text('name').notNull(),
+    logo: text('logo'),
+    address: text('address'),
+    city: text('city'),
+    state: text('state'),
+    country: text('country'),
+    zipCode: text('zip_code'),
+    phone: text('phone'),
+    email: text('email'),
+    website: text('website'),
+    taxId: text('tax_id'),
+    businessType: text('business_type'),
+    description: text('description'),
+    socialMedia: jsonb('social_media'), // Store social media links as JSON
+    operatingHours: jsonb('operating_hours'), // Store hours as JSON
+    settings: jsonb('settings'), // Store business settings as JSON
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => {
+    return {
+      // Ensure one-to-one relationship with user
+      userIdUnique: unique().on(table.userId),
+    }
   }
-})
+)
 
 // Business profiles table
 export const businessProfiles = pgTable('business_profiles', {
@@ -98,7 +120,9 @@ export const businessProfiles = pgTable('business_profiles', {
 // Clients table
 export const clients = pgTable('clients', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.id),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
   name: text('name').notNull(),
   email: text('email'),
   phone: text('phone'),
@@ -110,7 +134,9 @@ export const clients = pgTable('clients', {
 // Orders table
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
-  clientId: integer('client_id').notNull().references(() => clients.id),
+  clientId: integer('client_id')
+    .notNull()
+    .references(() => clients.id),
   dueDate: date('due_date'),
   totalAmount: real('total_amount').notNull().default(0),
   status: text('status').notNull().default('Pending'),
@@ -123,7 +149,9 @@ export const orders = pgTable('orders', {
 // Styles table
 export const styles = pgTable('styles', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.id),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
   name: text('name').notNull(),
   description: text('description'),
   imageUrl: text('image_url'),
@@ -134,35 +162,43 @@ export const styles = pgTable('styles', {
 })
 
 // Measurements table (one-to-one with clients)
-export const measurements = pgTable('measurements', {
-  id: serial('id').primaryKey(),
-  clientId: integer('client_id').notNull().references(() => clients.id),
-  height: real('height'), // in cm
-  weight: real('weight'), // in kg
-  bust: real('bust'), // in cm
-  waist: real('waist'), // in cm
-  hip: real('hip'), // in cm
-  inseam: real('inseam'), // in cm
-  shoulder: real('shoulder'), // in cm
-  sleeve: real('sleeve'), // in cm
-  neck: real('neck'), // in cm
-  chest: real('chest'), // in cm
-  thigh: real('thigh'), // in cm
-  additionalMeasurements: jsonb('additional_measurements'),
-  notes: text('notes'),
-  lastUpdated: timestamp('last_updated').defaultNow().notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => {
-  return {
-    // Ensure one-to-one relationship with client
-    clientIdUnique: unique().on(table.clientId),
+export const measurements = pgTable(
+  'measurements',
+  {
+    id: serial('id').primaryKey(),
+    clientId: integer('client_id')
+      .notNull()
+      .references(() => clients.id),
+    height: real('height'), // in cm
+    weight: real('weight'), // in kg
+    bust: real('bust'), // in cm
+    waist: real('waist'), // in cm
+    hip: real('hip'), // in cm
+    inseam: real('inseam'), // in cm
+    shoulder: real('shoulder'), // in cm
+    sleeve: real('sleeve'), // in cm
+    neck: real('neck'), // in cm
+    chest: real('chest'), // in cm
+    thigh: real('thigh'), // in cm
+    additionalMeasurements: jsonb('additional_measurements'),
+    notes: text('notes'),
+    lastUpdated: timestamp('last_updated').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  table => {
+    return {
+      // Ensure one-to-one relationship with client
+      clientIdUnique: unique().on(table.clientId),
+    }
   }
-})
+)
 
 // Payments table
 export const payments = pgTable('payments', {
   id: serial('id').primaryKey(),
-  orderId: integer('order_id').notNull().references(() => orders.id),
+  orderId: integer('order_id')
+    .notNull()
+    .references(() => orders.id),
   amount: real('amount').notNull(),
   paymentMethod: text('payment_method').notNull(),
   paymentDate: timestamp('payment_date').notNull(),
@@ -172,59 +208,81 @@ export const payments = pgTable('payments', {
 })
 
 // Measurement Templates
-export const measurementTemplates = pgTable('measurement_templates', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  isDefault: boolean('is_default').notNull().default(false),
-  isArchived: boolean('is_archived').notNull().default(false),
-  gender: text('gender').notNull(), // 'male', 'female', or 'unisex'
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  // Ensure unique template names per user
-  uniqueNamePerUser: unique().on(table.userId, table.name),
-}));
+export const measurementTemplates = pgTable(
+  'measurement_templates',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    isDefault: boolean('is_default').notNull().default(false),
+    isArchived: boolean('is_archived').notNull().default(false),
+    gender: text('gender').notNull(), // 'male', 'female', or 'unisex'
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => ({
+    // Ensure unique template names per user
+    uniqueNamePerUser: unique().on(table.userId, table.name),
+  })
+)
 
 // Measurement Fields
-export const measurementFields = pgTable('measurement_fields', {
-  id: serial('id').primaryKey(),
-  templateId: integer('template_id').notNull().references(() => measurementTemplates.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  description: text('description'),
-  unit: text('unit').notNull().default('cm'),
-  isRequired: boolean('is_required').notNull().default(true),
-  displayOrder: integer('display_order').notNull().default(0),
-  metadata: jsonb('metadata'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  // Ensure unique field names per template
-  uniqueFieldPerTemplate: unique().on(table.templateId, table.name),
-}));
+export const measurementFields = pgTable(
+  'measurement_fields',
+  {
+    id: serial('id').primaryKey(),
+    templateId: integer('template_id')
+      .notNull()
+      .references(() => measurementTemplates.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    unit: text('unit').notNull().default('cm'),
+    isRequired: boolean('is_required').notNull().default(true),
+    displayOrder: integer('display_order').notNull().default(0),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => ({
+    // Ensure unique field names per template
+    uniqueFieldPerTemplate: unique().on(table.templateId, table.name),
+  })
+)
 
 // Client Measurements
-export const clientMeasurements = pgTable('client_measurements', {
-  id: serial('id').primaryKey(),
-  clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  templateId: integer('template_id').notNull().references(() => measurementTemplates.id, { onDelete: 'cascade' }),
-  values: jsonb('values').notNull(), // JSON object with fieldId: value pairs
-  notes: text('notes'),
-  takenAt: timestamp('taken_at').defaultNow().notNull(),
-  takenBy: integer('taken_by').references(() => users.id, { onDelete: 'set null' }),
-  updatedAt: timestamp('updated_at').defaultNow(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => ({
-  // Ensure one measurement record per client per template
-  uniqueClientTemplate: unique().on(table.clientId, table.templateId),
-}));
+export const clientMeasurements = pgTable(
+  'client_measurements',
+  {
+    id: serial('id').primaryKey(),
+    clientId: integer('client_id')
+      .notNull()
+      .references(() => clients.id, { onDelete: 'cascade' }),
+    templateId: integer('template_id')
+      .notNull()
+      .references(() => measurementTemplates.id, { onDelete: 'cascade' }),
+    values: jsonb('values').notNull(), // JSON object with fieldId: value pairs
+    notes: text('notes'),
+    takenAt: timestamp('taken_at').defaultNow().notNull(),
+    takenBy: integer('taken_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedAt: timestamp('updated_at').defaultNow(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  table => ({
+    // Ensure one measurement record per client per template
+    uniqueClientTemplate: unique().on(table.clientId, table.templateId),
+  })
+)
 
 // User Measurement Settings
 export const userMeasurementSettings = pgTable('user_measurement_settings', {
-  userId: integer('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  userId: integer('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
   defaultUnit: text('default_unit').notNull().default('cm'),
   updatedAt: timestamp('updated_at').defaultNow(),
-});
+})
 
 // Export types
 export type User = typeof users.$inferSelect
@@ -244,4 +302,4 @@ export type NewMeasurementField = typeof measurementFields.$inferInsert
 export type ClientMeasurement = typeof clientMeasurements.$inferSelect
 export type NewClientMeasurement = typeof clientMeasurements.$inferInsert
 export type UserMeasurementSettings = typeof userMeasurementSettings.$inferSelect
-export type NewUserMeasurementSettings = typeof userMeasurementSettings.$inferInsert 
+export type NewUserMeasurementSettings = typeof userMeasurementSettings.$inferInsert

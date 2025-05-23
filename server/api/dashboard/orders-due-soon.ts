@@ -1,12 +1,13 @@
-import { useDrizzle, tables, eq, and, inArray, sql } from '~/server/utils/drizzle'
-import { H3Event, EventHandlerRequest, createError } from 'h3'
+import type { H3Event, EventHandlerRequest } from 'h3'
+import { createError } from 'h3'
+import { useDrizzle, tables, eq, and, sql } from '~/server/utils/drizzle'
 
 interface Order {
-  id: number;
-  client: string;
-  dueDate: Date | string | null;
-  amount: number;
-  status: string;
+  id: number
+  client: string
+  dueDate: Date | string | null
+  amount: number
+  status: string
 }
 
 export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) => {
@@ -16,20 +17,20 @@ export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) =>
     if (!auth || !auth.userId) {
       throw createError({
         statusCode: 401,
-        message: 'Unauthorized'
+        message: 'Unauthorized',
       })
     }
 
     const userId = auth.userId
-    
+
     // Get today's date and format for SQL
     const today = new Date()
     const sevenDaysLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
     const formattedDate = sevenDaysLater.toISOString().split('T')[0] // Format as YYYY-MM-DD
-    
+
     // Get database connection
     const db = useDrizzle()
-    
+
     // Get orders due within the next 7 days with active statuses (Pending or In Progress)
     const dueOrders = await db
       .select({
@@ -38,7 +39,7 @@ export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) =>
         totalAmount: tables.orders.totalAmount,
         status: tables.orders.status,
         clientName: tables.clients.name,
-        clientId: tables.clients.id
+        clientId: tables.clients.id,
       })
       .from(tables.orders)
       .innerJoin(tables.clients, eq(tables.orders.clientId, tables.clients.id))
@@ -58,7 +59,7 @@ export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) =>
       client: order.clientName,
       dueDate: order.dueDate,
       amount: order.totalAmount || 0,
-      status: order.status
+      status: order.status,
     }))
 
     return formattedOrders
@@ -66,7 +67,7 @@ export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) =>
     console.error('Dashboard orders due soon API error:', error)
     throw createError({
       statusCode: error.statusCode || 500,
-      message: error.message || 'Failed to fetch orders due soon'
+      message: error.message || 'Failed to fetch orders due soon',
     })
   }
-}) 
+})

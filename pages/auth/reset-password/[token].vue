@@ -3,9 +3,7 @@
     <div class="w-full max-w-md space-y-8 p-10 bg-white rounded-xl shadow">
       <div class="text-center">
         <h2 class="text-2xl md:text-3xl font-bold">Reset your password</h2>
-        <p class="mt-2 text-sm text-gray-600">
-          Enter your new password below
-        </p>
+        <p class="mt-2 text-sm text-gray-600">Enter your new password below</p>
       </div>
 
       <div class="mt-8">
@@ -23,11 +21,10 @@
             >
               <template #trailing>
                 <UButton
-                  color="gray"
-                  variant="ghost"
-                  icon
-                  @click="showPassword = !showPassword"
-                >
+color="gray"
+variant="ghost"
+icon
+@click="showPassword = !showPassword">
                   <UIcon :name="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" />
                 </UButton>
               </template>
@@ -54,7 +51,9 @@
                   icon
                   @click="showConfirmPassword = !showConfirmPassword"
                 >
-                  <UIcon :name="showConfirmPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" />
+                  <UIcon
+                    :name="showConfirmPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                  />
                 </UButton>
               </template>
             </UInput>
@@ -79,78 +78,78 @@
 
 <script setup>
 // Set page metadata
+// Explicitly import UI components
+import { UInput, UButton, UIcon } from '#components'
+
 useHead({
   title: 'Reset Password - QuickMeazure',
-});
+})
 
 // Set layout for this page
 definePageMeta({
-  layout: 'auth'
-});
+  layout: 'auth',
+})
 
-// Explicitly import UI components 
-import { UInput, UButton, UIcon } from '#components'
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
 
-const route = useRoute();
-const router = useRouter();
-const toast = useToast();
-
-const password = ref('');
-const confirmPassword = ref('');
-const loading = ref(false);
-const token = ref(route.params.token);
-const showPassword = ref(false);
-const showConfirmPassword = ref(false);
+const password = ref('')
+const confirmPassword = ref('')
+const loading = ref(false)
+const token = ref(route.params.token)
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 
 // Computed properties for password validation
 const passwordsMatch = computed(() => {
-  return !confirmPassword.value || password.value === confirmPassword.value;
-});
+  return !confirmPassword.value || password.value === confirmPassword.value
+})
 
 const canSubmit = computed(() => {
-  return password.value && 
-    confirmPassword.value && 
-    password.value === confirmPassword.value;
-});
+  return password.value && confirmPassword.value && password.value === confirmPassword.value
+})
 
 const resetPassword = async () => {
-  if (!canSubmit.value) return;
-  
-  loading.value = true;
+  if (!canSubmit.value) return
+
+  loading.value = true
   try {
     // Send request to reset password
     const response = await $fetch('/api/auth/reset-password', {
       method: 'POST',
-      body: { 
+      body: {
         token: token.value,
-        password: password.value
-      }
-    });
-    
+        password: password.value,
+      },
+    })
+
     if (response.success) {
       toast.add({
         title: 'Success',
         description: 'Your password has been reset successfully.',
-        color: 'green'
-      });
-      
+        color: 'green',
+      })
+
       // Clear fields
-      password.value = '';
-      confirmPassword.value = '';
-      
+      password.value = ''
+      confirmPassword.value = ''
+
       // Redirect to login
       setTimeout(() => {
-        router.push('/auth/login');
-      }, 2000);
+        router.push('/auth/login')
+      }, 2000)
     }
   } catch (error) {
     toast.add({
       title: 'Error',
-      description: error.response?.data?.message || 'Failed to reset password. The link may be invalid or expired.',
-      color: 'red'
-    });
+      description:
+        error.response?.data?.message ||
+        'Failed to reset password. The link may be invalid or expired.',
+      color: 'red',
+    })
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
-</script> 
+}
+</script>

@@ -4,22 +4,22 @@
     <p class="text-sm text-gray-600 mb-4">
       Click the button below to trigger a test error that will be captured by Sentry.
     </p>
-    <UButton color="red" @click="triggerTestError">Throw Test Error</UButton>
+    <UButton color="red" @click="triggerTestError"> Throw Test Error </UButton>
   </div>
 </template>
 
 <script setup>
-import { captureException } from '@sentry/nuxt';
+import { captureException } from '@sentry/nuxt'
 
 const triggerTestError = () => {
   try {
     // Deliberately throw an error for testing
-    throw new Error('This is a test error from QuickMeazure');
+    throw new Error('This is a test error from QuickMeazure')
   } catch (error) {
     // Capture the error with Sentry
-    captureException(error);
+    captureException(error)
     // Also show an alert to the user
-    alert('Test error triggered and sent to Sentry!');
+    alert('Test error triggered and sent to Sentry!')
   }
-};
+}
 </script>

@@ -1,15 +1,15 @@
-import { db } from '~/server/database'
-import { businessProfiles } from '~/server/database/schema'
 import { eq } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
+import { db } from '~/server/database'
+import { businessProfiles } from '~/server/database/schema'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   try {
     const auth = event.context.auth
     if (!auth || !auth.userId) {
       throw createError({
         statusCode: 401,
-        statusMessage: 'Unauthorized'
+        statusMessage: 'Unauthorized',
       })
     }
 
@@ -24,11 +24,12 @@ export default defineEventHandler(async (event) => {
       city,
       state,
       specializations,
-      services
+      services,
     } = body
 
     // Check if business profile exists
-    const existingProfile = await db.select()
+    const existingProfile = await db
+      .select()
       .from(businessProfiles)
       .where(eq(businessProfiles.userId, auth.userId))
       .limit(1)
@@ -36,7 +37,8 @@ export default defineEventHandler(async (event) => {
     let result
     if (existingProfile.length) {
       // Update existing profile
-      result = await db.update(businessProfiles)
+      result = await db
+        .update(businessProfiles)
         .set({
           shopName,
           businessType,
@@ -48,13 +50,14 @@ export default defineEventHandler(async (event) => {
           state,
           specializations,
           services,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(businessProfiles.userId, auth.userId))
         .returning()
     } else {
       // Create new profile
-      result = await db.insert(businessProfiles)
+      result = await db
+        .insert(businessProfiles)
         .values({
           id: uuidv4(),
           userId: auth.userId,
@@ -69,7 +72,7 @@ export default defineEventHandler(async (event) => {
           specializations,
           services,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .returning()
     }
@@ -77,19 +80,19 @@ export default defineEventHandler(async (event) => {
     if (!result.length) {
       throw createError({
         statusCode: 500,
-        statusMessage: 'Failed to update business profile'
+        statusMessage: 'Failed to update business profile',
       })
     }
 
     return {
       success: true,
-      data: result[0]
+      data: result[0],
     }
   } catch (error: any) {
     console.error('Error updating business profile:', error)
     throw createError({
       statusCode: error.statusCode || 500,
-      message: error.message || 'Failed to update business profile'
+      message: error.message || 'Failed to update business profile',
     })
   }
-}) 
+})

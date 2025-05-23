@@ -1,9 +1,9 @@
 import { defineEventHandler, createError } from 'h3'
+import { eq, desc } from 'drizzle-orm'
 import { db } from '~/server/database'
 import { plans } from '~/server/database/schema'
-import { eq, desc } from 'drizzle-orm'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async _event => {
   try {
     // Fetch all active plans from the database
     const availablePlans = await db
@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
       .from(plans)
       .where(eq(plans.isActive, true))
       .orderBy(desc(plans.price)) // Order by price in descending order (highest first)
-    
+
     // Transform the data to match the format expected by the frontend
     const formattedPlans = availablePlans.map(plan => {
       return {
@@ -24,18 +24,18 @@ export default defineEventHandler(async (event) => {
         isFeatured: plan.isFeatured,
         maxClients: plan.maxClients,
         maxStyles: plan.maxStyles,
-        maxStorage: plan.maxStorage
+        maxStorage: plan.maxStorage,
       }
     })
-    
+
     return {
-      plans: formattedPlans
+      plans: formattedPlans,
     }
   } catch (error) {
     console.error('Error fetching plans:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: 'Failed to fetch plans'
+      statusMessage: 'Failed to fetch plans',
     })
   }
-}) 
+})

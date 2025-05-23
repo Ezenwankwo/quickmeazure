@@ -13,6 +13,7 @@ This feature allows tailors to create and manage custom measurement templates fo
 ## Database Schema
 
 ### `measurement_templates`
+
 - `id` - Unique identifier
 - `userId` - Reference to the user who owns this template
 - `name` - Name of the template (e.g., "Standard Male", "Custom Fit")
@@ -23,6 +24,7 @@ This feature allows tailors to create and manage custom measurement templates fo
 - `updatedAt` - When the template was last updated
 
 ### `measurement_fields`
+
 - `id` - Unique identifier
 - `templateId` - Reference to the parent template
 - `name` - Name of the measurement field (e.g., "Chest", "Waist")
@@ -34,6 +36,7 @@ This feature allows tailors to create and manage custom measurement templates fo
 - `updatedAt` - When the field was last updated
 
 ### `user_measurement_settings`
+
 - `userId` - Reference to the user
 - `defaultUnit` - Default unit of measurement (in/cm)
 - `updatedAt` - When the settings were last updated
@@ -41,6 +44,7 @@ This feature allows tailors to create and manage custom measurement templates fo
 ## API Endpoints
 
 ### Measurement Templates
+
 - `GET /api/measurement-templates` - Get all templates for the current user
 - `POST /api/measurement-templates` - Create a new template
 - `PUT /api/measurement-templates/[id]` - Update a template
@@ -50,26 +54,32 @@ This feature allows tailors to create and manage custom measurement templates fo
 - `POST /api/measurement-templates/reset` - Reset to default templates
 
 ### User Measurement Settings
+
 - `GET /api/user/measurement-settings` - Get user's measurement settings
 - `PUT /api/user/measurement-settings` - Update user's measurement settings
 
 ## Components
 
 ### `MeasurementTemplateList`
+
 Displays a list of measurement templates with options to create, edit, archive, and delete templates.
 
 ### `MeasurementTemplateCard`
+
 Displays a single measurement template with its fields and actions.
 
 ### `MeasurementTemplateForm`
+
 A form for creating and editing measurement templates.
 
 ### `MeasurementSettings`
+
 Allows users to configure their measurement preferences.
 
 ## Usage
 
 ### Creating a New Template
+
 1. Navigate to "Measurements" in the sidebar
 2. Click "New Template"
 3. Enter a name and select a gender
@@ -77,15 +87,18 @@ Allows users to configure their measurement preferences.
 5. Click "Create Template"
 
 ### Editing a Template
+
 1. Click the edit (pencil) icon on the template card
 2. Make your changes
 3. Click "Update Template"
 
 ### Archiving a Template
+
 1. Click the archive (box) icon on the template card
 2. Confirm the action
 
 ### Setting Default Units
+
 1. Go to the "Settings" tab in the Measurements section
 2. Select your preferred default unit (inches or centimeters)
 3. Click "Save Changes"

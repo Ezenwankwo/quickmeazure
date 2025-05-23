@@ -1,15 +1,14 @@
 <template>
-  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div
+    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
+  >
     <!-- Title and Subtitle - Outside Card -->
     <div class="text-center mb-6 w-full max-w-md">
       <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Reset Your Password</h2>
-      <p class="mt-2 text-gray-600">
-        Enter your new password below
-      </p>
+      <p class="mt-2 text-gray-600">Enter your new password below</p>
     </div>
-    
-    <div class="w-full max-w-md space-y-6 p-8 bg-white rounded-xl shadow">
 
+    <div class="w-full max-w-md space-y-6 p-8 bg-white rounded-xl shadow">
       <div v-if="invalidToken" class="text-center py-4">
         <UIcon name="i-heroicons-exclamation-circle" class="text-red-500 h-12 w-12 mx-auto mb-4" />
         <h3 class="text-lg font-medium text-gray-900">Invalid or Expired Link</h3>
@@ -33,29 +32,30 @@
             />
             <div v-if="password" class="mt-2">
               <div class="flex items-center gap-2">
-                <div 
-                  class="h-1 flex-grow rounded-full" 
+                <div
+                  class="h-1 flex-grow rounded-full"
                   :class="[passwordStrength >= 1 ? 'bg-green-500' : 'bg-gray-200']"
-                ></div>
-                <div 
-                  class="h-1 flex-grow rounded-full" 
+                />
+                <div
+                  class="h-1 flex-grow rounded-full"
                   :class="[passwordStrength >= 2 ? 'bg-green-500' : 'bg-gray-200']"
-                ></div>
-                <div 
-                  class="h-1 flex-grow rounded-full" 
+                />
+                <div
+                  class="h-1 flex-grow rounded-full"
                   :class="[passwordStrength >= 3 ? 'bg-green-500' : 'bg-gray-200']"
-                ></div>
-                <div 
-                  class="h-1 flex-grow rounded-full" 
+                />
+                <div
+                  class="h-1 flex-grow rounded-full"
                   :class="[passwordStrength >= 4 ? 'bg-green-500' : 'bg-gray-200']"
-                ></div>
+                />
               </div>
               <p class="text-xs mt-1 text-gray-600">
-                Password should be at least 8 characters with uppercase, lowercase, number and special character
+                Password should be at least 8 characters with uppercase, lowercase, number and
+                special character
               </p>
             </div>
           </div>
-          
+
           <div class="space-y-2">
             <label class="block text-sm font-medium text-gray-700">Confirm New Password</label>
             <UInput
@@ -88,67 +88,67 @@
 // Set page metadata
 useHead({
   title: 'Reset Password - QuickMeazure',
-});
+})
 
 // Set layout for this page
 definePageMeta({
-  layout: 'auth'
-});
+  layout: 'auth',
+})
 
-const route = useRoute();
-const router = useRouter();
-const toast = useToast();
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
 
-const token = ref(route.query.token || '');
-const password = ref('');
-const confirmPassword = ref('');
-const loading = ref(false);
-const error = ref('');
-const invalidToken = ref(false);
+const token = ref(route.query.token || '')
+const password = ref('')
+const confirmPassword = ref('')
+const loading = ref(false)
+const error = ref('')
+const invalidToken = ref(false)
 
 // Check token on page load
 onMounted(async () => {
   if (!token.value) {
-    invalidToken.value = true;
-    return;
+    invalidToken.value = true
+    return
   }
-  
+
   // Verify token is valid
   try {
-    loading.value = true;
+    loading.value = true
     const response = await $fetch('/api/auth/verify-reset-token', {
       method: 'POST',
-      body: { token: token.value }
-    });
-    
+      body: { token: token.value },
+    })
+
     if (!response.valid) {
-      invalidToken.value = true;
+      invalidToken.value = true
     }
   } catch (error) {
-    console.error('Token verification error:', error);
-    invalidToken.value = true;
+    console.error('Token verification error:', error)
+    invalidToken.value = true
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-});
+})
 
 // Password validation
-const hasLowerCase = (str) => /[a-z]/.test(str);
-const hasUpperCase = (str) => /[A-Z]/.test(str);
-const hasNumber = (str) => /\d/.test(str);
-const hasSpecialChar = (str) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(str);
+const hasLowerCase = str => /[a-z]/.test(str)
+const hasUpperCase = str => /[A-Z]/.test(str)
+const hasNumber = str => /\d/.test(str)
+const hasSpecialChar = str => /[!@#$%^&*()_+\-={}();':"\\|,.<>/?]/.test(str)
 
 const passwordStrength = computed(() => {
-  if (!password.value) return 0;
-  
-  let strength = 0;
-  if (password.value.length >= 8) strength++;
-  if (hasLowerCase(password.value) && hasUpperCase(password.value)) strength++;
-  if (hasNumber(password.value)) strength++;
-  if (hasSpecialChar(password.value)) strength++;
-  
-  return strength;
-});
+  if (!password.value) return 0
+
+  let strength = 0
+  if (password.value.length >= 8) strength++
+  if (hasLowerCase(password.value) && hasUpperCase(password.value)) strength++
+  if (hasNumber(password.value)) strength++
+  if (hasSpecialChar(password.value)) strength++
+
+  return strength
+})
 
 // Form validation
 const isFormValid = computed(() => {
@@ -156,45 +156,45 @@ const isFormValid = computed(() => {
     password.value.length >= 8 &&
     password.value === confirmPassword.value &&
     passwordStrength.value >= 3
-  );
-});
+  )
+})
 
 // Reset password
 const resetPassword = async () => {
-  if (!isFormValid.value) return;
-  
-  loading.value = true;
-  error.value = '';
-  
+  if (!isFormValid.value) return
+
+  loading.value = true
+  error.value = ''
+
   try {
     const response = await $fetch('/api/auth/reset-password', {
       method: 'POST',
       body: {
         token: token.value,
-        password: password.value
-      }
-    });
-    
+        password: password.value,
+      },
+    })
+
     if (response.success) {
       toast.add({
         title: 'Success',
         description: 'Your password has been reset successfully.',
         color: 'primary',
-        icon: 'i-heroicons-check-circle'
-      });
-      
+        icon: 'i-heroicons-check-circle',
+      })
+
       // Wait a moment then redirect to login
       setTimeout(() => {
-        router.push('/auth/login');
-      }, 1500);
+        router.push('/auth/login')
+      }, 1500)
     } else {
-      error.value = response.message || 'Failed to reset password';
+      error.value = response.message || 'Failed to reset password'
     }
   } catch (error) {
-    console.error('Password reset error:', error);
-    error.value = 'An error occurred while resetting your password';
+    console.error('Password reset error:', error)
+    error.value = 'An error occurred while resetting your password'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
-</script> 
+}
+</script>

@@ -1,5 +1,5 @@
 <template>
-  <UApp :toaster="{position: 'top-center'}">
+  <UApp :toaster="{ position: 'top-center' }">
     <!-- Removed ClientOnly wrapper to fix navigation double-click issue -->
     <NuxtLayout :name="layout">
       <template #default>
@@ -7,7 +7,7 @@
         <NuxtPage />
       </template>
     </NuxtLayout>
-    
+
     <!-- Loading indicator moved outside the main navigation flow -->
     <ClientOnly>
       <template #fallback>
@@ -16,7 +16,7 @@
         </div>
       </template>
     </ClientOnly>
-    
+
     <!-- PWA Install Prompt - Added at the app level to avoid hydration issues -->
     <ClientOnly>
       <InstallPrompt />
@@ -25,9 +25,9 @@
 </template>
 
 <script setup>
-import { useLayout } from '~/composables/useLayout';
-import InstallPrompt from '~/components/InstallPrompt.vue';
+import { useLayout } from '~/composables/useLayout'
+import InstallPrompt from '~/components/InstallPrompt.vue'
 
 // Get the current layout
-const { layout } = useLayout();
+const { layout } = useLayout()
 </script>

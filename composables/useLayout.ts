@@ -9,6 +9,6 @@ export function useLayout() {
 
   return {
     layout,
-    setLayout
+    setLayout,
   }
-} 
+}

@@ -9,6 +9,7 @@ This guide provides instructions on how to set up Amazon S3 for storing style im
 ## Setting Up S3 Bucket
 
 1. **Create an S3 Bucket**:
+
    - Sign in to the AWS Management Console and navigate to the S3 service.
    - Click "Create bucket".
    - Enter a globally unique bucket name (e.g., "quickmeazure-styles").
@@ -17,9 +18,11 @@ This guide provides instructions on how to set up Amazon S3 for storing style im
    - Create the bucket.
 
 2. **Configure CORS** (if your application requires cross-origin requests):
+
    - In your bucket settings, navigate to the "Permissions" tab.
    - Scroll down to "Cross-origin resource sharing (CORS)".
    - Add a CORS configuration like the following:
+
    ```json
    [
      {
@@ -53,6 +56,7 @@ This guide provides instructions on how to set up Amazon S3 for storing style im
 ## Creating IAM Credentials
 
 1. **Create an IAM User**:
+
    - Go to the IAM service in the AWS Console.
    - Navigate to "Users" and click "Create user".
    - Enter a name (e.g., "quickmeazure-app").
@@ -60,36 +64,29 @@ This guide provides instructions on how to set up Amazon S3 for storing style im
    - Click "Next: Permissions".
 
 2. **Attach Permissions**:
+
    - You can either attach an existing policy or create a new one.
    - For a new policy, select "Create policy" and use JSON format.
    - Use a policy that restricts access to just the operations needed on your S3 bucket:
+
    ```json
    {
      "Version": "2012-10-17",
      "Statement": [
        {
          "Effect": "Allow",
-         "Action": [
-           "s3:PutObject",
-           "s3:GetObject",
-           "s3:DeleteObject"
-         ],
-         "Resource": [
-           "arn:aws:s3:::your-bucket-name/*"
-         ]
+         "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+         "Resource": ["arn:aws:s3:::your-bucket-name/*"]
        },
        {
          "Effect": "Allow",
-         "Action": [
-           "s3:ListBucket"
-         ],
-         "Resource": [
-           "arn:aws:s3:::your-bucket-name"
-         ]
+         "Action": ["s3:ListBucket"],
+         "Resource": ["arn:aws:s3:::your-bucket-name"]
        }
      ]
    }
    ```
+
    - Replace "your-bucket-name" with your actual bucket name.
    - Review and create the policy, then attach it to your user.
 
@@ -100,8 +97,10 @@ This guide provides instructions on how to set up Amazon S3 for storing style im
 ## Configuring the Application
 
 1. **Update Environment Variables**:
+
    - Open the `.env` file in the project root.
    - Update the AWS credentials:
+
    ```
    AWS_REGION=us-east-1
    AWS_ACCESS_KEY_ID=your-access-key-id
@@ -109,6 +108,7 @@ This guide provides instructions on how to set up Amazon S3 for storing style im
    AWS_S3_BUCKET=your-bucket-name
    AWS_ENDPOINT_URL=https://s3.us-east-1.amazonaws.com
    ```
+
    - Replace the placeholders with your actual AWS credentials and bucket information.
    - **IMPORTANT**: The `AWS_ENDPOINT_URL` must match the region of your S3 bucket. For example:
      - For US East (N. Virginia): `https://s3.us-east-1.amazonaws.com`
@@ -117,6 +117,7 @@ This guide provides instructions on how to set up Amazon S3 for storing style im
      - For S3-compatible services (like MinIO): use their endpoint URL
 
 2. **Verify S3 Bucket Region and Endpoint**:
+
    - Make sure your bucket is in the same region specified in your AWS_REGION setting
    - S3 buckets are region-specific, and you must use the correct endpoint for that region
    - If you get a "The bucket you are attempting to access must be addressed using the specified endpoint" error, it means your endpoint doesn't match your bucket's region
@@ -147,6 +148,7 @@ We've included a script to test your S3 connection and configuration:
    npx tsx server/scripts/test-s3-connection.ts
    ```
 3. The script will output:
+
    - Your environment variable configuration (with credentials partially masked)
    - An attempt to list your S3 buckets
    - A test of your specific bucket access
@@ -156,4 +158,4 @@ We've included a script to test your S3 connection and configuration:
    - "The specified bucket does not exist": Check your bucket name and region
    - "Invalid access key": Your AWS credentials are incorrect
    - "The bucket you are attempting to access must be addressed using the specified endpoint": You need to set the correct endpoint URL in AWS_ENDPOINT_URL for the region where your bucket is located
-   - "Access denied": Your IAM user lacks sufficient permissions to access the bucket 
+   - "Access denied": Your IAM user lacks sufficient permissions to access the bucket

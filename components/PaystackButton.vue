@@ -13,92 +13,92 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { usePaystack } from '~/composables/usePaystack';
-import { useSubscriptionManagement } from '~/composables/useSubscriptionManagement';
+import { ref } from 'vue'
+import { usePaystack } from '~/composables/usePaystack'
+import { useSubscriptionManagement } from '~/composables/useSubscriptionManagement'
 
 const props = defineProps({
   amount: {
     type: Number,
-    required: true
+    required: true,
   },
   planId: {
     type: String,
-    required: true
+    required: true,
   },
   planName: {
     type: String,
-    required: true
+    required: true,
   },
   billingPeriod: {
     type: String,
-    default: 'monthly'
+    default: 'monthly',
   },
   color: {
     type: String,
-    default: 'primary'
+    default: 'primary',
   },
   variant: {
     type: String,
-    default: 'solid'
+    default: 'solid',
   },
   size: {
     type: String,
-    default: 'md'
+    default: 'md',
   },
   icon: {
     type: String,
-    default: undefined
+    default: undefined,
   },
   disabled: {
     type: Boolean,
-    default: false
-  }
-});
+    default: false,
+  },
+})
 
-const emit = defineEmits(['success', 'error']);
+const emit = defineEmits(['success', 'error'])
 
-const loading = ref(false);
-const { processPayment } = usePaystack();
-const toast = useToast();
-const { loadSubscription } = useSubscriptionManagement();
+const loading = ref(false)
+const { processPayment } = usePaystack()
+const toast = useToast()
+const { loadSubscription } = useSubscriptionManagement()
 
 /**
  * Initiate payment with Paystack
  */
 const initiatePayment = async () => {
-  loading.value = true;
-  
+  loading.value = true
+
   processPayment({
     amount: props.amount,
     planId: props.planId,
     planName: props.planName,
     billingPeriod: props.billingPeriod,
     onSuccess: async () => {
-      loading.value = false;
-      
+      loading.value = false
+
       // Reload subscription data
-      await loadSubscription();
-      
+      await loadSubscription()
+
       toast.add({
         title: 'Payment Successful',
         description: `Your payment for the ${props.planName} plan was successful!`,
-        color: 'green'
-      });
-      
-      emit('success');
+        color: 'green',
+      })
+
+      emit('success')
     },
-    onError: (error) => {
-      loading.value = false;
-      
+    onError: error => {
+      loading.value = false
+
       toast.add({
         title: 'Payment Failed',
         description: error.message || 'The payment was not successful. Please try again.',
-        color: 'red'
-      });
-      
-      emit('error', error);
-    }
-  });
-};
-</script> 
+        color: 'red',
+      })
+
+      emit('error', error)
+    },
+  })
+}
+</script>

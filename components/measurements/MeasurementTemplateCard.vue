@@ -3,7 +3,7 @@
     :ui="{
       base: 'h-full flex flex-col',
       body: { base: 'flex-1' },
-      footer: 'pt-4 mt-auto'
+      footer: 'pt-4 mt-auto',
     }"
     class="group hover:shadow-lg transition-shadow duration-200"
   >
@@ -12,18 +12,14 @@
       <div>
         <h3 class="font-medium text-gray-900 flex items-center gap-2">
           {{ template.name }}
-          <UBadge v-if="template.isDefault" size="xs" color="primary">
-            Default
-          </UBadge>
-          <UBadge v-else-if="template.isArchived" size="xs" color="gray">
-            Archived
-          </UBadge>
+          <UBadge v-if="template.isDefault" size="xs" color="primary"> Default </UBadge>
+          <UBadge v-else-if="template.isArchived" size="xs" color="gray"> Archived </UBadge>
         </h3>
         <p class="text-sm text-gray-500">
           {{ formatGender(template.gender) }} • {{ template.fields?.length || 0 }} fields
         </p>
       </div>
-      
+
       <UDropdown :items="dropdownItems" :popper="{ placement: 'bottom-end' }">
         <UButton
           color="gray"
@@ -45,7 +41,7 @@
         <span class="text-gray-700">{{ field.name }}</span>
         <span class="text-gray-500 text-xs">{{ field.unit }}</span>
       </div>
-      
+
       <div v-if="hasMoreFields" class="text-xs text-gray-400 text-center pt-1">
         +{{ template.fields.length - 3 }} more
       </div>
@@ -57,8 +53,10 @@
         <span class="text-gray-500">
           Updated {{ formatDate(template.updatedAt || template.createdAt) }}
         </span>
-        
-        <div class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+
+        <div
+          class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity"
+        >
           <UButton
             v-if="!template.isArchived"
             icon="i-heroicons-pencil"
@@ -67,7 +65,7 @@
             variant="ghost"
             @click="$emit('edit', template)"
           />
-          
+
           <UButton
             v-if="!template.isArchived"
             icon="i-heroicons-archive-box"
@@ -76,7 +74,7 @@
             variant="ghost"
             @click="$emit('archive', template.id)"
           />
-          
+
           <UButton
             v-if="template.isArchived"
             icon="i-heroicons-arrow-uturn-left"
@@ -85,7 +83,7 @@
             variant="ghost"
             @click="$emit('unarchive', template.id)"
           />
-          
+
           <UButton
             v-if="!template.isDefault"
             icon="i-heroicons-trash"
@@ -101,28 +99,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed } from 'vue'
 
 const props = defineProps({
   template: {
     type: Object,
     required: true,
   },
-});
+})
 
-defineEmits(['edit', 'archive', 'unarchive', 'delete']);
+defineEmits(['edit', 'archive', 'unarchive', 'delete'])
 
 const visibleFields = computed(() => {
-  return props.template.fields?.slice(0, 3) || [];
-});
+  return props.template.fields?.slice(0, 3) || []
+})
 
 const hasMoreFields = computed(() => {
-  return (props.template.fields?.length || 0) > 3;
-});
+  return (props.template.fields?.length || 0) > 3
+})
 
 const dropdownItems = computed(() => {
-  const items = [];
-  
+  const items = []
+
   if (!props.template.isArchived) {
     items.push([
       {
@@ -135,7 +133,7 @@ const dropdownItems = computed(() => {
         icon: 'i-heroicons-archive-box',
         click: () => $emit('archive', props.template.id),
       },
-    ]);
+    ])
   } else {
     items.push([
       {
@@ -143,30 +141,30 @@ const dropdownItems = computed(() => {
         icon: 'i-heroicons-arrow-uturn-left',
         click: () => $emit('unarchive', props.template.id),
       },
-    ]);
+    ])
   }
-  
+
   if (!props.template.isDefault) {
     items[0].push({
       label: 'Delete',
       icon: 'i-heroicons-trash',
       click: () => $emit('delete', props.template.id),
-    });
+    })
   }
-  
-  return items;
-});
+
+  return items
+})
 
 const formatGender = (gender: string) => {
-  return gender.charAt(0).toUpperCase() + gender.slice(1);
-};
+  return gender.charAt(0).toUpperCase() + gender.slice(1)
+}
 
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
+  const date = new Date(dateString)
   return date.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  });
-};
+  })
+}
 </script>

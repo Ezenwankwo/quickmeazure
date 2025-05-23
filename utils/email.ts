@@ -1,31 +1,42 @@
-import SibApiV3Sdk from 'sib-api-v3-sdk';
+import SibApiV3Sdk from 'sib-api-v3-sdk'
+
+// Define API error interface for better type safety
+interface _ApiError extends Error {
+  response?: {
+    text?: string
+  }
+  stack?: string
+}
 
 // Initialize SIB API instance
 function getApiInstance() {
   try {
-    const config = useRuntimeConfig();
-    
+    const config = useRuntimeConfig()
+
     if (!config.brevoApiKey) {
-      console.error('Brevo API key is missing from configuration');
-      throw new Error('API key configuration error');
+      console.error('Brevo API key is missing from configuration')
+      throw new Error('API key configuration error')
     }
-    
-    console.log('Initializing Brevo API with key:', `${config.brevoApiKey.substring(0, 10)}...${config.brevoApiKey.substring(config.brevoApiKey.length - 5)}`);
-    
+
+    console.log(
+      'Initializing Brevo API with key:',
+      `${config.brevoApiKey.substring(0, 10)}...${config.brevoApiKey.substring(config.brevoApiKey.length - 5)}`
+    )
+
     // Initialize the API client
-    const defaultClient = SibApiV3Sdk.ApiClient.instance;
-    
+    const defaultClient = SibApiV3Sdk.ApiClient.instance
+
     // Configure API key authorization: api-key
-    const apiKey = defaultClient.authentications['api-key'];
-    apiKey.apiKey = config.brevoApiKey;
-    
-    console.log('Brevo API client initialized successfully');
-    
+    const apiKey = defaultClient.authentications['api-key']
+    apiKey.apiKey = config.brevoApiKey
+
+    console.log('Brevo API client initialized successfully')
+
     // Create the API instance
-    return new SibApiV3Sdk.TransactionalEmailsApi();
+    return new SibApiV3Sdk.TransactionalEmailsApi()
   } catch (error) {
-    console.error('Error initializing Brevo API:', error);
-    throw error;
+    console.error('Error initializing Brevo API:', error)
+    throw error
   }
 }
 
@@ -39,91 +50,93 @@ export async function sendEmail({
   textContent,
   fromName = 'QuickMeazure',
   fromEmail = 'townsmeet@gmail.com',
-  replyTo = 'townsmeet@gmail.com'
+  replyTo = 'townsmeet@gmail.com',
 }: {
-  to: { email: string; name?: string }[];
-  subject: string;
-  htmlContent: string;
-  textContent?: string;
-  fromName?: string;
-  fromEmail?: string;
-  replyTo?: string;
+  to: { email: string; name?: string }[]
+  subject: string
+  htmlContent: string
+  textContent?: string
+  fromName?: string
+  fromEmail?: string
+  replyTo?: string
 }) {
   try {
-    const config = useRuntimeConfig();
+    const config = useRuntimeConfig()
 
-    console.log('SendEmail: Starting email send process');
-    console.log('SendEmail: Recipients:', JSON.stringify(to));
-    
+    console.log('SendEmail: Starting email send process')
+    console.log('SendEmail: Recipients:', JSON.stringify(to))
+
     if (!config.brevoApiKey) {
-      console.error('SendEmail ERROR: BREVO_API_KEY environment variable is not set');
-      throw new Error('Email service configuration error');
+      console.error('SendEmail ERROR: BREVO_API_KEY environment variable is not set')
+      throw new Error('Email service configuration error')
     }
 
-    console.log(`SendEmail: API Key available (${config.brevoApiKey.substring(0, 10)}...${config.brevoApiKey.substring(config.brevoApiKey.length - 5)})`);
-    console.log(`SendEmail: Sending to ${to.map(r => r.email).join(', ')}`);
-    
+    console.log(
+      `SendEmail: API Key available (${config.brevoApiKey.substring(0, 10)}...${config.brevoApiKey.substring(config.brevoApiKey.length - 5)})`
+    )
+    console.log(`SendEmail: Sending to ${to.map(r => r.email).join(', ')}`)
+
     try {
-      const apiInstance = getApiInstance();
-      
-      console.log('SendEmail: API instance created, configuring email');
-      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-      
-      sendSmtpEmail.subject = subject;
-      sendSmtpEmail.htmlContent = htmlContent;
-      
+      const apiInstance = getApiInstance()
+
+      console.log('SendEmail: API instance created, configuring email')
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail()
+
+      sendSmtpEmail.subject = subject
+      sendSmtpEmail.htmlContent = htmlContent
+
       if (textContent) {
-        sendSmtpEmail.textContent = textContent;
+        sendSmtpEmail.textContent = textContent
       }
-      
+
       sendSmtpEmail.sender = {
         name: fromName,
-        email: fromEmail
-      };
-      
-      sendSmtpEmail.to = to;
-      
+        email: fromEmail,
+      }
+
+      sendSmtpEmail.to = to
+
       sendSmtpEmail.replyTo = {
         email: replyTo,
-        name: fromName
-      };
+        name: fromName,
+      }
 
-      console.log('SendEmail: Email configuration complete');
-      console.log('SendEmail: Sender:', JSON.stringify(sendSmtpEmail.sender));
-      console.log('SendEmail: Subject:', sendSmtpEmail.subject);
-      console.log('SendEmail: Attempting to send email now...');
-      
-      const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log('SendEmail: SUCCESS!', result);
-      return { success: true, messageId: result.messageId };
-    } catch (apiError: any) {
-      console.error('SendEmail: API Error:', apiError);
-      console.error('SendEmail: Error message:', apiError.message);
-      
+      console.log('SendEmail: Email configuration complete')
+      console.log('SendEmail: Sender:', JSON.stringify(sendSmtpEmail.sender))
+      console.log('SendEmail: Subject:', sendSmtpEmail.subject)
+      console.log('SendEmail: Attempting to send email now...')
+
+      const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+      console.log('SendEmail: SUCCESS!', result)
+      return { success: true, messageId: result.messageId }
+    } catch (apiError: _ApiError) {
+      console.error('SendEmail: API Error:', apiError)
+      console.error('SendEmail: Error message:', apiError.message)
+
       if (apiError.response && apiError.response.text) {
         try {
-          const responseBody = JSON.parse(apiError.response.text);
-          console.error('SendEmail: API Response:', responseBody);
-        } catch (e) {
-          console.error('SendEmail: API Response (raw):', apiError.response.text);
+          const responseBody = JSON.parse(apiError.response.text)
+          console.error('SendEmail: API Response:', responseBody)
+        } catch {
+          console.error('SendEmail: API Response (raw):', apiError.response.text)
         }
       }
-      
+
       if (apiError.stack) {
-        console.error('SendEmail: Stack trace:', apiError.stack);
+        console.error('SendEmail: Stack trace:', apiError.stack)
       }
-      
-      return { success: false, error: apiError };
+
+      return { success: false, error: apiError }
     }
   } catch (error: any) {
-    console.error('SendEmail: General error:', error);
-    console.error('SendEmail: Error message:', error.message);
-    
+    console.error('SendEmail: General error:', error)
+    console.error('SendEmail: Error message:', error.message)
+
     if (error.stack) {
-      console.error('SendEmail: Stack trace:', error.stack);
+      console.error('SendEmail: Stack trace:', error.stack)
     }
-    
-    return { success: false, error };
+
+    return { success: false, error }
   }
 }
 
@@ -131,8 +144,8 @@ export async function sendEmail({
  * Send a welcome email to a new user
  */
 export async function sendWelcomeEmail(userName: string, userEmail: string) {
-  const subject = 'Welcome to QuickMeazure!';
-  
+  const subject = 'Welcome to QuickMeazure!'
+
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h1 style="color: #4f46e5;">Welcome to QuickMeazure!</h1>
@@ -148,8 +161,8 @@ export async function sendWelcomeEmail(userName: string, userEmail: string) {
       <p>If you have any questions or need assistance, feel free to contact our support team at <a href="mailto:townsmeet@gmail.com">townsmeet@gmail.com</a>.</p>
       <p>Best regards,<br>The QuickMeazure Team</p>
     </div>
-  `;
-  
+  `
+
   const textContent = `
 Welcome to QuickMeazure!
 
@@ -167,22 +180,22 @@ If you have any questions or need assistance, feel free to contact our support t
 
 Best regards,
 The QuickMeazure Team
-  `;
-  
+  `
+
   return sendEmail({
     to: [{ email: userEmail, name: userName }],
     subject,
     htmlContent,
-    textContent
-  });
+    textContent,
+  })
 }
 
 /**
  * Send a password reset email
  */
 export async function sendPasswordResetEmail(email: string, resetUrl: string) {
-  console.log('sendPasswordResetEmail: Starting to send password reset email to', email);
-  console.log('sendPasswordResetEmail: Reset URL:', resetUrl);
+  console.log('sendPasswordResetEmail: Starting to send password reset email to', email)
+  console.log('sendPasswordResetEmail: Reset URL:', resetUrl)
 
   // Generate HTML content with reset link
   const htmlContent = `
@@ -207,7 +220,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
       </div>
     </body>
   </html>
-  `;
+  `
 
   // Generate plain text content as a fallback
   const textContent = `
@@ -222,68 +235,68 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   This link will expire in 1 hour for security reasons.
 
   © ${new Date().getFullYear()} QuickMeazure. All rights reserved.
-  `;
+  `
 
   try {
-    console.log('sendPasswordResetEmail: Preparing to call sendEmail function');
-    
+    console.log('sendPasswordResetEmail: Preparing to call sendEmail function')
+
     // Use the direct approach (similar to our test endpoint)
-    const config = useRuntimeConfig();
-    
+    const config = useRuntimeConfig()
+
     if (!config.brevoApiKey) {
-      console.error('sendPasswordResetEmail: BREVO_API_KEY not set');
-      return { success: false, error: 'API key configuration error' };
+      console.error('sendPasswordResetEmail: BREVO_API_KEY not set')
+      return { success: false, error: 'API key configuration error' }
     }
-    
+
     try {
       // Initialize API directly
-      console.log('sendPasswordResetEmail: Initializing Brevo API directly');
-      const defaultClient = SibApiV3Sdk.ApiClient.instance;
-      
+      console.log('sendPasswordResetEmail: Initializing Brevo API directly')
+      const defaultClient = SibApiV3Sdk.ApiClient.instance
+
       // Configure API key authorization
-      const apiKey = defaultClient.authentications['api-key'];
-      apiKey.apiKey = config.brevoApiKey;
-      
+      const apiKey = defaultClient.authentications['api-key']
+      apiKey.apiKey = config.brevoApiKey
+
       // Create API instance
-      const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-      
+      const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi()
+
       // Create send email object
-      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-      
+      const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail()
+
       // Configure the email
-      sendSmtpEmail.subject = 'Reset Your QuickMeazure Password';
-      sendSmtpEmail.htmlContent = htmlContent;
-      sendSmtpEmail.textContent = textContent;
-      sendSmtpEmail.sender = { 
-        name: 'QuickMeazure', 
-        email: 'townsmeet@gmail.com'
-      };
-      sendSmtpEmail.to = [{ email }];
-      
-      console.log('sendPasswordResetEmail: Email configured, attempting to send to:', email);
-      
+      sendSmtpEmail.subject = 'Reset Your QuickMeazure Password'
+      sendSmtpEmail.htmlContent = htmlContent
+      sendSmtpEmail.textContent = textContent
+      sendSmtpEmail.sender = {
+        name: 'QuickMeazure',
+        email: 'townsmeet@gmail.com',
+      }
+      sendSmtpEmail.to = [{ email }]
+
+      console.log('sendPasswordResetEmail: Email configured, attempting to send to:', email)
+
       // Send the email
-      const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log('sendPasswordResetEmail: Email sent successfully:', result);
-      
-      return { success: true, messageId: result.messageId };
-    } catch (apiError: any) {
-      console.error('sendPasswordResetEmail: API Error:', apiError.message);
-      
+      const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+      console.log('sendPasswordResetEmail: Email sent successfully:', result)
+
+      return { success: true, messageId: result.messageId }
+    } catch (apiError: _ApiError) {
+      console.error('sendPasswordResetEmail: API Error:', apiError.message)
+
       if (apiError.response && apiError.response.text) {
         try {
-          const responseBody = JSON.parse(apiError.response.text);
-          console.error('sendPasswordResetEmail: API Response:', responseBody);
-        } catch (e) {
-          console.error('sendPasswordResetEmail: Raw Response:', apiError.response.text);
+          const responseBody = JSON.parse(apiError.response.text)
+          console.error('sendPasswordResetEmail: API Response:', responseBody)
+        } catch {
+          console.error('sendPasswordResetEmail: Raw Response:', apiError.response.text)
         }
       }
-      
-      return { success: false, error: apiError };
+
+      return { success: false, error: apiError }
     }
   } catch (error: any) {
-    console.error('sendPasswordResetEmail: General error:', error.message);
-    return { success: false, error };
+    console.error('sendPasswordResetEmail: General error:', error.message)
+    return { success: false, error }
   }
 }
 
@@ -291,25 +304,28 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
  * Send order confirmation email
  */
 export async function sendOrderConfirmationEmail(
-  userName: string, 
+  userName: string,
   userEmail: string,
   orderNumber: string,
   orderDetails: {
-    client: string;
-    items: { name: string; price: number }[];
-    total: number;
-    dueDate: string;
+    client: string
+    items: { name: string; price: number }[]
+    total: number
+    dueDate: string
   }
 ) {
-  const subject = `Order Confirmation #${orderNumber}`;
-  
-  const itemsList = orderDetails.items.map(item => 
-    `<tr>
+  const subject = `Order Confirmation #${orderNumber}`
+
+  const itemsList = orderDetails.items
+    .map(
+      item =>
+        `<tr>
       <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.name}</td>
       <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₦${item.price.toLocaleString()}</td>
     </tr>`
-  ).join('');
-  
+    )
+    .join('')
+
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h1 style="color: #4f46e5;">Order Confirmation</h1>
@@ -338,8 +354,8 @@ export async function sendOrderConfirmationEmail(
       
       <p>Best regards,<br>The QuickMeazure Team</p>
     </div>
-  `;
-  
+  `
+
   const textContent = `
 Order Confirmation #${orderNumber}
 
@@ -362,12 +378,12 @@ If you have any questions about your order, please contact us at townsmeet@gmail
 
 Best regards,
 The QuickMeazure Team
-  `;
-  
+  `
+
   return sendEmail({
     to: [{ email: userEmail, name: userName }],
     subject,
     htmlContent,
-    textContent
-  });
-} 
+    textContent,
+  })
+}

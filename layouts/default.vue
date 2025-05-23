@@ -9,7 +9,7 @@
             <span class="text-xl font-bold text-primary-600">QuickMeazure</span>
           </ULink>
         </div>
-        
+
         <!-- Navigation for guests -->
         <div v-if="!isLoggedIn" class="flex items-center space-x-2 sm:space-x-4">
           <UButton
@@ -20,17 +20,13 @@
           >
             Login
           </UButton>
-          <UButton
-            v-if="route.path !== '/auth/register'"
-            to="/auth/register"
-            color="primary"
-          >
+          <UButton v-if="route.path !== '/auth/register'" to="/auth/register" color="primary">
             Register
           </UButton>
         </div>
       </div>
     </header>
-    
+
     <!-- Main content wrapper -->
     <div class="container mx-auto px-4 pt-16 pb-20 sm:pb-6 flex-grow">
       <main>
@@ -53,17 +49,17 @@
 
 <script setup>
 // Get authenticated user with useSessionAuth composable
-import { useSessionAuth } from '~/composables/useSessionAuth';
+import { useSessionAuth } from '~/composables/useSessionAuth'
 
-const { isLoggedIn } = useSessionAuth();
-const route = useRoute();
+const { isLoggedIn } = useSessionAuth()
+const route = useRoute()
 
 // Redirect to dashboard if user is logged in and trying to access public pages
 // Exclude auth pages from this redirection
 watchEffect(() => {
   if (isLoggedIn.value && !route.path.startsWith('/auth') && route.path !== '/') {
     // Only redirect for protected pages
-    navigateTo('/dashboard');
+    navigateTo('/dashboard')
   }
-});
+})
 </script>

@@ -14,15 +14,19 @@
 
       <UForm :state="settings" class="space-y-6" @submit="saveSettings">
         <!-- Default Unit -->
-        <UFormGroup label="Default Unit" name="defaultUnit" help="This will be used for all new measurements">
+        <UFormGroup
+          label="Default Unit"
+          name="defaultUnit"
+          help="This will be used for all new measurements"
+        >
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-lg">
             <UCard
               v-for="unit in unitOptions"
               :key="unit.value"
               :ui="{
                 body: {
-                  padding: 'p-4'
-                }
+                  padding: 'p-4',
+                },
               }"
               :class="[
                 'cursor-pointer transition-all hover:shadow-md',
@@ -64,12 +68,11 @@
 
         <!-- Form Actions -->
         <div class="flex justify-end pt-6">
-          <UButton 
-            type="submit" 
-            :loading="isSaving"
-            icon="i-heroicons-check"
-            color="primary"
-          >
+          <UButton
+type="submit"
+:loading="isSaving"
+icon="i-heroicons-check"
+color="primary">
             Save Changes
           </UButton>
         </div>
@@ -129,19 +132,14 @@
           title="This action cannot be undone"
           class="mt-2"
         >
-          This will remove all custom templates and reset the default templates to their original state.
+          This will remove all custom templates and reset the default templates to their original
+          state.
         </UAlert>
       </div>
 
       <template #footer>
         <div class="flex justify-end gap-3">
-          <UButton
-            color="gray"
-            variant="ghost"
-            @click="showResetConfirm = false"
-          >
-            Cancel
-          </UButton>
+          <UButton color="gray" variant="ghost" @click="showResetConfirm = false"> Cancel </UButton>
           <UButton
             color="red"
             icon="i-heroicons-arrow-path"
@@ -157,16 +155,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useMeasurementSettings } from '~/composables/measurements/useMeasurementSettings';
+import { ref, onMounted } from 'vue'
+import { useMeasurementSettings } from '~/composables/measurements/useMeasurementSettings'
 
-const emit = defineEmits(['saved']);
+const emit = defineEmits(['saved'])
 
-const { settings, loading, error, fetchSettings, updateSettings } = useMeasurementSettings();
+const { settings, _loading, _error, fetchSettings, updateSettings } = useMeasurementSettings()
 
-const isSaving = ref(false);
-const isResetting = ref(false);
-const showResetConfirm = ref(false);
+const isSaving = ref(false)
+const isResetting = ref(false)
+const showResetConfirm = ref(false)
 
 const unitOptions = [
   {
@@ -179,81 +177,86 @@ const unitOptions = [
     label: 'Centimeters (cm)',
     description: 'Metric system - used worldwide',
   },
-];
+]
 
 // Fetch settings when component mounts
 onMounted(async () => {
-  await fetchSettings();
-});
+  await fetchSettings()
+})
 
 // Save settings
 const saveSettings = async () => {
-  isSaving.value = true;
-  
+  isSaving.value = true
+
   try {
     await updateSettings({
       defaultUnit: settings.value.defaultUnit,
-    });
-    
-    emit('saved');
-    
+    })
+
+    emit('saved')
+
     useToast().add({
       title: 'Settings saved',
       description: 'Your measurement preferences have been updated',
       icon: 'i-heroicons-check-circle',
       color: 'green',
-    });
+    })
   } catch (err) {
-    console.error('Error saving settings:', err);
+    console.error('Error saving settings:', err)
     useToast().add({
       title: 'Error saving settings',
       description: 'Please try again',
       color: 'red',
       icon: 'i-heroicons-exclamation-triangle',
-    });
+    })
   } finally {
-    isSaving.value = false;
+    isSaving.value = false
   }
-};
+}
 
 // Confirm reset
 const confirmReset = () => {
-  showResetConfirm.value = true;
-};
+  showResetConfirm.value = true
+}
 
 // Reset to default templates
 const resetToDefault = async () => {
-  isResetting.value = true;
-  
+  isResetting.value = true
+
   try {
     // Call API to reset templates
-    const { error: resetError } = await useFetch('/api/measurement-templates/reset', {
+    const {
+      _data,
+      _pending,
+      error: _error,
+      _refresh,
+    } = await useFetch('/api/measurement-templates/reset', {
       method: 'POST',
-    });
-    
-    if (resetError.value) {
-      throw new Error(resetError.value.message || 'Failed to reset templates');
+    })
+
+    if (_error.value) {
+      throw new Error(_error.value.message || 'Failed to reset templates')
     }
-    
+
     useToast().add({
       title: 'Templates reset successfully',
       description: 'All measurement templates have been restored to defaults',
       icon: 'i-heroicons-check-circle',
       color: 'green',
-    });
-    
-    emit('saved');
-    showResetConfirm.value = false;
+    })
+
+    emit('saved')
+    showResetConfirm.value = false
   } catch (err: any) {
-    console.error('Error resetting templates:', err);
+    console.error('Error resetting templates:', err)
     useToast().add({
       title: 'Error resetting templates',
       description: err.message || 'Please try again',
       color: 'red',
       icon: 'i-heroicons-exclamation-triangle',
-    });
+    })
   } finally {
-    isResetting.value = false;
+    isResetting.value = false
   }
-};
+}
 </script>

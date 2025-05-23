@@ -9,22 +9,22 @@ export default defineAppConfig({
     //   error: 'red'
     // },
     notifications: {
-      position: 'top-0 bottom-[unset]'
+      position: 'top-0 bottom-[unset]',
     },
     button: {
       default: {
         color: 'primary',
-        variant: 'solid'
+        variant: 'solid',
       },
       variants: {
         outline: {
           gray: {
             color: 'gray',
             border: 'border border-gray-500',
-            ring: 'ring-gray-500'
-          }
-        }
-      }
+            ring: 'ring-gray-500',
+          },
+        },
+      },
     },
     // card: {
     //   base: 'overflow-hidden',
@@ -46,5 +46,5 @@ export default defineAppConfig({
     //     padding: 'p-2 sm:p-3',
     //   }
     // }
-  }
-}) 
+  },
+})

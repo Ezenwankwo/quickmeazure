@@ -1,5 +1,10 @@
-import { useDrizzle, eq, and } from './drizzle';
-import { measurementTemplates, measurementFields, type NewMeasurementTemplate, type NewMeasurementField } from '../database/schema';
+import {
+  measurementTemplates,
+  measurementFields,
+  type NewMeasurementTemplate,
+  type NewMeasurementField,
+} from '../database/schema'
+import { useDrizzle, eq, and } from './drizzle'
 
 /**
  * Get all measurement templates for a user
@@ -10,13 +15,13 @@ import { measurementTemplates, measurementFields, type NewMeasurementTemplate, t
 export async function getUserTemplates(userId: number, includeArchived: boolean = false) {
   try {
     // Get database connection
-    const db = useDrizzle();
-    
+    const db = useDrizzle()
+
     // Query to get templates
     const query = and(
       eq(measurementTemplates.userId, userId),
       includeArchived ? undefined : eq(measurementTemplates.isArchived, false)
-    );
+    )
 
     // Get templates
     const templates = await db.query.measurementTemplates.findMany({
@@ -24,16 +29,13 @@ export async function getUserTemplates(userId: number, includeArchived: boolean 
       with: {
         fields: true,
       },
-      orderBy: [
-        { isDefault: 'desc' },
-        { name: 'asc' },
-      ],
-    });
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+    })
 
-    return templates;
+    return templates
   } catch (error) {
-    console.error('Error in getUserTemplates:', error);
-    throw error;
+    console.error('Error in getUserTemplates:', error)
+    throw error
   }
 }
 
@@ -47,24 +49,24 @@ export async function getUserTemplates(userId: number, includeArchived: boolean 
 export async function createTemplate(
   userId: number,
   templateData: {
-    name: string;
-    gender: 'male' | 'female' | 'unisex';
-    isArchived?: boolean;
-    isDefault?: boolean;
+    name: string
+    gender: 'male' | 'female' | 'unisex'
+    isArchived?: boolean
+    isDefault?: boolean
   },
   fields: Array<{
-    name: string;
-    category?: string;
-    order?: number;
-    description?: string;
-    unit?: string;
-    isRequired?: boolean;
+    name: string
+    category?: string
+    order?: number
+    description?: string
+    unit?: string
+    isRequired?: boolean
   }>
 ) {
   try {
     // Get database connection
-    const db = useDrizzle();
-    
+    const db = useDrizzle()
+
     // Create template
     const newTemplate: NewMeasurementTemplate = {
       userId,
@@ -72,15 +74,15 @@ export async function createTemplate(
       gender: templateData.gender,
       isArchived: templateData.isArchived ?? false,
       isDefault: templateData.isDefault ?? false,
-    };
-    
-    // Insert template and get the ID
-    const [insertedTemplate] = await db.insert(measurementTemplates).values(newTemplate).returning();
-    
-    if (!insertedTemplate) {
-      throw new Error('Failed to create measurement template');
     }
-    
+
+    // Insert template and get the ID
+    const [insertedTemplate] = await db.insert(measurementTemplates).values(newTemplate).returning()
+
+    if (!insertedTemplate) {
+      throw new Error('Failed to create measurement template')
+    }
+
     // If there are fields, insert them
     if (fields.length > 0) {
       const newFields: NewMeasurementField[] = fields.map((field, index) => ({
@@ -91,33 +93,33 @@ export async function createTemplate(
         isRequired: field.isRequired ?? true,
         displayOrder: field.order ?? index,
         metadata: field.category ? { category: field.category } : null,
-      }));
-      
-      await db.insert(measurementFields).values(newFields);
+      }))
+
+      await db.insert(measurementFields).values(newFields)
     }
-    
+
     // Fetch the created template
     const createdTemplate = await db
       .select()
       .from(measurementTemplates)
       .where(eq(measurementTemplates.id, insertedTemplate.id))
       .execute()
-      .then(results => results[0]);
-      
+      .then(results => results[0])
+
     // Fetch the fields separately
     const templateFields = await db
       .select()
       .from(measurementFields)
       .where(eq(measurementFields.templateId, insertedTemplate.id))
-      .execute();
-      
+      .execute()
+
     // Combine template with fields
     return {
       ...createdTemplate,
-      fields: templateFields
-    };
+      fields: templateFields,
+    }
   } catch (error) {
-    console.error('Error in createTemplate:', error);
-    throw error;
+    console.error('Error in createTemplate:', error)
+    throw error
   }
 }

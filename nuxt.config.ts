@@ -2,16 +2,28 @@ import { defineNuxtConfig } from 'nuxt/config'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  devtools: { enabled: true },
   modules: [
-    '@nuxt/ui', 
-    'nuxt-auth-utils', 
-    '@nuxt/image', 
-    '@nuxtjs/seo', 
+    '@nuxt/ui',
+    'nuxt-auth-utils',
+    '@nuxt/image',
+    '@nuxtjs/seo',
     '@vite-pwa/nuxt',
     '@sentry/nuxt/module',
+    '@nuxt/eslint',
   ],
+  components: [{ path: '~/components', pathPrefix: false }],
+  devtools: { enabled: true },
   css: ['~/assets/css/main.css'],
+  site: {
+    url: 'https://quickmeazure.com',
+    name: 'QuickMeazure - Tailor Business Management',
+    description:
+      "Easily manage your clients's measurements, styles, and payments with QuickMeazure.",
+    defaultLocale: 'en',
+  },
+  ui: {
+    colorMode: false,
+  },
   runtimeConfig: {
     // Keys within public are also exposed client-side
     public: {
@@ -30,10 +42,36 @@ export default defineNuxtConfig({
     brevoApiKey: process.env.BREVO_API_KEY,
   },
   build: {
-    transpile: ['@nuxt/ui']
+    transpile: ['@nuxt/ui'],
   },
-  ui: {
-    colorMode: false
+  // Add sourcemap configuration for Sentry
+  sourcemap: {
+    client: true,
+    server: true,
+  },
+  compatibilityDate: '2025-04-08',
+  nitro: {
+    preset: 'vercel',
+    sourceMap: false,
+    routeRules: {
+      '/.well-known/appspecific/com.chrome.devtools.json': {
+        redirect: { to: '/', statusCode: 404 },
+      },
+    },
+  },
+  vite: {
+    optimizeDeps: {
+      include: ['vue', '@nuxt/ui'],
+    },
+    build: {
+      sourcemap: false,
+    },
+  },
+  eslint: {
+    config: {
+      // Disable stylistic rules for now to reduce noise
+      stylistic: false,
+    },
   },
   pwa: {
     registerType: 'autoUpdate',
@@ -50,7 +88,7 @@ export default defineNuxtConfig({
       injectionPoint: undefined,
       rollupFormat: 'iife',
     },
-    
+
     workbox: {
       // When enabled in production, use these settings
       navigateFallback: '/',
@@ -67,12 +105,12 @@ export default defineNuxtConfig({
             cacheName: 'google-fonts-cache',
             expiration: {
               maxEntries: 10,
-              maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+              maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
             },
             cacheableResponse: {
-              statuses: [0, 200]
-            }
-          }
+              statuses: [0, 200],
+            },
+          },
         },
         {
           urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
@@ -81,12 +119,12 @@ export default defineNuxtConfig({
             cacheName: 'google-fonts-assets-cache',
             expiration: {
               maxEntries: 10,
-              maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
+              maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
             },
             cacheableResponse: {
-              statuses: [0, 200]
-            }
-          }
+              statuses: [0, 200],
+            },
+          },
         },
         {
           urlPattern: /\.(png|jpg|jpeg|svg|gif|webp)$/i,
@@ -95,9 +133,9 @@ export default defineNuxtConfig({
             cacheName: 'images-cache',
             expiration: {
               maxEntries: 50,
-              maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-            }
-          }
+              maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+            },
+          },
         },
         {
           urlPattern: /\/api\/.*/i,
@@ -106,52 +144,20 @@ export default defineNuxtConfig({
             cacheName: 'api-cache',
             expiration: {
               maxEntries: 50,
-              maxAgeSeconds: 60 * 60 // 1 hour
+              maxAgeSeconds: 60 * 60, // 1 hour
             },
-            networkTimeoutSeconds: 10
-          }
-        }
-      ]
+            networkTimeoutSeconds: 10,
+          },
+        },
+      ],
     },
     devOptions: {
       // Completely disable in development
       enabled: false,
       type: 'module',
       navigateFallback: '/',
-      navigateFallbackAllowlist: [/^\/$/]
-    }
-  },
-  site: {
-    url: 'https://quickmeazure.com',
-    name: 'QuickMeazure - Tailor Business Management',
-    description: 'Easily manage your clients\'s measurements, styles, and payments with QuickMeazure.',
-    defaultLocale: 'en',
-  },
-  vite: {
-    optimizeDeps: {
-      include: ['vue', '@nuxt/ui']
+      navigateFallbackAllowlist: [/^\/$/],
     },
-    build: {
-      sourcemap: false
-    }
-  },
-  nitro: {
-    preset: 'vercel',
-    sourceMap: false,
-    routeRules: {
-      '/.well-known/appspecific/com.chrome.devtools.json': {
-        redirect: { to: '/', statusCode: 404 }
-      }
-    }
-  },
-  compatibilityDate: '2025-04-08',
-  components: [
-    { path: '~/components', pathPrefix: false }
-  ],
-  // Add sourcemap configuration for Sentry
-  sourcemap: { 
-    client: true,
-    server: true,
   },
   // Add Sentry configuration
   sentry: {

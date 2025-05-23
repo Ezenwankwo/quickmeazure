@@ -1,33 +1,53 @@
 declare module 'sib-api-v3-sdk' {
   namespace ApiClient {
-    const instance: any;
+    const instance: unknown
   }
 
-  interface SendSmtpEmail {
-    subject: string;
-    htmlContent: string;
-    textContent?: string;
+  // Define the interface for the email structure
+  interface SendSmtpEmailData {
+    subject: string
+    htmlContent: string
+    textContent?: string
     sender: {
-      name: string;
-      email: string;
-    };
+      name: string
+      email: string
+    }
     to: Array<{
-      email: string;
-      name?: string;
-    }>;
+      email: string
+      name?: string
+    }>
     replyTo?: {
-      email: string;
-      name?: string;
-    };
-    headers?: Record<string, string>;
-    params?: Record<string, any>;
+      email: string
+      name?: string
+    }
+    headers?: Record<string, string>
+    params?: Record<string, unknown>
   }
 
-  class SendSmtpEmail {
-    constructor();
+  // Define the class that implements the interface
+  class SendSmtpEmail implements SendSmtpEmailData {
+    subject!: string
+    htmlContent!: string
+    textContent?: string
+    sender!: {
+      name: string
+      email: string
+    }
+    to!: Array<{
+      email: string
+      name?: string
+    }>
+    replyTo?: {
+      email: string
+      name?: string
+    }
+    headers?: Record<string, string>
+    params?: Record<string, unknown>
+
+    constructor()
   }
 
   class TransactionalEmailsApi {
-    sendTransacEmail(sendSmtpEmail: SendSmtpEmail): Promise<{ messageId: string }>;
+    sendTransacEmail(sendSmtpEmail: SendSmtpEmail): Promise<{ messageId: string }>
   }
-} 
+}

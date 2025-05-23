@@ -5,35 +5,37 @@ export default defineNuxtPlugin({
   name: 'auth-refresh',
   setup(nuxtApp) {
     const { isLoggedIn, refreshSession } = useSessionAuth()
-    
+
     // Refresh interval - start at 15 minutes (in ms)
     const INITIAL_REFRESH_INTERVAL = 15 * 60 * 1000
     let currentRefreshInterval = INITIAL_REFRESH_INTERVAL
     const MAX_REFRESH_INTERVAL = 60 * 60 * 1000 // Maximum 1 hour
-    
+
     // Refresh on initial load if logged in, with a 5 second delay
     if (isLoggedIn.value) {
       setTimeout(() => {
-        refreshSession().then(() => {
-          console.log('Initial auth session refreshed successfully')
-          // Reset interval to initial value after successful refresh
-          currentRefreshInterval = INITIAL_REFRESH_INTERVAL
-        }).catch(err => {
-          console.error('Failed initial auth refresh:', err)
-        })
+        refreshSession()
+          .then(() => {
+            console.log('Initial auth session refreshed successfully')
+            // Reset interval to initial value after successful refresh
+            currentRefreshInterval = INITIAL_REFRESH_INTERVAL
+          })
+          .catch(err => {
+            console.error('Failed initial auth refresh:', err)
+          })
       }, 5000)
     }
-    
+
     // Set up periodic refresh
     let refreshTimer: NodeJS.Timeout | null = null
-    
+
     // Start refresh timer
     const startRefreshTimer = () => {
       // Clear existing timer if it exists
       if (refreshTimer !== null) {
         clearTimeout(refreshTimer)
       }
-      
+
       refreshTimer = setTimeout(async () => {
         if (isLoggedIn.value) {
           try {
@@ -58,14 +60,14 @@ export default defineNuxtPlugin({
         }
       }, currentRefreshInterval)
     }
-    
+
     // Start the timer if logged in
     if (isLoggedIn.value) {
       startRefreshTimer()
     }
-    
+
     // Watch for login/logout events
-    watch(isLoggedIn, (newValue) => {
+    watch(isLoggedIn, newValue => {
       if (newValue) {
         // Reset interval when logging in
         currentRefreshInterval = INITIAL_REFRESH_INTERVAL
@@ -75,12 +77,12 @@ export default defineNuxtPlugin({
         refreshTimer = null
       }
     })
-    
+
     // Use Nuxt's app:beforeMount hook for initialization
     nuxtApp.hook('app:mounted', () => {
       console.log('Auth refresh plugin initialized')
     })
-    
+
     // Clean up timers when component unmounts
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', () => {
@@ -90,10 +92,10 @@ export default defineNuxtPlugin({
         }
       })
     }
-    
+
     // Return an empty object to satisfy plugin interface
     return {
-      provide: {}
+      provide: {},
     }
-  }
-}) 
+  },
+})

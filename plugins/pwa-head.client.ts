@@ -4,8 +4,8 @@ export default defineNuxtPlugin(() => {
     link: [
       {
         rel: 'manifest',
-        href: '/manifest.webmanifest'
-      }
-    ]
+        href: '/manifest.webmanifest',
+      },
+    ],
   })
 })

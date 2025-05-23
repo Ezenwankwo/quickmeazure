@@ -33,16 +33,16 @@ The Sentry integration consists of the following files:
 Sentry automatically captures unhandled exceptions, but you can also manually capture errors:
 
 ```javascript
-import { captureException, captureMessage } from '@sentry/nuxt';
+import { captureException, captureMessage } from '@sentry/nuxt'
 
 try {
   // Your code that might throw an error
 } catch (error) {
-  captureException(error);
+  captureException(error)
 }
 
 // Or capture a message
-captureMessage('Something went wrong');
+captureMessage('Something went wrong')
 ```
 
 ### Adding Context
@@ -50,19 +50,19 @@ captureMessage('Something went wrong');
 You can add additional context to your errors:
 
 ```javascript
-import { setUser, setTag, setExtra } from '@sentry/nuxt';
+import { setUser, setTag, setExtra } from '@sentry/nuxt'
 
 // Set user information
 setUser({
   id: 'user-123',
   email: 'user@example.com',
-});
+})
 
 // Add tags for filtering in the Sentry dashboard
-setTag('subscription_tier', 'premium');
+setTag('subscription_tier', 'premium')
 
 // Add extra data
-setExtra('cart_items', ['item1', 'item2']);
+setExtra('cart_items', ['item1', 'item2'])
 ```
 
 ### Performance Monitoring
@@ -70,16 +70,16 @@ setExtra('cart_items', ['item1', 'item2']);
 Sentry also provides performance monitoring capabilities:
 
 ```javascript
-import { startTransaction } from '@sentry/nuxt';
+import { startTransaction } from '@sentry/nuxt'
 
 const transaction = startTransaction({
   name: 'Process Order',
   op: 'order.process',
-});
+})
 
 // Your code here
 
-transaction.finish();
+transaction.finish()
 ```
 
 ## Testing

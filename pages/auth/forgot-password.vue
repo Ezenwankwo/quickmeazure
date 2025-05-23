@@ -1,5 +1,7 @@
 <template>
-  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div
+    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
+  >
     <!-- Title and Subtitle - Outside Card -->
     <div class="text-center mb-6 w-full max-w-md">
       <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Forgot your password?</h2>
@@ -7,9 +9,8 @@
         Enter your email address and we'll send you a link to reset your password.
       </p>
     </div>
-    
-    <div class="w-full max-w-md space-y-6 p-8 bg-white rounded-xl shadow">
 
+    <div class="w-full max-w-md space-y-6 p-8 bg-white rounded-xl shadow">
       <form class="mt-8 space-y-6">
         <div class="space-y-4 flex flex-col">
           <div class="space-y-2">
@@ -45,54 +46,54 @@
 // Set page metadata
 useHead({
   title: 'Forgot Password - QuickMeazure',
-});
+})
 
 // Set layout for this page
 definePageMeta({
-  layout: 'auth'
-});
+  layout: 'auth',
+})
 
-const email = ref('');
-const loading = ref(false);
-const toast = useToast();
+const email = ref('')
+const loading = ref(false)
+const toast = useToast()
 
 const sendResetLink = async () => {
-  if (!email.value) return;
-  
-  loading.value = true;
+  if (!email.value) return
+
+  loading.value = true
   try {
     // Send request to reset password
     const response = await $fetch('/api/auth/forgot-password', {
       method: 'POST',
-      body: { email: email.value }
-    });
-    
+      body: { email: email.value },
+    })
+
     if (response.success) {
       toast.add({
         title: 'Success',
         description: 'If there is an account with that email, we have sent a password reset link.',
         color: 'primary',
-        icon: 'i-heroicons-check-circle'
-      });
-      
+        icon: 'i-heroicons-check-circle',
+      })
+
       // For development, log the reset URL to the console
       if (response.resetUrl) {
-        console.log('Reset URL:', response.resetUrl);
+        console.log('Reset URL:', response.resetUrl)
       }
-      
+
       // Clear email
-      email.value = '';
+      email.value = ''
     }
-  } catch (error) {
+  } catch (_error) {
     // Don't reveal if the email exists or not for security
     toast.add({
       title: 'Success',
       description: 'If there is an account with that email, we have sent a password reset link.',
       color: 'primary',
-      icon: 'i-heroicons-check-circle'
-    });
+      icon: 'i-heroicons-check-circle',
+    })
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
-</script> 
+}
+</script>

@@ -1,25 +1,25 @@
 import { useDrizzle, tables, eq } from '~/server/utils/drizzle'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   try {
     // Get the current user
     const user = event.context.user
     if (!user) {
       throw createError({
         statusCode: 401,
-        message: 'Not authenticated'
+        message: 'Not authenticated',
       })
     }
 
     // Get database connection
     const db = useDrizzle()
-    
+
     // Update the user to mark setup as complete
     await db
       .update(tables.users)
-      .set({ 
+      .set({
         hasCompletedSetup: true,
-        updatedAt: new Date() 
+        updatedAt: new Date(),
       })
       .where(eq(tables.users.id, user.id))
 
@@ -27,9 +27,9 @@ export default defineEventHandler(async (event) => {
     await setUserSession(event, {
       user: {
         ...event.context.user,
-        hasCompletedSetup: true
+        hasCompletedSetup: true,
       },
-      loggedInAt: new Date()
+      loggedInAt: new Date(),
     })
 
     return { success: true }
@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
     console.error('Error completing setup:', error)
     throw createError({
       statusCode: error.statusCode || 500,
-      message: error.message || 'Failed to complete setup'
+      message: error.message || 'Failed to complete setup',
     })
   }
 })

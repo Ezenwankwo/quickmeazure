@@ -1,15 +1,15 @@
-import { db } from '~/server/database'
-import { users } from '~/server/database/schema'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
+import { db } from '~/server/database'
+import { users } from '~/server/database/schema'
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async event => {
   try {
     const auth = event.context.auth
     if (!auth || !auth.userId) {
       throw createError({
         statusCode: 401,
-        statusMessage: 'Unauthorized'
+        statusMessage: 'Unauthorized',
       })
     }
 
@@ -17,7 +17,8 @@ export default defineEventHandler(async (event) => {
     const { name, email, notifications, currentPassword, newPassword } = body
 
     // Get current user
-    const currentUser = await db.select()
+    const currentUser = await db
+      .select()
       .from(users)
       .where(eq(users.id, auth.userId))
       .limit(1)
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
     if (!currentUser) {
       throw createError({
         statusCode: 404,
-        message: 'User not found'
+        message: 'User not found',
       })
     }
 
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event) => {
     const updateData: any = {
       name,
       email,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     }
 
     // Handle password change if provided
@@ -44,13 +45,13 @@ export default defineEventHandler(async (event) => {
       if (!isPasswordValid) {
         throw createError({
           statusCode: 400,
-          message: 'Current password is incorrect'
+          message: 'Current password is incorrect',
         })
       }
-      
+
       // Hash the new password
       const hashedPassword = await bcrypt.hash(newPassword, 10)
-      
+
       // Update the password in the database
       updateData.password = hashedPassword
     }
@@ -63,7 +64,8 @@ export default defineEventHandler(async (event) => {
     }
 
     // Update user
-    const result = await db.update(users)
+    const result = await db
+      .update(users)
       .set(updateData)
       .where(eq(users.id, auth.userId))
       .returning()
@@ -71,7 +73,7 @@ export default defineEventHandler(async (event) => {
     if (!result.length) {
       throw createError({
         statusCode: 500,
-        message: 'Failed to update user'
+        message: 'Failed to update user',
       })
     }
 
@@ -83,14 +85,14 @@ export default defineEventHandler(async (event) => {
         id: updatedUser.id,
         name: updatedUser.name,
         email: updatedUser.email,
-        notifications: notifications || { email: false, push: false }
-      }
+        notifications: notifications || { email: false, push: false },
+      },
     }
   } catch (error: any) {
     console.error('Error updating user profile:', error)
     throw createError({
       statusCode: error.statusCode || 500,
-      message: error.message || 'Failed to update user profile'
+      message: error.message || 'Failed to update user profile',
     })
   }
-}) 
+})

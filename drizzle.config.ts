@@ -8,13 +8,13 @@ dotenv.config()
 const getDatabaseUrl = () => {
   // Use the direct DATABASE_URL if provided
   if (process.env.DATABASE_URL) {
-    return process.env.DATABASE_URL;
+    return process.env.DATABASE_URL
   }
-  
+
   // Fallback to local PostgreSQL if no URL is provided
-  console.warn('DATABASE_URL not found, falling back to local PostgreSQL connection');
-  return 'postgresql://postgres:postgres@localhost:5432/postgres';
-};
+  console.warn('DATABASE_URL not found, falling back to local PostgreSQL connection')
+  return 'postgresql://postgres:postgres@localhost:5432/postgres'
+}
 
 export default defineConfig({
   schema: './server/database/schema.ts',
@@ -23,4 +23,4 @@ export default defineConfig({
   dbCredentials: {
     url: getDatabaseUrl(),
   },
-}) 
+})

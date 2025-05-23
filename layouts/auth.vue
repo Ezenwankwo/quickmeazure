@@ -9,11 +9,15 @@
             <span class="text-xl font-bold text-primary-600">QuickMeazure</span>
           </ULink>
         </div>
-        
+
         <!-- Navigation for guests -->
         <div class="flex items-center space-x-2 sm:space-x-4">
           <UButton
-            v-if="route.path !== '/auth/login' && !isSubscriptionConfirmPage && route.path !== '/auth/setup-measurements'"
+            v-if="
+              route.path !== '/auth/login' &&
+              !isSubscriptionConfirmPage &&
+              route.path !== '/auth/setup-measurements'
+            "
             to="/auth/login"
             color="neutral"
             variant="outline"
@@ -21,7 +25,11 @@
             Login
           </UButton>
           <UButton
-            v-if="route.path !== '/auth/register' && !isSubscriptionConfirmPage && route.path !== '/auth/setup-measurements'"
+            v-if="
+              route.path !== '/auth/register' &&
+              !isSubscriptionConfirmPage &&
+              route.path !== '/auth/setup-measurements'
+            "
             to="/auth/register"
             color="primary"
           >
@@ -30,7 +38,7 @@
         </div>
       </div>
     </header>
-    
+
     <!-- Main content wrapper -->
     <div class="container mx-auto px-4 pt-16 pb-20 sm:pb-6">
       <main>
@@ -42,10 +50,10 @@
 
 <script setup>
 // Get current route for conditional rendering
-const route = useRoute();
+const route = useRoute()
 
 // Check if current page is subscription confirm page
 const isSubscriptionConfirmPage = computed(() => {
-  return route.path === '/subscription/confirm';
-});
-</script> 
+  return route.path === '/subscription/confirm'
+})
+</script>

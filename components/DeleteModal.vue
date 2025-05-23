@@ -4,26 +4,21 @@
       <template #header>
         <div class="flex items-center">
           <UIcon name="i-heroicons-exclamation-triangle" class="text-red-500 mr-2" />
-          <h3 class="text-lg font-medium">{{ title }}</h3>
+          <h3 class="text-lg font-medium">
+            {{ title }}
+          </h3>
         </div>
       </template>
-      
-      <p v-html="message"></p>
-      
+
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <p v-html="message" />
+
       <template #footer>
         <div class="flex justify-end space-x-4">
-          <UButton
-            color="neutral"
-            variant="outline"
-            @click="$emit('update:modelValue', false)"
-          >
+          <UButton color="neutral" variant="outline" @click="$emit('update:modelValue', false)">
             {{ cancelText }}
           </UButton>
-          <UButton
-            color="error"
-            @click="$emit('confirm')"
-            :loading="loading"
-          >
+          <UButton color="error" :loading="loading" @click="$emit('confirm')">
             {{ confirmText }}
           </UButton>
         </div>
@@ -36,29 +31,29 @@
 defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   title: {
     type: String,
-    default: 'Confirm Delete'
+    default: 'Confirm Delete',
   },
   message: {
     type: String,
-    required: true
+    required: true,
   },
   cancelText: {
     type: String,
-    default: 'Cancel'
+    default: 'Cancel',
   },
   confirmText: {
     type: String,
-    default: 'Delete'
+    default: 'Delete',
   },
   loading: {
     type: Boolean,
-    default: false
-  }
-});
+    default: false,
+  },
+})
 
-defineEmits(['update:modelValue', 'confirm']);
-</script> 
+defineEmits(['update:modelValue', 'confirm'])
+</script>

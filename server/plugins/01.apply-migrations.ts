@@ -15,4 +15,4 @@ export default defineNitroPlugin(async () => {
   } catch (error) {
     console.error('Failed to apply migrations:', error)
   }
-}) 
+})
