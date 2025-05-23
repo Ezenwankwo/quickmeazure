@@ -9,6 +9,7 @@ export default defineNuxtConfig({
     '@nuxt/image', 
     '@nuxtjs/seo', 
     '@vite-pwa/nuxt',
+    '@sentry/nuxt/module',
   ],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
@@ -18,7 +19,10 @@ export default defineNuxtConfig({
       appUrl: process.env.APP_URL || 'http://localhost:3000',
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseKey: process.env.SUPABASE_KEY,
-      paystackKey: process.env.PAYSTACK_PUBLIC_KEY || 'pk_test_your_paystack_public_key'
+      paystackKey: process.env.PAYSTACK_PUBLIC_KEY || 'pk_test_your_paystack_public_key',
+      sentry: {
+        dsn: process.env.SENTRY_DSN,
+      },
     },
     // Add auth secret for nuxt-auth-utils
     authSecret: process.env.AUTH_SECRET || 'your-secret-key',
@@ -140,9 +144,21 @@ export default defineNuxtConfig({
       }
     }
   },
-  sourcemap: false,
   compatibilityDate: '2025-04-08',
   components: [
     { path: '~/components', pathPrefix: false }
   ],
+  // Add sourcemap configuration for Sentry
+  sourcemap: { 
+    client: true,
+    server: true,
+  },
+  // Add Sentry configuration
+  sentry: {
+    sourceMapsUploadOptions: {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+    },
+  },
 })

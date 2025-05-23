@@ -73,3 +73,9 @@ bun run preview
 ```
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## Features
+
+### Error Tracking
+
+The application uses Sentry for error tracking and performance monitoring. See [Sentry Integration Documentation](./docs/sentry-integration.md) for details on how it's configured and used.
