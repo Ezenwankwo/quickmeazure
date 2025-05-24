@@ -116,11 +116,11 @@
 
     <!-- Main content wrapper -->
     <div class="container mx-auto px-4 pt-16 pb-20 sm:pb-6">
-      <div class="flex">
+      <div class="flex flex-nowrap">
         <ClientOnly>
           <!-- Desktop sidebar -->
           <aside
-            class="hidden md:block w-64 pr-6 sticky top-20 self-start h-[calc(100vh-80px)] overflow-y-auto pb-8"
+            class="hidden md:block w-64 flex-shrink-0 pr-6 sticky top-20 self-start h-[calc(100vh-80px)] overflow-y-auto pb-8"
           >
             <nav class="space-y-1">
               <NuxtLink
@@ -192,7 +192,7 @@
         </ClientOnly>
 
         <!-- Main Content -->
-        <main class="flex-1">
+        <main class="flex-1 min-w-0 overflow-hidden">
           <slot />
         </main>
       </div>
@@ -272,10 +272,11 @@
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
+import { useSubscriptionStore } from '~/store/modules/subscription'
 
-const auth = useSessionAuth()
-const user = computed(() => auth.user.value)
+const authStore = useAuthStore()
+const user = computed(() => authStore.user)
 const route = useRoute()
 
 // State for dropdowns and drawers
@@ -333,7 +334,7 @@ watch(route, () => {
   isDropdownOpen.value = false
 })
 
-// Update the logout function
+// Handle user logout with improved error handling
 const handleLogout = async () => {
   try {
     // Set a flag in localStorage to indicate this is an intentional logout
@@ -342,7 +343,12 @@ const handleLogout = async () => {
       localStorage.setItem('intentionalLogout', 'true')
     }
 
-    await auth.logout()
+    // Use the subscription store to clear cached data
+    const subscriptionStore = useSubscriptionStore()
+    subscriptionStore.clearCache()
+
+    // Logout using the auth store
+    await authStore.logout()
 
     // Use navigateTo with onFinish callback to clean up the flag after navigation completes
     navigateTo('/auth/login', {

@@ -232,6 +232,7 @@ class="px-4 sm:px-6 py-2">
 
 <script setup>
 import DeleteModal from '~/components/DeleteModal.vue'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Set page metadata
 useHead({
@@ -281,11 +282,11 @@ const loadStyles = async () => {
   isLoading.value = true
 
   try {
-    // Get auth token
-    const auth = useSessionAuth()
+    // Get auth token from the auth store
+    const authStore = useAuthStore()
 
     // Check if user is authenticated
-    if (!auth.isLoggedIn.value || !auth.token.value) {
+    if (!authStore.isLoggedIn || !authStore.token) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to view styles',
@@ -331,10 +332,10 @@ const loadStyles = async () => {
     params.append('sortField', sortField)
     params.append('sortOrder', sortOrder)
 
-    // Make API request
+    // Make API request using the auth token from the auth store
     const response = await $fetch(`/api/styles?${params.toString()}`, {
       headers: {
-        Authorization: `Bearer ${auth.token.value}`,
+        Authorization: `Bearer ${authStore.token}`,
       },
     })
 
@@ -449,12 +450,21 @@ const deleteStyle = async () => {
   isDeleting.value = true
 
   try {
-    const { authFetch } = useApiAuth()
+    // Get auth token from the auth store
+    const authStore = useAuthStore()
 
-    // Call the delete endpoint using authFetch
-    await authFetch(`/api/styles/${styleToDelete.value.id}`, {
+    // Call the delete endpoint directly with auth token
+    const response = await fetch(`/api/styles/${styleToDelete.value.id}`, {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`,
+      },
     })
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete style: ${response.status} ${response.statusText}`)
+    }
 
     // Check if we are on a page where this was the only item
     if (filteredStyles.value.length === 1 && pagination.value.page > 1) {

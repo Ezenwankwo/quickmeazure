@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-8 sm:py-12 px-3 sm:px-6 lg:px-8"
-  >
+  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 space-y-6">
     <!-- Signup Steps - First Item -->
     <div class="max-w-3xl w-full mb-6">
       <SignupSteps :current-step="1" />
@@ -13,7 +11,7 @@
       <p class="mt-2 text-gray-600">Start managing your tailor business.</p>
     </div>
 
-    <div class="max-w-md w-full space-y-6 bg-white p-5 sm:p-8 rounded-xl shadow">
+    <div class="max-w-md w-full space-y-6 bg-white p-4 sm:p-8 rounded-xl shadow">
       <!-- Google Sign Up Button -->
       <div class="mt-8">
         <UButton
@@ -283,7 +281,7 @@ size="lg" />
           </UButton>
         </div>
 
-        <div class="text-center mt-4">
+        <div class="text-center my-4">
           <p class="text-sm text-gray-600">
             Already have an account? <ULink to="/auth/login" class="font-medium">Sign in</ULink>
           </p>
@@ -293,13 +291,13 @@ size="lg" />
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // Set page metadata
-// Use Auth composable
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store'
+import type { RegistrationData } from '~/store/types'
 
 useHead({
-  title: 'Register - QuickMeazure',
+  title: 'Register',
 })
 
 // Set layout for this page
@@ -322,7 +320,8 @@ const isLoading = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const formErrors = ref({})
-const { register } = useSessionAuth()
+// Get auth store
+const authStore = useAuthStore()
 
 // Password validation
 const hasLowerCase = str => /[a-z]/.test(str)
@@ -434,8 +433,15 @@ async function handleRegister() {
   isLoading.value = true
 
   try {
-    // Register using the auth composable
-    const result = await register(name.value, email.value, password.value)
+    // Create registration data object with our typed interface
+    const registrationData: RegistrationData = {
+      name: name.value,
+      email: email.value,
+      password: password.value,
+    }
+
+    // Register using the auth store with our typed data
+    const result = await authStore.register(registrationData)
 
     if (result.success) {
       // Show success toast

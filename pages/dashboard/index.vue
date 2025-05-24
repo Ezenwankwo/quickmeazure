@@ -68,7 +68,7 @@
             <UIcon name="i-heroicons-credit-card" class="text-primary-500" />
           </div>
         </template>
-        <div class="text-xl font-bold">{{ stats?.subscriptionPlan || 'Free Plan' }}</div>
+        <div class="text-xl py-1 font-bold">{{ stats?.subscriptionPlan || 'Free Plan' }}</div>
         <template #footer>
           <div class="text-sm text-gray-500">
             <template v-if="stats?.clientsRemaining === Infinity"> Unlimited clients </template>

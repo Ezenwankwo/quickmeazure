@@ -212,7 +212,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
+import { useMeasurementTemplatesStore } from '~/store'
 
 // Template state
 const {
@@ -224,7 +224,7 @@ const {
   unarchiveTemplateById,
   deleteTemplateById,
   resetTemplates,
-} = useMeasurementTemplates()
+} = useMeasurementTemplatesStore()
 
 // UI state
 const activeTemplateTab = ref('active')

@@ -1,8 +1,6 @@
 <template>
   <div class="confirm-page-wrapper">
-    <div
-      class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-8 sm:py-12 px-3 sm:px-6 lg:px-8"
-    >
+    <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 space-y-6">
       <!-- Signup Steps - First Item -->
       <div class="max-w-3xl w-full mb-6">
         <SignupSteps :current-step="2" />
@@ -14,7 +12,7 @@
         <p class="mt-2 text-gray-600">Confirm your subscription plan to continue.</p>
       </div>
 
-      <div class="max-w-3xl w-full space-y-6 bg-white py-6 sm:py-8 px-4 sm:px-6 rounded-xl shadow">
+      <div class="max-w-3xl w-full space-y-6 bg-white p-4 sm:py-8 rounded-xl shadow">
         <!-- Selected Plan Card -->
         <div v-if="selectedPlan" class="bg-white border border-gray-200 rounded-lg overflow-hidden">
           <div class="p-6">
@@ -358,7 +356,7 @@ const { loadSubscription: _loadSubscription, createSubscription } = useSubscript
 
 // Set page metadata
 useHead({
-  title: 'Confirm Subscription - QuickMeazure',
+  title: 'Confirm Plan',
 })
 
 // Set layout for this page

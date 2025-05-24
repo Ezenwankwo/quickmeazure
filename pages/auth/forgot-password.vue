@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
-  >
+  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 space-y-6">
     <!-- Title and Subtitle - Outside Card -->
     <div class="text-center mb-6 w-full max-w-md">
       <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Forgot your password?</h2>
@@ -10,7 +8,7 @@
       </p>
     </div>
 
-    <div class="w-full max-w-md space-y-6 p-8 bg-white rounded-xl shadow">
+    <div class="w-full max-w-md space-y-6 p-4 sm:p-8 bg-white rounded-xl shadow">
       <form class="mt-8 space-y-6">
         <div class="space-y-4 flex flex-col">
           <div class="space-y-2">
@@ -45,7 +43,7 @@
 <script setup>
 // Set page metadata
 useHead({
-  title: 'Forgot Password - QuickMeazure',
+  title: 'Forgot Password',
 })
 
 // Set layout for this page

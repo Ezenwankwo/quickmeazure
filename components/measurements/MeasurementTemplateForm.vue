@@ -145,7 +145,7 @@ variant="ghost"
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
+import { useMeasurementTemplatesStore } from '~/store'
 
 const props = defineProps({
   modelValue: {
@@ -160,7 +160,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'saved'])
 
-const { createTemplate, updateTemplate } = useMeasurementTemplates()
+const { createTemplate, updateTemplate } = useMeasurementTemplatesStore()
 
 const isOpen = computed({
   get: () => props.modelValue,

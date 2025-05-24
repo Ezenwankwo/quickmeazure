@@ -49,11 +49,7 @@ const props = defineProps({
   },
   steps: {
     type: Array,
-    default: () => [
-      { label: 'Register' },
-      { label: 'Confirm Plan' },
-      { label: 'Setup Measurements' },
-    ],
+    default: () => [{ label: 'Register' }, { label: 'Confirm Plan' }, { label: 'Setup' }],
   },
 })
 

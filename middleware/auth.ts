@@ -1,10 +1,10 @@
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
 
 export default defineNuxtRouteMiddleware(to => {
   if (import.meta.server) return // Skip middleware on server-side
 
   console.log('Auth middleware running for route:', to.path)
-  const auth = useSessionAuth()
+  const authStore = useAuthStore()
 
   // Skip for public routes
   if (isPublicRoute(to.path)) {
@@ -12,7 +12,7 @@ export default defineNuxtRouteMiddleware(to => {
   }
 
   // If the user isn't authenticated, redirect to login
-  if (!auth.isLoggedIn.value) {
+  if (!authStore.isLoggedIn) {
     console.log('No auth token found, redirecting to login')
 
     // Preserve the original requested URL for redirection after login
@@ -21,7 +21,7 @@ export default defineNuxtRouteMiddleware(to => {
   }
 
   // Check if user needs to complete setup
-  const user = auth.user.value
+  const user = authStore.user
 
   // Add detailed logging for debugging
   console.log('Auth middleware - User state:', {

@@ -289,8 +289,10 @@ class="text-primary-600 hover:underline"
 </template>
 
 <script setup>
-// Import the measurement templates composable
-import { useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
+// Import the measurement templates store
+import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useMeasurementTemplatesStore } from '~/store'
 
 // Get client ID from route
 const route = useRoute()
@@ -317,7 +319,9 @@ const isFormValid = computed(() => form.value.name && form.value.name.trim() !==
 const client = ref(null)
 
 // Use the measurement templates composable
-const { templates, fetchTemplates, loading: templatesLoading } = useMeasurementTemplates()
+const measurementTemplatesStore = useMeasurementTemplatesStore()
+const { templates, loading: templatesLoading } = storeToRefs(measurementTemplatesStore)
+const { fetchTemplates } = measurementTemplatesStore
 const hasLoadedTemplates = ref(false)
 const selectedTemplateId = ref(null)
 const templateOptions = computed(() => {

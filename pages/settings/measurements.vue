@@ -234,22 +234,19 @@ variant="outline"
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
+import { useMeasurementTemplatesStore } from '~/store/modules/measurement-templates'
 import { useMeasurementSettings } from '~/composables/measurements/useMeasurementSettings'
 
-// Composables
-const {
-  templates,
-  loading: _templatesLoading,
-  error: _templatesError,
-  fetchTemplates,
-  _createTemplate,
-  _updateTemplate,
-  archiveTemplate: archiveTemplateApi,
-  unarchiveTemplate: unarchiveTemplateApi,
-  deleteTemplate: deleteTemplateApi,
-  resetToDefault: resetTemplatesApi,
-} = useMeasurementTemplates()
+// Store
+const measurementTemplatesStore = useMeasurementTemplatesStore()
+const templates = computed(() => measurementTemplatesStore.templates)
+const _templatesLoading = computed(() => measurementTemplatesStore.loading)
+const _templatesError = computed(() => measurementTemplatesStore.error)
+const fetchTemplates = () => measurementTemplatesStore.fetchTemplates()
+const archiveTemplateApi = id => measurementTemplatesStore.archiveTemplate(id)
+const unarchiveTemplateApi = id => measurementTemplatesStore.unarchiveTemplate(id)
+const deleteTemplateApi = id => measurementTemplatesStore.deleteTemplate(id)
+const resetTemplatesApi = () => measurementTemplatesStore.resetTemplates()
 
 const {
   settings,

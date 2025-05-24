@@ -48,10 +48,12 @@
 </template>
 
 <script setup>
-// Get authenticated user with useSessionAuth composable
-import { useSessionAuth } from '~/composables/useSessionAuth'
+// Get authenticated user with the auth store
+import { computed } from 'vue'
+import { useAuthStore } from '~/store/modules/auth'
 
-const { isLoggedIn } = useSessionAuth()
+const authStore = useAuthStore()
+const isLoggedIn = computed(() => authStore.isLoggedIn)
 const route = useRoute()
 
 // Redirect to dashboard if user is logged in and trying to access public pages

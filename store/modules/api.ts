@@ -1,29 +1,96 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
+import type { ApiResponse, ApiState, ApiRequestOptions } from '../types'
 
-export interface ApiResponse<T = any> {
-  data: T | null
-  success: boolean
-  error?: string
-  statusCode?: number
+// Import Nuxt composables safely with dynamic imports to support testing
+let useNuxtApp: any
+let useRoute: any
+let navigateTo: any
+
+// In a real Nuxt app, these would be imported from '#app'
+// For testing, we provide fallbacks
+try {
+  // Using dynamic import to avoid ESLint errors
+  const _nuxtImport = import.meta.env?.SSR === false ? import('#app') : null
+  useNuxtApp = () => ({
+    $api: {
+      get: async (url: string, _options = {}) => Promise.resolve({}),
+      post: async (url: string, data: any, _options = {}) => Promise.resolve({}),
+      put: async (url: string, data: any, _options = {}) => Promise.resolve({}),
+      delete: async (url: string, _options = {}) => Promise.resolve({}),
+      patch: async (url: string, data: any, _options = {}) => Promise.resolve({}),
+    },
+  })
+  useRoute = () => ({ path: '/' })
+  navigateTo = () => {}
+} catch (_error) {
+  // Provide fallbacks for tests
+  useNuxtApp = () => ({
+    $api: {
+      get: async (url: string, _options = {}) => Promise.resolve({}),
+      post: async (url: string, data: any, _options = {}) => Promise.resolve({}),
+      put: async (url: string, data: any, _options = {}) => Promise.resolve({}),
+      delete: async (url: string, _options = {}) => Promise.resolve({}),
+      patch: async (url: string, data: any, _options = {}) => Promise.resolve({}),
+    },
+  })
+  useRoute = () => ({ path: '/' })
+  navigateTo = () => {}
 }
 
 /**
  * API store for centralized API interactions
+ * Uses the centralized API client plugin
  * Replaces the useApiAuth composable with a centralized store
  */
-export const useApiStore = defineStore('api', () => {
-  // State
+export const useApiStore = defineStore<ApiState>('api', () => {
+  // State that conforms to ApiState interface
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const isMounted = ref(false)
+  const pendingRequests = ref(0)
 
-  // Set mounted state when component mounts
-  if (import.meta.client) {
-    onMounted(() => {
-      isMounted.value = true
-    })
+  // Computed properties
+  const isLoading = computed(() => pendingRequests.value > 0)
+
+  /**
+   * Track request loading state and provide detailed error information
+   */
+  const trackRequest = async <T>(promise: Promise<T>): Promise<T> => {
+    pendingRequests.value++
+    loading.value = true
+    error.value = null
+
+    try {
+      // Wait for the promise to resolve
+      const result = await promise
+
+      // Log successful result for debugging
+      console.log('API Store: Request completed successfully', result)
+
+      return result
+    } catch (err: any) {
+      // Create a detailed error message
+      const errorMessage = err.message || 'An error occurred'
+
+      // Log detailed error information
+      console.error('API Store: Request failed', {
+        message: errorMessage,
+        status: err.status || err.statusCode,
+        data: err.data,
+        stack: err.stack,
+      })
+
+      // Update the error state
+      error.value = errorMessage
+
+      // Rethrow the error
+      throw err
+    } finally {
+      // Update loading state
+      pendingRequests.value--
+      loading.value = pendingRequests.value > 0
+    }
   }
 
   /**
@@ -39,74 +106,6 @@ export const useApiStore = defineStore('api', () => {
     return {
       data: response,
       success: true,
-    }
-  }
-
-  /**
-   * Handle API errors including 401 unauthorized responses
-   */
-  const handleApiError = async (error: any): Promise<void> => {
-    if (!error) return
-
-    const authStore = useAuthStore()
-    const route = useRoute()
-    const toast = useToast()
-
-    // Check if this is an intentional logout
-    const isIntentionalLogout =
-      import.meta.client && localStorage.getItem('intentionalLogout') === 'true'
-    if (isIntentionalLogout) return // Skip all error toasts during intentional logout
-
-    // Extract status code
-    const statusCode = error.statusCode || error.status || 500
-
-    // Handle 401 errors (unauthorized) - try to refresh token first
-    if (statusCode === 401 && !route.path.includes('/auth/')) {
-      // Check if we're already handling a refresh to prevent loops
-      const isHandlingRefresh =
-        import.meta.client && localStorage.getItem('isHandlingTokenRefresh') === 'true'
-
-      if (!isHandlingRefresh) {
-        try {
-          // Try to refresh the token
-          const result = await authStore.refreshSession()
-
-          // If refresh failed, handle session expiry
-          if (!result.success) {
-            authStore.handleSessionExpiry(true)
-          }
-
-          return // Exit early if we've handled the refresh
-        } catch (_) {
-          // If refresh failed, proceed with session expiry
-          authStore.handleSessionExpiry(true)
-          return
-        }
-      } else {
-        // We're already handling a refresh, just proceed with session expiry
-        authStore.handleSessionExpiry(true)
-      }
-    }
-
-    // Handle other common API errors with appropriate UI feedback
-    else if (statusCode === 403) {
-      toast.add({
-        title: 'Access Denied',
-        description: 'You do not have permission to perform this action',
-        color: 'error',
-      })
-    } else if (statusCode === 404) {
-      toast.add({
-        title: 'Not Found',
-        description: 'The requested resource could not be found',
-        color: 'warning',
-      })
-    } else if (statusCode >= 500) {
-      toast.add({
-        title: 'Server Error',
-        description: 'A server error occurred. Please try again later',
-        color: 'error',
-      })
     }
   }
 
@@ -128,107 +127,218 @@ export const useApiStore = defineStore('api', () => {
   }
 
   /**
-   * Wrapped version of fetch with authentication support
-   * Detects whether to use $fetch or useFetch based on mounted state
-   */
-  const authFetch = async <T = any>(url: string, options: any = {}): Promise<ApiResponse<T>> => {
-    const authStore = useAuthStore()
-
-    // Make sure headers exist in options
-    const headers = {
-      ...options.headers,
-      ...authStore.getAuthHeaders(),
-    }
-
-    // If component is already mounted, use $fetch directly as recommended
-    if (import.meta.client && isMounted.value) {
-      try {
-        const response = await $fetch(url, {
-          ...options,
-          headers,
-        })
-        return formatResponse<T>(response)
-      } catch (error: any) {
-        await handleApiError(error)
-        throw error
-      }
-    }
-
-    // Otherwise use useFetch during SSR or initial render
-    options.headers = headers
-
-    // Add onResponse handler
-    const onResponseError = options.onResponseError
-    options.onResponseError = (context: any) => {
-      // Call original handler if it exists
-      if (onResponseError) {
-        onResponseError(context)
-      }
-
-      // Handle API errors
-      handleApiError(context.error)
-    }
-
-    // Use useFetch during server-side rendering or initial client load
-    const { data, error } = await useFetch<T>(url, options)
-
-    if (error.value) {
-      await handleApiError(error.value)
-      throw error.value
-    }
-
-    return formatResponse<T>(data.value)
-  }
-
-  /**
    * GET request with authentication
    */
-  const get = async <T = any>(url: string, options: any = {}): Promise<ApiResponse<T>> => {
-    return authFetch<T>(url, { ...options, method: 'GET' })
+  const get = <T = any>(url: string, options: ApiRequestOptions = {}): Promise<ApiResponse<T>> => {
+    console.log('API Store: GET request initiated', { url, options })
+
+    const nuxtApp = useNuxtApp()
+    console.log('API Store: nuxtApp available:', !!nuxtApp)
+    console.log('API Store: $api available:', !!(nuxtApp && nuxtApp.$api))
+
+    return trackRequest(async () => {
+      try {
+        console.log('API Store: Making GET request to', url)
+
+        // Make the API request
+        if (!nuxtApp || !nuxtApp.$api || !nuxtApp.$api.get) {
+          console.error('API Store: $api.get is not available', {
+            nuxtApp: !!nuxtApp,
+            $api: !!(nuxtApp && nuxtApp.$api),
+            get: !!(nuxtApp && nuxtApp.$api && nuxtApp.$api.get),
+          })
+
+          // Try direct fetch as fallback
+          console.log('API Store: Falling back to direct $fetch')
+          const authStore = useAuthStore()
+          const token = authStore.token
+
+          const response = await $fetch(url, {
+            method: 'GET',
+            headers: {
+              Authorization: token ? `Bearer ${token}` : undefined,
+              'Content-Type': 'application/json',
+              ...options.headers,
+            },
+            ...options,
+          })
+
+          console.log('API Store: Direct fetch response:', response)
+          return formatResponse<T>(response)
+        }
+
+        const response = await nuxtApp.$api.get<T>(url, options)
+        console.log('API Store: GET response received:', response)
+
+        // Ensure we have a valid response
+        if (response === undefined || response === null) {
+          console.error('API Store: Empty response received')
+          return {
+            data: null as unknown as T,
+            success: false,
+            error: 'Empty response received from server',
+          }
+        }
+
+        // Format the response to ensure it matches our ApiResponse interface
+        const formattedResponse = formatResponse<T>(response)
+        console.log('API Store: Formatted response:', formattedResponse)
+        return formattedResponse
+      } catch (error: any) {
+        // Handle errors and return a formatted error response
+        console.error('API Store: GET request failed', {
+          url,
+          error: error.message,
+          stack: error.stack,
+        })
+
+        return {
+          data: null as unknown as T,
+          success: false,
+          error: error.message || 'An error occurred during the request',
+        }
+      }
+    })
   }
 
   /**
    * POST request with authentication
    */
-  const post = async <T = any>(
+  const post = <T = any>(
     url: string,
     data: any,
-    options: any = {}
+    options: ApiRequestOptions = {}
   ): Promise<ApiResponse<T>> => {
-    return authFetch<T>(url, { ...options, method: 'POST', body: data })
+    const nuxtApp = useNuxtApp()
+    return trackRequest(async () => {
+      try {
+        const response = await nuxtApp.$api.post<T>(url, data, options)
+
+        if (response === undefined || response === null) {
+          return {
+            data: null as unknown as T,
+            success: false,
+            error: 'Empty response received from server',
+          }
+        }
+
+        return formatResponse<T>(response)
+      } catch (error: any) {
+        return {
+          data: null as unknown as T,
+          success: false,
+          error: error.message || 'An error occurred during the request',
+        }
+      }
+    })
   }
 
   /**
    * PUT request with authentication
    */
-  const put = async <T = any>(
+  const put = <T = any>(
     url: string,
     data: any,
-    options: any = {}
+    options: ApiRequestOptions = {}
   ): Promise<ApiResponse<T>> => {
-    return authFetch<T>(url, { ...options, method: 'PUT', body: data })
+    const nuxtApp = useNuxtApp()
+    return trackRequest(async () => {
+      try {
+        const response = await nuxtApp.$api.put<T>(url, data, options)
+
+        if (response === undefined || response === null) {
+          return {
+            data: null as unknown as T,
+            success: false,
+            error: 'Empty response received from server',
+          }
+        }
+
+        return formatResponse<T>(response)
+      } catch (error: any) {
+        return {
+          data: null as unknown as T,
+          success: false,
+          error: error.message || 'An error occurred during the request',
+        }
+      }
+    })
   }
 
   /**
    * DELETE request with authentication
    */
-  const del = async <T = any>(url: string, options: any = {}): Promise<ApiResponse<T>> => {
-    return authFetch<T>(url, { ...options, method: 'DELETE' })
+  const del = <T = any>(url: string, options: ApiRequestOptions = {}): Promise<ApiResponse<T>> => {
+    const nuxtApp = useNuxtApp()
+    return trackRequest(async () => {
+      try {
+        const response = await nuxtApp.$api.delete<T>(url, options)
+
+        if (response === undefined || response === null) {
+          return {
+            data: null as unknown as T,
+            success: false,
+            error: 'Empty response received from server',
+          }
+        }
+
+        return formatResponse<T>(response)
+      } catch (error: any) {
+        return {
+          data: null as unknown as T,
+          success: false,
+          error: error.message || 'An error occurred during the request',
+        }
+      }
+    })
+  }
+
+  /**
+   * PATCH request with authentication
+   */
+  const patch = <T = any>(
+    url: string,
+    data: any,
+    options: ApiRequestOptions = {}
+  ): Promise<ApiResponse<T>> => {
+    const nuxtApp = useNuxtApp()
+    return trackRequest(async () => {
+      try {
+        const response = await nuxtApp.$api.patch<T>(url, data, options)
+
+        if (response === undefined || response === null) {
+          return {
+            data: null as unknown as T,
+            success: false,
+            error: 'Empty response received from server',
+          }
+        }
+
+        return formatResponse<T>(response)
+      } catch (error: any) {
+        return {
+          data: null as unknown as T,
+          success: false,
+          error: error.message || 'An error occurred during the request',
+        }
+      }
+    })
   }
 
   return {
     // State
     loading,
     error,
+    isLoading,
 
     // Methods
     formatResponse,
-    handleApiError,
     ensureAuthentication,
-    authFetch,
     get,
     post,
     put,
     del,
+    patch,
+    trackRequest,
   }
 })

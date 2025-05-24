@@ -26,277 +26,291 @@
       </UButton>
     </div>
 
-    <UCard class="bg-white shadow border-0">
-      <form class="space-y-8" @submit.prevent="saveClient">
-        <!-- Client Detail Section -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-2">
-            <label
-for="clientName"
-class="block text-sm font-medium text-gray-700"
-              >Full Name <span class="text-red-500">*</span></label
-            >
-            <UInput
-              id="clientName"
-              v-model="client.name"
-              placeholder="Client name"
-              class="w-full"
-              icon="i-heroicons-user"
-              size="lg"
-              autocomplete="name"
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label
-for="clientPhone"
-class="block text-sm font-medium text-gray-700"
-              >Phone Number</label
-            >
-            <UInput
-              id="clientPhone"
-              v-model="client.phone"
-              placeholder="Phone number"
-              class="w-full"
-              icon="i-heroicons-phone"
-              size="lg"
-              type="tel"
-              autocomplete="tel"
-            />
-          </div>
-        </div>
-
-        <!-- Measurements Section -->
-        <div class="space-y-4">
-          <h2 class="text-lg font-medium text-gray-900 border-b pb-2">Measurements</h2>
-
-          <!-- Template Selection Section -->
-          <div class="space-y-4">
-            <div class="max-w-md">
-              <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <label for="template-select" class="block text-sm font-medium text-gray-700">
-                    Select a measurement template
-                  </label>
-                  <UButton
-                    v-if="templatesLoading"
-                    variant="ghost"
-                    color="gray"
-                    size="xs"
-                    :loading="true"
-                    class="ml-2"
-                  >
-                    Loading...
-                  </UButton>
-                </div>
-
-                <USelect
-                  id="template-select"
-                  v-model="selectedTemplateId"
-                  :items="templateOptions"
-                  placeholder="Choose a measurement template"
-                  class="w-full"
-                  size="lg"
-                  :loading="templatesLoading"
-                  @update:model-value="selectTemplate"
-                />
-
-                <!-- Empty state message -->
-                <div v-if="!templatesLoading && !hasTemplates" class="mt-2 text-sm text-gray-500">
-                  <p>
-                    No measurement templates found.
-                    <NuxtLink
-to="/measurement-templates"
-class="text-primary-600 hover:underline"
-                      >Create a template</NuxtLink
-                    >
-                    first.
-                  </p>
-                </div>
-
-                <!-- Retry button if templates failed to load -->
-                <div v-if="!templatesLoading && !hasTemplates" class="mt-2">
-                  <UButton
-                    size="sm"
-                    variant="soft"
-                    color="gray"
-                    icon="i-heroicons-arrow-path"
-                    @click="loadTemplates(true)"
-                  >
-                    Retry
-                  </UButton>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Template-based Measurements -->
-          <div v-if="selectedTemplateId && hasFields">
-            <!-- Upper Body Measurements -->
-            <div v-if="upperBodyFields.length > 0" class="space-y-4">
-              <h3 class="text-md font-medium text-gray-700 flex items-center">
-                <UIcon name="i-heroicons-user-circle" class="w-4 h-4 mr-2 text-primary-500" />
-                Upper Body
-              </h3>
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div v-for="field in upperBodyFields" :key="field.id" class="space-y-2">
-                  <label
-                    :for="field.name.toLowerCase()"
-                    class="block text-sm font-medium text-gray-700"
-                  >
-                    {{ field.name }}
-                    <span v-if="field.isRequired" class="text-red-500">*</span>
-                  </label>
-                  <div class="flex">
-                    <UInput
-                      :id="field.name.toLowerCase()"
-                      v-model="measurements[field.name.toLowerCase()]"
-                      type="number"
-                      step="0.1"
-                      placeholder="0.0"
-                      class="w-full rounded-r-none focus:ring-primary-500"
-                      size="lg"
-                    />
-                    <span
-                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                    >
-                      {{ field.unit || 'in' }}
-                    </span>
-                  </div>
-                  <p v-if="field.description" class="text-xs text-gray-500 mt-1">
-                    {{ field.description }}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Lower Body Measurements -->
-            <div v-if="lowerBodyFields.length > 0" class="space-y-4 mt-8">
-              <h3 class="text-md font-medium text-gray-700 flex items-center">
-                <UIcon name="i-heroicons-rectangle-stack" class="w-4 h-4 mr-2 text-primary-500" />
-                Lower Body
-              </h3>
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div v-for="field in lowerBodyFields" :key="field.id" class="space-y-2">
-                  <label
-                    :for="field.name.toLowerCase()"
-                    class="block text-sm font-medium text-gray-700"
-                  >
-                    {{ field.name }}
-                    <span v-if="field.isRequired" class="text-red-500">*</span>
-                  </label>
-                  <div class="flex">
-                    <UInput
-                      :id="field.name.toLowerCase()"
-                      v-model="measurements[field.name.toLowerCase()]"
-                      type="number"
-                      step="0.1"
-                      placeholder="0.0"
-                      class="w-full rounded-r-none focus:ring-primary-500"
-                      size="lg"
-                    />
-                    <span
-                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                    >
-                      {{ field.unit || 'in' }}
-                    </span>
-                  </div>
-                  <p v-if="field.description" class="text-xs text-gray-500 mt-1">
-                    {{ field.description }}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Other Measurements -->
-            <div v-if="otherFields.length > 0" class="space-y-4 mt-8">
-              <h3 class="text-md font-medium text-gray-700 flex items-center">
-                <UIcon name="i-heroicons-variable" class="w-4 h-4 mr-2 text-primary-500" />
-                Other Measurements
-              </h3>
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div v-for="field in otherFields" :key="field.id" class="space-y-2">
-                  <label
-                    :for="field.name.toLowerCase()"
-                    class="block text-sm font-medium text-gray-700"
-                  >
-                    {{ field.name }}
-                    <span v-if="field.isRequired" class="text-red-500">*</span>
-                  </label>
-                  <div class="flex">
-                    <UInput
-                      :id="field.name.toLowerCase()"
-                      v-model="measurements[field.name.toLowerCase()]"
-                      type="number"
-                      step="0.1"
-                      placeholder="0.0"
-                      class="w-full rounded-r-none focus:ring-primary-500"
-                      size="lg"
-                    />
-                    <span
-                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                    >
-                      {{ field.unit || 'in' }}
-                    </span>
-                  </div>
-                  <p v-if="field.description" class="text-xs text-gray-500 mt-1">
-                    {{ field.description }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- No template selected message -->
-          <div v-else-if="selectedTemplateId === null" class="py-6 text-center text-gray-500">
-            <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto text-gray-400" />
-            <p class="mt-2 text-sm">Please select a measurement template to continue</p>
-          </div>
-
-          <!-- Template has no fields message -->
-          <div v-else-if="selectedTemplateId && !hasFields" class="py-6 text-center text-gray-500">
-            <UIcon name="i-heroicons-exclamation-circle" class="w-12 h-12 mx-auto text-amber-400" />
-            <p class="mt-2 text-sm">The selected template has no measurement fields defined</p>
-            <p class="text-xs mt-1">
-              <NuxtLink
-                :to="`/measurement-templates/${selectedTemplateId}/edit`"
-                class="text-primary-600 hover:underline"
-              >
-                Edit template
-              </NuxtLink>
-            </p>
-          </div>
-
-          <!-- Notes Section -->
-          <div class="space-y-4 mt-8">
-            <h3 class="text-md font-medium text-gray-700 flex items-center">
-              <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 mr-2 text-primary-500" />
-              Notes
-            </h3>
+    <ClientOnly>
+      <UCard class="bg-white shadow border-0">
+        <form class="space-y-8" @submit.prevent="saveClient">
+          <!-- Client Detail Section -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="space-y-2">
               <label
-for="measurement-notes"
+for="clientName"
 class="block text-sm font-medium text-gray-700"
-                >Measurement Notes</label
+                >Full Name <span class="text-red-500">*</span></label
               >
-              <UTextarea
-                id="measurement-notes"
-                v-model="measurements.notes"
-                placeholder="Add any special instructions or notes about these measurements"
-                :rows="4"
-                class="w-full focus:ring-primary-500"
+              <UInput
+                id="clientName"
+                v-model="client.name"
+                name="clientName"
+                placeholder="Client name"
+                class="w-full"
+                icon="i-heroicons-user"
                 size="lg"
+                autocomplete="name"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <label
+for="clientPhone"
+class="block text-sm font-medium text-gray-700"
+                >Phone Number</label
+              >
+              <UInput
+                id="clientPhone"
+                v-model="client.phone"
+                name="clientPhone"
+                placeholder="Phone number"
+                class="w-full"
+                icon="i-heroicons-phone"
+                size="lg"
+                type="tel"
+                autocomplete="tel"
               />
             </div>
           </div>
-        </div>
-      </form>
-    </UCard>
+
+          <!-- Measurements Section -->
+          <div class="space-y-4">
+            <h2 class="text-lg font-medium text-gray-900 border-b pb-2">Measurements</h2>
+
+            <!-- Template Selection Section -->
+            <div class="space-y-4">
+              <div class="max-w-md">
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <label for="template-select" class="block text-sm font-medium text-gray-700">
+                      Select a measurement template
+                    </label>
+                    <UButton
+                      v-if="templatesLoading"
+                      variant="ghost"
+                      color="gray"
+                      size="xs"
+                      :loading="true"
+                      class="ml-2"
+                    >
+                      Loading...
+                    </UButton>
+                  </div>
+
+                  <USelect
+                    id="template-select"
+                    v-model="selectedTemplateId"
+                    name="template-select"
+                    :items="templateOptions"
+                    placeholder="Choose a measurement template"
+                    class="w-full"
+                    size="lg"
+                    :loading="templatesLoading"
+                    @update:model-value="selectTemplate"
+                  />
+
+                  <!-- Empty state message -->
+                  <div v-if="!templatesLoading && !hasTemplates" class="mt-2 text-sm text-gray-500">
+                    <p>
+                      No measurement templates found.
+                      <NuxtLink
+to="/measurement-templates"
+class="text-primary-600 hover:underline"
+                        >Create a template</NuxtLink
+                      >
+                      first.
+                    </p>
+                  </div>
+
+                  <!-- Retry button if templates failed to load -->
+                  <div v-if="!templatesLoading && !hasTemplates" class="mt-2">
+                    <UButton
+                      size="sm"
+                      variant="soft"
+                      color="gray"
+                      icon="i-heroicons-arrow-path"
+                      @click="loadTemplates(true)"
+                    >
+                      Retry
+                    </UButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Template-based Measurements -->
+            <div v-if="selectedTemplateId && hasFields">
+              <!-- Upper Body Measurements -->
+              <div v-if="upperBodyFields.length > 0" class="space-y-4">
+                <h3 class="text-md font-medium text-gray-700 flex items-center">
+                  <UIcon name="i-heroicons-user-circle" class="w-4 h-4 mr-2 text-primary-500" />
+                  Upper Body
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div v-for="field in upperBodyFields" :key="field.id" class="space-y-2">
+                    <label
+                      :for="field.name.toLowerCase()"
+                      class="block text-sm font-medium text-gray-700"
+                    >
+                      {{ field.name }}
+                      <span v-if="field.isRequired" class="text-red-500">*</span>
+                    </label>
+                    <div class="flex">
+                      <UInput
+                        :id="field.name.toLowerCase()"
+                        v-model="measurements[field.name.toLowerCase()]"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        class="w-full rounded-r-none focus:ring-primary-500"
+                        size="lg"
+                      />
+                      <span
+                        class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                      >
+                        {{ field.unit || 'in' }}
+                      </span>
+                    </div>
+                    <p v-if="field.description" class="text-xs text-gray-500 mt-1">
+                      {{ field.description }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lower Body Measurements -->
+              <div v-if="lowerBodyFields.length > 0" class="space-y-4 mt-8">
+                <h3 class="text-md font-medium text-gray-700 flex items-center">
+                  <UIcon name="i-heroicons-rectangle-stack" class="w-4 h-4 mr-2 text-primary-500" />
+                  Lower Body
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div v-for="field in lowerBodyFields" :key="field.id" class="space-y-2">
+                    <label
+                      :for="field.name.toLowerCase()"
+                      class="block text-sm font-medium text-gray-700"
+                    >
+                      {{ field.name }}
+                      <span v-if="field.isRequired" class="text-red-500">*</span>
+                    </label>
+                    <div class="flex">
+                      <UInput
+                        :id="field.name.toLowerCase()"
+                        v-model="measurements[field.name.toLowerCase()]"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        class="w-full rounded-r-none focus:ring-primary-500"
+                        size="lg"
+                      />
+                      <span
+                        class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                      >
+                        {{ field.unit || 'in' }}
+                      </span>
+                    </div>
+                    <p v-if="field.description" class="text-xs text-gray-500 mt-1">
+                      {{ field.description }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Other Measurements -->
+              <div v-if="otherFields.length > 0" class="space-y-4 mt-8">
+                <h3 class="text-md font-medium text-gray-700 flex items-center">
+                  <UIcon name="i-heroicons-variable" class="w-4 h-4 mr-2 text-primary-500" />
+                  Other Measurements
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div v-for="field in otherFields" :key="field.id" class="space-y-2">
+                    <label
+                      :for="field.name.toLowerCase()"
+                      class="block text-sm font-medium text-gray-700"
+                    >
+                      {{ field.name }}
+                      <span v-if="field.isRequired" class="text-red-500">*</span>
+                    </label>
+                    <div class="flex">
+                      <UInput
+                        :id="field.name.toLowerCase()"
+                        v-model="measurements[field.name.toLowerCase()]"
+                        type="number"
+                        step="0.1"
+                        placeholder="0.0"
+                        class="w-full rounded-r-none focus:ring-primary-500"
+                        size="lg"
+                      />
+                      <span
+                        class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                      >
+                        {{ field.unit || 'in' }}
+                      </span>
+                    </div>
+                    <p v-if="field.description" class="text-xs text-gray-500 mt-1">
+                      {{ field.description }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- No template selected message -->
+            <div v-else-if="selectedTemplateId === null" class="py-6 text-center text-gray-500">
+              <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto text-gray-400" />
+              <p class="mt-2 text-sm">Please select a measurement template to continue</p>
+            </div>
+
+            <!-- Template has no fields message -->
+            <div
+              v-else-if="selectedTemplateId && !hasFields"
+              class="py-6 text-center text-gray-500"
+            >
+              <UIcon
+                name="i-heroicons-exclamation-circle"
+                class="w-12 h-12 mx-auto text-amber-400"
+              />
+              <p class="mt-2 text-sm">The selected template has no measurement fields defined</p>
+              <p class="text-xs mt-1">
+                <NuxtLink
+                  :to="`/measurement-templates/${selectedTemplateId}/edit`"
+                  class="text-primary-600 hover:underline"
+                >
+                  Edit template
+                </NuxtLink>
+              </p>
+            </div>
+
+            <!-- Notes Section -->
+            <div class="space-y-4 mt-8">
+              <h3 class="text-md font-medium text-gray-700 flex items-center">
+                <UIcon name="i-heroicons-pencil-square" class="w-4 h-4 mr-2 text-primary-500" />
+                Notes
+              </h3>
+              <div class="space-y-2">
+                <label
+for="measurement-notes"
+class="block text-sm font-medium text-gray-700"
+                  >Measurement Notes</label
+                >
+                <UTextarea
+                  id="measurement-notes"
+                  v-model="measurements.notes"
+                  name="measurement-notes"
+                  placeholder="Add any special instructions or notes about these measurements"
+                  :rows="4"
+                  class="w-full focus:ring-primary-500"
+                  size="lg"
+                />
+              </div>
+            </div>
+          </div>
+        </form>
+      </UCard>
+    </ClientOnly>
   </div>
 </template>
 
 <script setup>
-import { useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
+import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useAuthStore, useMeasurementTemplatesStore } from '~/store'
 
 // Set page metadata
 useHead({
@@ -304,15 +318,17 @@ useHead({
 })
 
 // Initialize measurement templates
-const { templates, fetchTemplates, loading: templatesLoading } = useMeasurementTemplates()
+const measurementTemplatesStore = useMeasurementTemplatesStore()
+const { templates, loading: templatesLoading } = storeToRefs(measurementTemplatesStore)
+const { fetchTemplates } = measurementTemplatesStore
 
 // Fetch templates on component mount and when auth changes
-const auth = useSessionAuth()
+const authStore = useAuthStore()
 const hasLoadedTemplates = ref(false)
 
 // Watch for auth token changes to reload templates if needed
 watch(
-  () => auth.token.value,
+  () => authStore.token,
   async newToken => {
     if (newToken && !hasLoadedTemplates.value) {
       console.log('Auth token available, fetching templates...')
@@ -328,17 +344,24 @@ async function loadTemplates(forceRefresh = false) {
 
   try {
     console.log('Fetching measurement templates...', forceRefresh ? '(forced refresh)' : '')
-    await fetchTemplates()
-    console.log('Templates fetched:', templates.value)
-    hasLoadedTemplates.value = true
+    // Use a client-only wrapper to avoid SSR issues
+    if (import.meta.client) {
+      await fetchTemplates()
+      console.log('Templates fetched:', templates.value)
+      hasLoadedTemplates.value = true
+    } else {
+      console.log('Skipping template fetch during SSR')
+    }
   } catch (error) {
     console.error('Failed to fetch measurement templates:', error)
-    // Show error toast
-    useToast().add({
-      title: 'Error',
-      description: 'Failed to load measurement templates',
-      color: 'red',
-    })
+    // Show error toast only on client side
+    if (import.meta.client) {
+      useToast().add({
+        title: 'Error',
+        description: 'Failed to load measurement templates',
+        color: 'red',
+      })
+    }
   }
 }
 

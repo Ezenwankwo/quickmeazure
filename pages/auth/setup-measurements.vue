@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-5 sm:py-10 px-3 sm:px-6 lg:px-8">
+  <div class="min-h-screen bg-gray-50 space-y-6">
     <div class="max-w-4xl mx-auto">
       <!-- Signup Steps - First Item -->
       <div class="max-w-3xl mx-auto mb-8">
@@ -450,8 +450,14 @@ class="block text-sm font-medium text-gray-700"
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+// We don't need storeToRefs here since we're not using reactive store properties
 import { useToast, useHead, useRouter, useSessionAuth, navigateTo } from '#imports'
+import { useMeasurementTemplatesStore } from '~/store'
 import { _useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
+
+useHead({
+  title: 'Setup Measurements',
+})
 
 // Mark component as client-only
 const isClient = ref(false)
@@ -599,8 +605,29 @@ async function saveCurrentTab() {
   try {
     const templateToSave = templates.value[gender]
 
-    // Save to backend would go here
-    // For now, just update the original template reference
+    // Prepare template data for the store
+    const templateData = {
+      name: templateToSave.name,
+      gender: gender,
+      fields: [
+        ...templateToSave.upperBody.map((field, index) => ({
+          name: field.name,
+          category: 'upperBody',
+          order: index,
+        })),
+        ...templateToSave.lowerBody.map((field, index) => ({
+          name: field.name,
+          category: 'lowerBody',
+          order: index,
+        })),
+      ],
+      setupProcess: true, // Flag to indicate this is part of the setup process
+    }
+
+    // Save the template using the store
+    await measurementTemplatesStore.createTemplate(templateData)
+
+    // Update the original template reference
     originalTemplates.value[gender] = JSON.parse(JSON.stringify(templateToSave))
 
     toast.add({
@@ -681,23 +708,29 @@ onMounted(async () => {
   loading.value = true
 
   try {
-    // In a real app, you would fetch templates from the API here
-    // For now, just use the default templates
+    // Try to fetch existing templates from the API using the store
     console.log('Initializing templates...')
+
+    // Attempt to fetch templates, but don't worry if it fails (user might not have any yet)
+    try {
+      await measurementTemplatesStore.fetchTemplates()
+
+      // If we have existing templates, we could use them here
+      // For now, we'll stick with the default templates for the setup process
+    } catch (fetchError) {
+      console.log('No existing templates found, using defaults', fetchError)
+    }
 
     // Store original templates to track changes
     originalTemplates.value = {
       male: JSON.parse(JSON.stringify(templates.value.male)),
       female: JSON.parse(JSON.stringify(templates.value.female)),
     }
-
-    // Short timeout to simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500))
   } catch (error) {
-    console.error('Error loading templates:', error)
+    console.error('Error initializing templates:', error)
     toast.add({
       title: 'Error',
-      description: 'Failed to load measurement templates',
+      description: 'Failed to initialize measurement templates',
       color: 'red',
     })
   } finally {
@@ -749,6 +782,9 @@ const removeField = (gender: string, section: 'upperBody' | 'lowerBody', index: 
     formErrors.value[errorKey] = undefined
   }
 }
+
+// Initialize the measurement templates store
+const measurementTemplatesStore = useMeasurementTemplatesStore()
 
 // Save templates and complete setup
 async function saveTemplates() {
@@ -812,9 +848,6 @@ async function saveTemplates() {
   isSaving.value = true
 
   try {
-    // API endpoint URL
-    const apiUrl = '/api/measurement-templates'
-
     // Prepare male template data
     const maleTemplateData = {
       name: templates.value.male.name,
@@ -831,6 +864,7 @@ async function saveTemplates() {
           order: index,
         })),
       ],
+      setupProcess: true, // Flag to indicate this is part of the setup process
     }
 
     // Prepare female template data
@@ -849,24 +883,13 @@ async function saveTemplates() {
           order: index,
         })),
       ],
+      setupProcess: true, // Flag to indicate this is part of the setup process
     }
 
-    // Save both templates using direct API calls with setup context
+    // Save both templates using the measurement templates store
     const [maleResponse, femaleResponse] = await Promise.all([
-      $fetch(apiUrl, {
-        method: 'POST',
-        body: maleTemplateData,
-        headers: {
-          'x-setup-process': 'true',
-        },
-      }),
-      $fetch(apiUrl, {
-        method: 'POST',
-        body: femaleTemplateData,
-        headers: {
-          'x-setup-process': 'true',
-        },
-      }),
+      measurementTemplatesStore.createTemplate(maleTemplateData),
+      measurementTemplatesStore.createTemplate(femaleTemplateData),
     ])
 
     console.log('Templates saved:', { maleResponse, femaleResponse })
@@ -876,6 +899,9 @@ async function saveTemplates() {
       male: JSON.parse(JSON.stringify(templates.value.male)),
       female: JSON.parse(JSON.stringify(templates.value.female)),
     }
+
+    // Refresh templates from the store
+    await measurementTemplatesStore.fetchTemplates()
 
     // Show success message
     toast.add({

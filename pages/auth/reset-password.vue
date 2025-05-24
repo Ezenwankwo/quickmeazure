@@ -1,14 +1,12 @@
 <template>
-  <div
-    class="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"
-  >
+  <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 space-y-6">
     <!-- Title and Subtitle - Outside Card -->
     <div class="text-center mb-6 w-full max-w-md">
       <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Reset Your Password</h2>
       <p class="mt-2 text-gray-600">Enter your new password below</p>
     </div>
 
-    <div class="w-full max-w-md space-y-6 p-8 bg-white rounded-xl shadow">
+    <div class="w-full max-w-md space-y-6 p-4 sm:p-8 bg-white rounded-xl shadow">
       <div v-if="invalidToken" class="text-center py-4">
         <UIcon name="i-heroicons-exclamation-circle" class="text-red-500 h-12 w-12 mx-auto mb-4" />
         <h3 class="text-lg font-medium text-gray-900">Invalid or Expired Link</h3>
@@ -87,7 +85,7 @@
 <script setup>
 // Set page metadata
 useHead({
-  title: 'Reset Password - QuickMeazure',
+  title: 'Reset Password',
 })
 
 // Set layout for this page

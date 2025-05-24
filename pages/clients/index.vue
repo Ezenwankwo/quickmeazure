@@ -444,10 +444,9 @@ size="sm"
 </template>
 
 <script setup>
-import DeleteModal from '~/components/DeleteModal.vue'
-
-// Import auth composable
-import { useSessionAuth } from '~/composables/useSessionAuth'
+// Import stores
+import { useAuthStore } from '~/store/modules/auth'
+import { useApiStore } from '~/store/modules/api'
 
 // Set page metadata
 useHead({
@@ -485,6 +484,7 @@ const columns = [
 // State management
 const clients = ref([])
 const isLoading = ref(true)
+const error = ref(null) // Add the missing error ref
 const search = ref('')
 const isFilterOpen = ref(false)
 const filteredClients = ref([])
@@ -666,17 +666,29 @@ const deleteClient = async () => {
   }
 }
 
-// Fetch clients data
+// No mock data - we'll use the real API
+
+// Function to fetch clients from the API
 const fetchClients = async () => {
   isLoading.value = true
+  error.value = null
+
+  console.log('Starting fetchClients', {
+    page: currentPage.value,
+    perPage: ITEMS_PER_PAGE,
+    search: search.value,
+    sortBy: sortBy.value,
+    filters: filters.value,
+  })
 
   try {
-    // Get auth from our new session management composable
-    const auth = useSessionAuth()
+    // Get auth and API stores
+    const authStore = useAuthStore()
+    const apiStore = useApiStore()
 
-    // Check if user is authenticated
-    if (!auth.isLoggedIn.value || !auth.token.value) {
-      // Redirect to login if not authenticated
+    // Check authentication
+    if (!authStore.isLoggedIn) {
+      console.log('User not authenticated, redirecting to login')
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to view clients',
@@ -686,17 +698,24 @@ const fetchClients = async () => {
       return
     }
 
+    console.log('User authenticated:', {
+      isLoggedIn: authStore.isLoggedIn,
+      hasToken: !!authStore.token,
+    })
+
     // Build query parameters
     const params = new URLSearchParams()
-    params.append('page', currentPage.value.toString())
-    params.append('limit', ITEMS_PER_PAGE.toString())
 
-    // Add search parameter if provided
-    if (search.value.trim()) {
+    // Add search parameter if present
+    if (search.value) {
       params.append('search', search.value)
     }
 
-    // Add sort parameters
+    // Add pagination parameters
+    params.append('page', currentPage.value.toString())
+    params.append('perPage', ITEMS_PER_PAGE.toString())
+
+    // Add sorting parameters
     if (sortBy.value) {
       const [field, direction] = sortBy.value.split('-')
       params.append('sortField', field)
@@ -712,25 +731,91 @@ const fetchClients = async () => {
       params.append('hasOrders', filters.value.hasOrders.toString())
     }
 
-    // Make API request with all parameters
-    const response = await $fetch(`/api/clients?${params.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${auth.token.value}`,
-      },
-    })
+    // Log the request we're about to make
+    console.log(`Making API request to: /api/clients?${params.toString()}`)
+
+    // Try both direct fetch and API store to debug the issue
+    let response
+
+    try {
+      // First try direct fetch to see if the API is accessible
+      console.log('Attempting direct fetch...')
+      const directResponse = await $fetch(`/api/clients?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      console.log('Direct fetch successful:', directResponse)
+      response = directResponse
+    } catch (directError) {
+      console.error('Direct fetch failed:', directError)
+
+      // Fall back to API store
+      console.log('Falling back to API store...')
+      response = await apiStore.get(`/api/clients?${params.toString()}`)
+      console.log('API store response:', response)
+    }
+
+    // Check if the response is valid
+    if (!response) {
+      throw new Error('No response received from API')
+    }
+
+    // Extract data from the API response
+    let clientsData = []
+
+    // Handle different possible response formats
+    if (Array.isArray(response)) {
+      // Direct array response
+      clientsData = response
+    } else if (response.data) {
+      // Response with data property
+      if (Array.isArray(response.data)) {
+        // Data is directly an array
+        clientsData = response.data
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        // Nested data property (common in paginated responses)
+        clientsData = response.data.data
+      } else if (response.data.items && Array.isArray(response.data.items)) {
+        // Data with items property
+        clientsData = response.data.items
+      }
+    }
+
+    console.log('Extracted clients data:', clientsData)
 
     // Format the clients data for display
-    clients.value = response.data.map(client => formatClientData(client))
+    clients.value = clientsData.map(client => formatClientData(client))
 
-    // Update pagination data from server response
+    // Update filtered clients list
     filteredClients.value = clients.value
 
-    // Update pagination from server response
-    if (response.pagination) {
-      currentPage.value = response.pagination.page
-      totalItems.value = response.pagination.total
-      totalPages.value = response.pagination.totalPages
+    console.log('Formatted clients:', clients.value)
+
+    // Update pagination from server response if available
+    const pagination =
+      response.pagination ||
+      (response.data && response.data.pagination) ||
+      (response.data && response.data.meta && response.data.meta.pagination)
+
+    if (pagination) {
+      currentPage.value = pagination.page || pagination.current_page || 1
+      totalItems.value = pagination.total || 0
+      totalPages.value = pagination.total_pages || Math.ceil(totalItems.value / ITEMS_PER_PAGE)
+    } else {
+      // If no pagination info is available, calculate based on the array length
+      totalItems.value = clients.value.length
+      totalPages.value = Math.ceil(totalItems.value / ITEMS_PER_PAGE)
     }
+
+    console.log('Pagination updated:', {
+      totalItems: totalItems.value,
+      totalPages: totalPages.value,
+      currentPage: currentPage.value,
+      itemsPerPage: ITEMS_PER_PAGE,
+    })
   } catch (error) {
     console.error('Error fetching clients:', error)
     let errorMessage = 'Failed to load clients. Please refresh the page.'
@@ -798,10 +883,37 @@ const getVisiblePageNumbers = () => {
 
 // Helper function to format client data
 const formatClientData = client => {
-  return {
-    ...client,
-    createdAt: new Date(client.createdAt).toISOString(),
+  // Add debugging to see what data we're receiving
+  console.log('Formatting client data:', client)
+
+  // Make sure we have a valid date for createdAt
+  let createdAt = client.createdAt
+
+  // Only try to parse the date if it's not already an ISO string
+  if (createdAt && typeof createdAt === 'string' && !createdAt.includes('T')) {
+    try {
+      createdAt = new Date(createdAt).toISOString()
+    } catch (e) {
+      console.error('Error formatting date:', e)
+      createdAt = new Date().toISOString() // Fallback to current date
+    }
   }
+
+  // Make sure all required fields exist
+  const formattedClient = {
+    id: client.id || `mock-${Math.random().toString(36).substring(2, 9)}`,
+    name: client.name || 'Unknown Client',
+    email: client.email || '',
+    phone: client.phone || '',
+    address: client.address || '',
+    createdAt: createdAt,
+    measurementsCount: client.measurementsCount || 0,
+    ordersCount: client.ordersCount || 0,
+    ...client, // Keep any other properties
+  }
+
+  console.log('Formatted client:', formattedClient)
+  return formattedClient
 }
 
 // Handle sort by clicking on column headers

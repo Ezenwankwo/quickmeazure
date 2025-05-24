@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import type { MeasurementTemplate, MeasurementField } from '~/server/database/measurement-templates'
+import { useAuthStore } from '~/store'
 
 export const useMeasurementTemplates = () => {
   const loading = ref(false)
@@ -14,9 +15,9 @@ export const useMeasurementTemplates = () => {
     try {
       console.log('Fetching templates from API...', { includeArchived })
 
-      // Get auth token from the session auth store
-      const auth = useSessionAuth()
-      const token = auth.token.value
+      // Get auth token from the auth store
+      const authStore = useAuthStore()
+      const token = authStore.token
 
       if (!token) {
         console.warn('No authentication token found when fetching templates')
