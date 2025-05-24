@@ -31,6 +31,8 @@ export const useMeasurementTemplates = () => {
         // Force refresh to avoid caching issues
         server: false,
         cache: 'no-cache',
+        // Use absolute URL to avoid Vue Router warnings
+        baseURL: window.location.origin,
       })
 
       console.log('API response for templates:', data.value)
@@ -238,28 +240,17 @@ export const useMeasurementTemplates = () => {
         console.warn('No authentication token found when fetching template')
       }
 
-      // Make API call with authentication headers
-      const { data, error: fetchError } = await useFetch(
-        `/api/measurement-templates/${templateId}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          // Add cache busting to ensure fresh data
-          key: `template-${templateId}-${Date.now()}`,
-          // Force refresh to avoid caching issues
-          server: false,
-          cache: 'no-cache',
-        }
-      )
+      // Make API call with authentication headers using $fetch
+      const response = await $fetch(`/api/measurement-templates/${templateId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        // Use absolute URL to avoid Vue Router warnings
+        baseURL: window.location.origin,
+      })
 
-      console.log('API response for template with fields:', data.value)
+      console.log('API response for template with fields:', response)
 
-      if (fetchError.value) {
-        console.error('API error response:', fetchError.value)
-        throw new Error(fetchError.value.message || 'Failed to fetch template')
-      }
-
-      if (data.value && data.value.success) {
-        const template = data.value.data
+      if (response && response.success) {
+        const template = response.data
         console.log('Template with fields loaded successfully:', template)
 
         // Update the template in the templates array
@@ -270,18 +261,19 @@ export const useMeasurementTemplates = () => {
 
         return template
       } else {
-        console.error('Invalid API response format:', data.value)
-        throw new Error('Invalid API response format')
+        console.error('API response indicates failure:', response)
+        throw new Error('Failed to fetch template: Invalid response format')
       }
     } catch (err: any) {
       console.error('Error fetching template with fields:', err)
-      error.value = err.message || 'Failed to fetch template with fields'
+      error.value = err.message || 'Failed to fetch template'
       throw err
     } finally {
       loading.value = false
     }
   }
 
+  // ...
   // Reset templates to default
   const resetTemplates = async () => {
     loading.value = true

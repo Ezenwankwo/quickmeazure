@@ -169,18 +169,9 @@ export const measurements = pgTable(
     clientId: integer('client_id')
       .notNull()
       .references(() => clients.id),
-    height: real('height'), // in cm
-    weight: real('weight'), // in kg
-    bust: real('bust'), // in cm
-    waist: real('waist'), // in cm
-    hip: real('hip'), // in cm
-    inseam: real('inseam'), // in cm
-    shoulder: real('shoulder'), // in cm
-    sleeve: real('sleeve'), // in cm
-    neck: real('neck'), // in cm
-    chest: real('chest'), // in cm
-    thigh: real('thigh'), // in cm
-    additionalMeasurements: jsonb('additional_measurements'),
+    // Use only fields that are known to exist in the database
+    // We'll use the values field for all measurements
+    values: jsonb('values').default({}),
     notes: text('notes'),
     lastUpdated: timestamp('last_updated').defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),

@@ -1,676 +1,507 @@
 <template>
-  <div>
-    <div class="max-w-5xl mx-auto space-y-6 py-6">
-      <div class="flex items-center justify-between mb-8">
-        <div class="flex items-center">
-          <UButton
-            icon="i-heroicons-arrow-left"
-            color="gray"
-            variant="ghost"
-            :to="`/clients/${clientId}`"
-            class="mr-2"
-          />
-          <h1 class="text-2xl font-bold">Edit Client</h1>
-        </div>
-        <UBadge
-color="primary"
-variant="soft"
-size="lg"
-class="text-sm">
-          Client Information
-        </UBadge>
+  <div class="max-w-5xl mx-auto space-y-6 py-6">
+    <div class="flex items-center justify-between mb-8">
+      <div class="flex items-center">
+        <UButton
+          icon="i-heroicons-arrow-left"
+          color="gray"
+          variant="ghost"
+          :to="`/clients/${clientId}`"
+          class="mr-2"
+        />
+        <h1 class="text-2xl font-bold">Edit Client</h1>
       </div>
 
-      <div v-if="isLoading" class="flex justify-center py-12">
-        <USkeleton class="h-32 w-full" />
-      </div>
-
-      <template v-else-if="client">
-        <UCard class="bg-white shadow border-0">
-          <form class="space-y-8" @submit.prevent="updateClient">
-            <!-- Client Detail Section -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-2">
-                <label
-for="clientName"
-class="block text-sm font-medium text-gray-700"
-                  >Full Name <span class="text-red-500">*</span></label
-                >
-                <UInput
-                  id="clientName"
-                  v-model="form.name"
-                  placeholder="Client name"
-                  class="w-full"
-                  icon="i-heroicons-user"
-                  size="lg"
-                  autocomplete="name"
-                  required
-                />
-              </div>
-
-              <div class="space-y-2">
-                <label
-for="clientPhone"
-class="block text-sm font-medium text-gray-700"
-                  >Phone Number</label
-                >
-                <UInput
-                  id="clientPhone"
-                  v-model="form.phone"
-                  placeholder="Phone number"
-                  class="w-full"
-                  icon="i-heroicons-phone"
-                  size="lg"
-                  type="tel"
-                  autocomplete="tel"
-                />
-              </div>
-
-              <div class="space-y-2">
-                <label
-for="clientEmail"
-class="block text-sm font-medium text-gray-700"
-                  >Email</label
-                >
-                <UInput
-                  id="clientEmail"
-                  v-model="form.email"
-                  placeholder="Email address"
-                  class="w-full"
-                  icon="i-heroicons-envelope"
-                  size="lg"
-                  type="email"
-                  autocomplete="email"
-                />
-              </div>
-
-              <div class="space-y-2">
-                <label
-for="clientAddress"
-class="block text-sm font-medium text-gray-700"
-                  >Address</label
-                >
-                <UInput
-                  id="clientAddress"
-                  v-model="form.address"
-                  placeholder="Physical address"
-                  class="w-full"
-                  icon="i-heroicons-home"
-                  size="lg"
-                  autocomplete="address-line1"
-                />
-              </div>
-            </div>
-
-            <!-- Measurement Tabs -->
-            <div class="mt-6">
-              <div
-                v-for="item in measurementSections"
-                :key="item.value"
-                class="mb-4 border rounded-lg overflow-hidden shadow-sm transition-all hover:shadow-md"
-              >
-                <div
-                  class="flex justify-between items-center p-4 cursor-pointer transition-colors"
-                  :class="
-                    openItems.includes(item.value)
-                      ? 'bg-primary-50 border-b border-primary-100'
-                      : 'bg-white'
-                  "
-                  @click="toggleMeasurementSection(item.value)"
-                >
-                  <div class="font-medium flex items-center">
-                    <UIcon
-                      :name="getMeasurementIcon(item.value)"
-                      class="h-5 w-5 mr-2 text-primary-500"
-                    />
-                    {{ item.label }}
-                  </div>
-                  <UIcon
-                    :name="
-                      openItems.includes(item.value)
-                        ? 'i-heroicons-chevron-up'
-                        : 'i-heroicons-chevron-down'
-                    "
-                    class="h-5 w-5 transition-transform text-primary-500"
-                  />
-                </div>
-
-                <div
-                  v-show="openItems.includes(item.value)"
-                  class="p-6 bg-gray-50 rounded-b-lg space-y-6 border-t border-primary-100"
-                >
-                  <!-- Upper Body Content -->
-                  <div v-if="item.value === 'upper'">
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      <div class="space-y-2">
-                        <label
-for="edit-bust"
-class="block text-sm font-medium text-gray-700"
-                          >Bust</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-bust"
-                            v-model="form.measurements.bust"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="space-y-2">
-                        <label
-for="edit-shoulder"
-class="block text-sm font-medium text-gray-700"
-                          >Shoulder</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-shoulder"
-                            v-model="form.measurements.shoulder"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="space-y-2">
-                        <label
-for="edit-sleeve"
-class="block text-sm font-medium text-gray-700"
-                          >Sleeve</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-sleeve"
-                            v-model="form.measurements.sleeve"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="space-y-2">
-                        <label
-for="edit-neck"
-class="block text-sm font-medium text-gray-700"
-                          >Neck</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-neck"
-                            v-model="form.measurements.neck"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="space-y-2">
-                        <label
-for="edit-chest"
-class="block text-sm font-medium text-gray-700"
-                          >Chest</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-chest"
-                            v-model="form.measurements.chest"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Lower Body Content -->
-                  <div v-if="item.value === 'lower'">
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      <div class="space-y-2">
-                        <label
-for="edit-waist"
-class="block text-sm font-medium text-gray-700"
-                          >Waist</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-waist"
-                            v-model="form.measurements.waist"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="space-y-2">
-                        <label
-for="edit-hip"
-class="block text-sm font-medium text-gray-700"
-                          >Hip</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-hip"
-                            v-model="form.measurements.hip"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="space-y-2">
-                        <label
-for="edit-inseam"
-class="block text-sm font-medium text-gray-700"
-                          >Inseam</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-inseam"
-                            v-model="form.measurements.inseam"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="space-y-2">
-                        <label
-for="edit-thigh"
-class="block text-sm font-medium text-gray-700"
-                          >Thigh</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            id="edit-thigh"
-                            v-model="form.measurements.thigh"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Custom Measurements -->
-                  <div v-if="item.value === 'custom'">
-                    <div
-                      v-for="(value, key) in form.measurements.additionalMeasurements"
-                      :key="key"
-                      class="flex gap-4 items-end mb-4 p-3 rounded-lg bg-white border border-gray-200 shadow-sm"
-                    >
-                      <div class="space-y-2 w-1/2">
-                        <label
-                          :for="`custom-name-${key}`"
-                          class="block text-sm font-medium text-gray-700"
-                          >Measurement Name</label
-                        >
-                        <UInput
-                          :id="`custom-name-${key}`"
-                          v-model="customMeasurementKeys[key]"
-                          placeholder="e.g., Ankle width"
-                          class="w-full focus:ring-primary-500"
-                          size="lg"
-                        />
-                      </div>
-
-                      <div class="space-y-2 w-1/3">
-                        <label
-                          :for="`custom-value-${key}`"
-                          class="block text-sm font-medium text-gray-700"
-                          >Value</label
-                        >
-                        <div class="flex">
-                          <UInput
-                            :id="`custom-value-${key}`"
-                            v-model="form.measurements.additionalMeasurements[key]"
-                            type="number"
-                            step="0.1"
-                            placeholder="0.0"
-                            class="w-full rounded-r-none focus:ring-primary-500"
-                            size="lg"
-                          />
-                          <span
-                            class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                          >
-                            in
-                          </span>
-                        </div>
-                      </div>
-
-                      <UButton
-                        type="button"
-                        color="red"
-                        icon="i-heroicons-trash"
-                        variant="soft"
-                        class="flex-shrink-0"
-                        size="lg"
-                        @click="removeCustomMeasurement(key)"
-                      />
-                    </div>
-
-                    <div class="flex justify-center mt-6">
-                      <UButton
-                        type="button"
-                        color="primary"
-                        variant="solid"
-                        icon="i-heroicons-plus-circle"
-                        class="shadow-sm hover:shadow-md transition-all duration-200 px-6"
-                        size="lg"
-                        @click="addCustomMeasurement"
-                      >
-                        <span class="font-medium">Add Custom Measurement</span>
-                      </UButton>
-                    </div>
-
-                    <div
-                      v-if="Object.keys(form.measurements.additionalMeasurements).length === 0"
-                      class="text-center py-8 px-4"
-                    >
-                      <UIcon
-                        name="i-heroicons-pencil-square"
-                        class="mx-auto h-12 w-12 text-gray-300 mb-3"
-                      />
-                      <h3 class="text-lg font-medium text-gray-700 mb-1">
-                        No custom measurements yet
-                      </h3>
-                      <p class="text-gray-500 text-sm">
-                        Add specific measurements that aren't covered in the standard sections
-                      </p>
-                    </div>
-                  </div>
-
-                  <!-- Notes Content -->
-                  <div v-if="item.value === 'notes'">
-                    <div class="space-y-2">
-                      <label
-for="measurement-notes"
-class="block text-sm font-medium text-gray-700"
-                        >Measurement Notes</label
-                      >
-                      <UTextarea
-                        id="measurement-notes"
-                        v-model="form.measurements.notes"
-                        placeholder="Add any special instructions or notes about these measurements"
-                        :rows="5"
-                        class="w-full focus:ring-primary-500"
-                        size="lg"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="flex items-center justify-between pt-6 border-t">
-              <!-- Delete Button -->
-              <UButton
-                type="button"
-                color="error"
-                variant="outline"
-                :disabled="isSubmitting"
-                size="lg"
-                @click="confirmDelete"
-              >
-                Delete
-              </UButton>
-
-              <!-- Save Buttons -->
-              <div class="flex space-x-3">
-                <UButton
-                  type="button"
-                  color="neutral"
-                  variant="outline"
-                  :to="`/clients/${clientId}`"
-                  :disabled="isSubmitting"
-                  size="lg"
-                >
-                  Cancel
-                </UButton>
-
-                <UButton
-                  type="submit"
-                  color="primary"
-                  variant="solid"
-                  :loading="isSubmitting"
-                  size="lg"
-                >
-                  Save Changes
-                </UButton>
-              </div>
-            </div>
-          </form>
-        </UCard>
-      </template>
-
-      <template v-else>
-        <UCard class="bg-white">
-          <div class="py-12 text-center">
-            <UIcon name="i-heroicons-face-frown" class="text-gray-400 mx-auto mb-2" size="xl" />
-            <h3 class="text-lg font-medium text-gray-900">Client not found</h3>
-            <p class="text-gray-500 mt-1 mb-4">
-              This client doesn't exist or you don't have access to it.
-            </p>
-            <UButton color="primary" to="/clients" icon="i-heroicons-arrow-left">
-              Back to Clients
-            </UButton>
-          </div>
-        </UCard>
-      </template>
+      <!-- Save Button at Top Right -->
+      <UButton
+        type="button"
+        color="primary"
+        variant="solid"
+        class="px-6"
+        :loading="isSaving"
+        :disabled="!isFormValid"
+        @click="updateClient"
+      >
+        Save
+      </UButton>
     </div>
 
-    <!-- Replace basic modal with component -->
-    <DeleteModal
-      v-model="showDeleteModal"
-      title="Delete Client"
-      :message="`Are you sure you want to delete <strong>${client?.name}</strong>? This action cannot be undone and will also delete all measurements and orders for this client.`"
-      :loading="isDeleting"
-      @confirm="deleteClient"
-    />
+    <div v-if="isLoading" class="flex justify-center py-12">
+      <USkeleton class="h-32 w-full" />
+    </div>
+
+    <UCard v-else-if="client" class="bg-white shadow border-0">
+      <form class="space-y-8" @submit.prevent="updateClient">
+        <!-- Client Detail Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label for="clientName" class="block text-sm font-medium text-gray-700">
+              Full Name <span class="text-red-500">*</span>
+            </label>
+            <UInput
+              id="clientName"
+              v-model="form.name"
+              placeholder="Client name"
+              class="w-full"
+              icon="i-heroicons-user"
+              size="lg"
+              autocomplete="name"
+              required
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="clientPhone" class="block text-sm font-medium text-gray-700">
+              Phone Number
+            </label>
+            <UInput
+              id="clientPhone"
+              v-model="form.phone"
+              placeholder="Phone number"
+              class="w-full"
+              icon="i-heroicons-phone"
+              size="lg"
+              type="tel"
+              autocomplete="tel"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="clientEmail" class="block text-sm font-medium text-gray-700"> Email </label>
+            <UInput
+              id="clientEmail"
+              v-model="form.email"
+              placeholder="Email address"
+              class="w-full"
+              icon="i-heroicons-envelope"
+              size="lg"
+              type="email"
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="clientAddress" class="block text-sm font-medium text-gray-700">
+              Address
+            </label>
+            <UInput
+              id="clientAddress"
+              v-model="form.address"
+              placeholder="Physical address"
+              class="w-full"
+              icon="i-heroicons-home"
+              size="lg"
+              autocomplete="address-line1"
+            />
+          </div>
+        </div>
+
+        <!-- Measurements Section -->
+        <div class="space-y-4">
+          <h2 class="text-lg font-medium text-gray-900 border-b pb-2">Measurements</h2>
+
+          <!-- Template Selection Section -->
+          <div class="space-y-4">
+            <div class="max-w-md">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <label for="template-select" class="block text-sm font-medium text-gray-700">
+                    Select a measurement template
+                  </label>
+                  <UButton
+                    v-if="templatesLoading"
+                    variant="ghost"
+                    color="gray"
+                    size="xs"
+                    :loading="true"
+                    class="ml-2"
+                  >
+                    Loading...
+                  </UButton>
+                </div>
+
+                <USelect
+                  id="template-select"
+                  v-model="selectedTemplateId"
+                  :items="templateOptions"
+                  placeholder="Choose a measurement template"
+                  class="w-full"
+                  size="lg"
+                  :loading="templatesLoading"
+                  @update:model-value="selectTemplate"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div v-if="selectedTemplateId && hasFields">
+            <!-- Upper Body Measurements -->
+            <div v-if="upperBodyFields.length > 0" class="space-y-4">
+              <h3 class="text-md font-medium text-gray-700 flex items-center">
+                <UIcon name="i-heroicons-user-circle" class="w-4 h-4 mr-2 text-primary-500" />
+                Upper Body Measurements
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div v-for="field in upperBodyFields" :key="field.id" class="space-y-2">
+                  <label
+                    :for="`edit-${field.name.toLowerCase().replace(/\s+/g, '_')}`"
+                    class="block text-sm font-medium text-gray-700"
+                  >
+                    {{ field.name }}
+                    <span v-if="field.isRequired" class="text-red-500">*</span>
+                  </label>
+                  <div class="flex">
+                    <UInput
+                      :id="`edit-${field.name.toLowerCase().replace(/\s+/g, '_')}`"
+                      v-model="measurements[field.name.toLowerCase().replace(/\s+/g, '_')]"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      class="w-full rounded-r-none focus:ring-primary-500"
+                      size="lg"
+                    />
+                    <span
+                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                    >
+                      {{ field.unit || 'in' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lower Body Measurements -->
+            <div v-if="lowerBodyFields.length > 0" class="space-y-4 mt-8">
+              <h3 class="text-md font-medium text-gray-700 flex items-center">
+                <UIcon name="i-heroicons-rectangle-stack" class="w-4 h-4 mr-2 text-primary-500" />
+                Lower Body Measurements
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div v-for="field in lowerBodyFields" :key="field.id" class="space-y-2">
+                  <label
+                    :for="`edit-${field.name.toLowerCase().replace(/\s+/g, '_')}`"
+                    class="block text-sm font-medium text-gray-700"
+                  >
+                    {{ field.name }}
+                    <span v-if="field.isRequired" class="text-red-500">*</span>
+                  </label>
+                  <div class="flex">
+                    <UInput
+                      :id="`edit-${field.name.toLowerCase().replace(/\s+/g, '_')}`"
+                      v-model="measurements[field.name.toLowerCase().replace(/\s+/g, '_')]"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      class="w-full rounded-r-none focus:ring-primary-500"
+                      size="lg"
+                    />
+                    <span
+                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                    >
+                      {{ field.unit || 'in' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Other Measurements -->
+            <div v-if="otherFields.length > 0" class="space-y-4 mt-8">
+              <h3 class="text-md font-medium text-gray-700 flex items-center">
+                <UIcon name="i-heroicons-variable" class="w-4 h-4 mr-2 text-primary-500" />
+                Other Measurements
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div v-for="field in otherFields" :key="field.id" class="space-y-2">
+                  <label
+                    :for="`edit-${field.name.toLowerCase().replace(/\s+/g, '_')}`"
+                    class="block text-sm font-medium text-gray-700"
+                  >
+                    {{ field.name }}
+                    <span v-if="field.isRequired" class="text-red-500">*</span>
+                  </label>
+                  <div class="flex">
+                    <UInput
+                      :id="`edit-${field.name.toLowerCase().replace(/\s+/g, '_')}`"
+                      v-model="measurements[field.name.toLowerCase().replace(/\s+/g, '_')]"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      class="w-full rounded-r-none focus:ring-primary-500"
+                      size="lg"
+                    />
+                    <span
+                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                    >
+                      {{ field.unit || 'in' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No template selected message -->
+          <div v-else-if="selectedTemplateId === null" class="py-6 text-center text-gray-500">
+            <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto text-gray-400" />
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No measurement template selected</h3>
+            <p class="mt-1 text-sm text-gray-500">
+              Select a template to see measurement fields, or
+              <NuxtLink
+to="/templates/new"
+class="text-primary-600 hover:underline"
+                >create a template</NuxtLink
+              >
+              first.
+            </p>
+          </div>
+
+          <!-- Measurement Notes -->
+          <div class="space-y-2 mt-8">
+            <label for="measurement-notes" class="block text-sm font-medium text-gray-700">
+              Measurement Notes
+            </label>
+            <UTextarea
+              id="measurement-notes"
+              v-model="measurements.notes"
+              placeholder="Add any notes about the measurements here..."
+              class="w-full"
+              :rows="5"
+            />
+          </div>
+        </div>
+
+        <!-- Form has no bottom buttons, using top-right save button instead -->
+      </form>
+    </UCard>
+
+    <div v-else class="bg-white shadow border-0 rounded-lg p-8 text-center">
+      <UIcon name="i-heroicons-exclamation-triangle" class="w-12 h-12 mx-auto text-orange-500" />
+      <h3 class="mt-2 text-lg font-medium text-gray-900">Client not found</h3>
+      <p class="mt-1 text-gray-500">
+        The client you're looking for doesn't exist or has been deleted.
+      </p>
+      <div class="mt-6">
+        <UButton to="/clients" color="primary"> Back to Clients </UButton>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import DeleteModal from '~/components/DeleteModal.vue'
+// Import the measurement templates composable
+import { useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
 
 // Get client ID from route
 const route = useRoute()
 const clientId = route.params.id
 
-// State
-const client = ref(null)
-const isLoading = ref(true)
-const isSubmitting = ref(false)
-const isDeleting = ref(false)
-const showDeleteModal = ref(false)
-
-// Track which accordion items are open - initialized before client data
-const openItems = ref(['upper'])
-
-// Measurement sections
-const measurementSections = ref([
-  {
-    label: 'Upper Body Measurements',
-    value: 'upper',
-  },
-  {
-    label: 'Lower Body Measurements',
-    value: 'lower',
-  },
-  {
-    label: 'Custom Measurements',
-    value: 'custom',
-  },
-  {
-    label: 'Measurement Notes',
-    value: 'notes',
-  },
-])
-
-// For custom measurements
-const customMeasurementKeys = ref({})
-const customMeasurementCounter = ref(0)
-
-// Form state
+// Client form data
 const form = ref({
   name: '',
-  email: '',
-  phone: '',
-  address: '',
-  notes: '',
-  measurements: {
-    height: null,
-    weight: null,
-    bust: null,
-    waist: null,
-    hip: null,
-    inseam: null,
-    shoulder: null,
-    sleeve: null,
-    neck: null,
-    chest: null,
-    thigh: null,
-    notes: '',
-    additionalMeasurements: {},
-  },
+  email: null,
+  phone: null,
+  address: null,
 })
 
-// Set page metadata
-useHead({
-  title: 'Edit Client - QuickMeazure',
+// Measurements data
+const measurements = ref({
+  notes: null,
 })
 
-// Function to toggle measurement sections
-const toggleMeasurementSection = sectionValue => {
-  if (!openItems.value.includes(sectionValue)) {
-    openItems.value.push(sectionValue)
-  } else {
-    openItems.value = openItems.value.filter(item => item !== sectionValue)
+// UI state
+const isLoading = ref(true)
+const isSubmitting = ref(false)
+const isSaving = computed(() => isSubmitting.value)
+const isFormValid = computed(() => form.value.name && form.value.name.trim() !== '')
+const client = ref(null)
+
+// Use the measurement templates composable
+const { templates, fetchTemplates, loading: templatesLoading } = useMeasurementTemplates()
+const hasLoadedTemplates = ref(false)
+const selectedTemplateId = ref(null)
+const templateOptions = computed(() => {
+  return templates.value.map(template => ({
+    label: template.name,
+    value: template.id,
+    description: `${template.gender.charAt(0).toUpperCase() + template.gender.slice(1)} template with ${template.fieldCount || 0} fields`,
+  }))
+})
+
+// Measurement fields by category
+const upperBodyFields = ref([])
+const lowerBodyFields = ref([])
+const otherFields = ref([])
+const hasFields = computed(
+  () =>
+    upperBodyFields.value.length > 0 ||
+    lowerBodyFields.value.length > 0 ||
+    otherFields.value.length > 0
+)
+
+// Load templates function
+async function loadTemplates(forceRefresh = false) {
+  if (hasLoadedTemplates.value && !forceRefresh) return
+
+  try {
+    console.log('Fetching measurement templates...', forceRefresh ? '(forced refresh)' : '')
+    await fetchTemplates()
+    console.log('Templates fetched:', templates.value)
+    hasLoadedTemplates.value = true
+  } catch (error) {
+    console.error('Failed to fetch measurement templates:', error)
+    // Show error toast
+    useToast().add({
+      title: 'Error',
+      description: 'Failed to load measurement templates',
+      color: 'red',
+    })
   }
 }
 
-// Get icon for measurement section
-const getMeasurementIcon = sectionValue => {
-  switch (sectionValue) {
-    case 'upper':
-      return 'i-heroicons-user-circle'
-    case 'lower':
-      return 'i-heroicons-variable'
-    case 'custom':
-      return 'i-heroicons-pencil-square'
-    case 'notes':
-      return 'i-heroicons-document-text'
-    default:
-      return 'i-heroicons-square-3-stack-3d'
+// Also fetch on component mount for safety
+onMounted(loadTemplates)
+
+// Select template and load its fields
+const selectTemplate = async templateId => {
+  if (!templateId) {
+    upperBodyFields.value = []
+    lowerBodyFields.value = []
+    otherFields.value = []
+    return
   }
-}
 
-// Custom measurements functions
-const addCustomMeasurement = () => {
-  const newKey = `custom_${customMeasurementCounter.value}`
-  customMeasurementCounter.value++
-  form.value.measurements.additionalMeasurements[newKey] = null
-  customMeasurementKeys.value[newKey] = ''
-}
+  try {
+    console.log('Selecting template with ID:', templateId)
 
-const removeCustomMeasurement = key => {
-  // Set to undefined instead of deleting to avoid dynamic delete warnings
-  form.value.measurements.additionalMeasurements[key] = undefined
-  customMeasurementKeys.value[key] = undefined
+    // Find the selected template from the already loaded templates
+    const template = templates.value.find(t => t.id === templateId)
 
-  // Remove undefined properties during processing before saving
+    if (!template) {
+      console.error('Template not found for ID:', templateId)
+      useToast().add({
+        title: 'Error',
+        description: 'Template not found',
+        color: 'red',
+      })
+      return
+    }
+
+    console.log('Found template:', template)
+
+    // Check if template has fields
+    if (!template.fields || template.fields.length === 0) {
+      console.warn('Template has no fields:', template.name)
+      upperBodyFields.value = []
+      lowerBodyFields.value = []
+      otherFields.value = []
+      return
+    }
+
+    console.log('Template fields:', template.fields)
+
+    // Categorize fields from the template
+    const upperBody = []
+    const lowerBody = []
+    const other = []
+
+    template.fields.forEach(field => {
+      // Extract category from metadata if available
+      const category = field.metadata?.category || ''
+      const fieldData = {
+        id: field.id,
+        name: field.name,
+        unit: field.unit || 'in',
+        description: field.description || '',
+        isRequired: field.isRequired,
+        displayOrder: field.displayOrder,
+        category: category,
+      }
+
+      // Categorize based on metadata or field name
+      if (
+        category.toLowerCase().includes('upper') ||
+        ['bust', 'chest', 'shoulder', 'sleeve', 'neck', 'arm'].some(term =>
+          field.name.toLowerCase().includes(term)
+        )
+      ) {
+        upperBody.push(fieldData)
+      } else if (
+        category.toLowerCase().includes('lower') ||
+        ['waist', 'hip', 'inseam', 'thigh', 'leg'].some(term =>
+          field.name.toLowerCase().includes(term)
+        )
+      ) {
+        lowerBody.push(fieldData)
+      } else {
+        other.push(fieldData)
+      }
+    })
+
+    // Sort fields by display order
+    const sortByOrder = (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)
+    upperBody.sort(sortByOrder)
+    lowerBody.sort(sortByOrder)
+    other.sort(sortByOrder)
+
+    // Set the fields by category
+    upperBodyFields.value = upperBody
+    lowerBodyFields.value = lowerBody
+    otherFields.value = other
+
+    console.log('Set upperBodyFields:', upperBodyFields.value)
+    console.log('Set lowerBodyFields:', lowerBodyFields.value)
+    console.log('Set otherFields:', otherFields.value)
+  } catch (error) {
+    console.error('Error loading template fields:', error)
+  }
 }
 
 // Process measurements for saving
 const processMeasurements = () => {
-  if (Object.keys(form.value.measurements.additionalMeasurements).length > 0) {
-    const processedAdditionalMeasurements = {}
-    for (const [key, value] of Object.entries(form.value.measurements.additionalMeasurements)) {
-      const customName = customMeasurementKeys.value[key] || key
-      processedAdditionalMeasurements[customName] = value
-    }
+  // Create a base object with notes and values
+  const processedMeasurements = {
+    // Keep the notes field as is
+    notes: measurements.value.notes || null,
+    // Initialize values field to store all measurements
+    values: {},
+  }
 
-    return {
-      ...form.value.measurements,
-      additionalMeasurements: processedAdditionalMeasurements,
+  // Process all fields from the template
+  const allFields = [...upperBodyFields.value, ...lowerBodyFields.value, ...otherFields.value]
+
+  // Store ALL fields from the template, even those without values
+  allFields.forEach(field => {
+    // Convert field name to the format used in measurements object (lowercase with underscores)
+    const fieldName = field.name.toLowerCase().replace(/\s+/g, '_')
+    const value = measurements.value[fieldName]
+
+    // Store field metadata and value (even if null)
+    processedMeasurements.values[fieldName] = {
+      value: value !== null && value !== '' ? parseFloat(value) : null,
+      unit: field.unit || 'in',
+      name: field.name,
+      fieldId: field.id,
+      category: field.category || null,
+      isRequired: field.isRequired || false,
+      displayOrder: field.displayOrder || 0,
+    }
+  })
+
+  // Store template information in the values if selected
+  if (selectedTemplateId.value) {
+    const template = templates.value.find(t => t.id === selectedTemplateId.value)
+    if (template) {
+      processedMeasurements.values._template = {
+        id: template.id,
+        name: template.name,
+        gender: template.gender,
+        fields: allFields.map(f => f.id), // Store references to all fields in the template
+      }
     }
   }
 
-  return form.value.measurements
+  return processedMeasurements
 }
 
 // Fetch client details
@@ -686,7 +517,7 @@ const fetchClient = async () => {
       // Redirect to login if not authenticated
       useToast().add({
         title: 'Authentication required',
-        description: 'Please log in to edit client details',
+        description: 'Please log in to view client details',
         color: 'orange',
       })
       navigateTo('/auth/login')
@@ -698,122 +529,112 @@ const fetchClient = async () => {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      baseURL: window.location.origin,
     })
 
-    // Set client data
     client.value = data
 
-    // Initialize form with client data
+    // Populate form with client data
     form.value = {
       name: data.name || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      address: data.address || '',
-      notes: data.notes || '',
-      measurements: data.measurement
-        ? {
-            height: data.measurement.height,
-            weight: data.measurement.weight,
-            bust: data.measurement.bust,
-            waist: data.measurement.waist,
-            hip: data.measurement.hip,
-            inseam: data.measurement.inseam,
-            shoulder: data.measurement.shoulder,
-            sleeve: data.measurement.sleeve,
-            neck: data.measurement.neck,
-            chest: data.measurement.chest,
-            thigh: data.measurement.thigh,
-            notes: data.measurement.notes || '',
-            additionalMeasurements: data.measurement.additionalMeasurements || {},
-          }
-        : {
-            height: null,
-            weight: null,
-            bust: null,
-            waist: null,
-            hip: null,
-            inseam: null,
-            shoulder: null,
-            sleeve: null,
-            neck: null,
-            chest: null,
-            thigh: null,
-            notes: '',
-            additionalMeasurements: {},
-          },
+      email: data.email || null,
+      phone: data.phone || null,
+      address: data.address || null,
     }
 
-    // Set up custom measurement keys
-    if (data.measurement && data.measurement.additionalMeasurements) {
-      Object.keys(data.measurement.additionalMeasurements).forEach((key, index) => {
-        if (key.startsWith('custom_')) {
-          customMeasurementKeys.value[key] = key
-        } else {
-          const customKey = `custom_${index}`
-          customMeasurementKeys.value[customKey] = key
-          customMeasurementCounter.value = Math.max(customMeasurementCounter.value, index + 1)
-
-          // If we're reconstructing the keys, make sure the value is transferred
-          if (customKey !== key) {
-            // Create a new object without the key to avoid dynamic delete
-            const newAdditionalMeasurements = {}
-            Object.keys(form.value.measurements.additionalMeasurements).forEach(k => {
-              if (k !== key) {
-                newAdditionalMeasurements[k] = form.value.measurements.additionalMeasurements[k]
-              }
-            })
-            // Add the value with the new key
-            newAdditionalMeasurements[customKey] = data.measurement.additionalMeasurements[key]
-            // Replace the entire object
-            form.value.measurements.additionalMeasurements = newAdditionalMeasurements
-          }
-        }
-      })
-    }
-
-    // Update custom measurement counter to avoid conflicts
-    if (
-      customMeasurementCounter.value === 0 &&
-      Object.keys(form.value.measurements.additionalMeasurements).length > 0
-    ) {
-      customMeasurementCounter.value = Object.keys(
-        form.value.measurements.additionalMeasurements
-      ).length
-    }
-
-    // Show relevant measurement sections based on data
+    // Process measurement data if available
     if (data.measurement) {
-      const hasUpperBodyMeasurements =
-        data.measurement.bust ||
-        data.measurement.shoulder ||
-        data.measurement.sleeve ||
-        data.measurement.neck ||
-        data.measurement.chest
+      // If using the new schema with values field
+      if (data.measurement.values) {
+        const measurementValues = data.measurement.values
 
-      const hasLowerBodyMeasurements =
-        data.measurement.waist ||
-        data.measurement.hip ||
-        data.measurement.inseam ||
-        data.measurement.thigh
+        // Set notes
+        measurements.value.notes = data.measurement.notes || null
 
-      const hasCustomMeasurements =
-        data.measurement.additionalMeasurements &&
-        Object.keys(data.measurement.additionalMeasurements).length > 0
+        // Store all measurement values in a temporary object for later use
+        const tempValues = {}
+        Object.entries(measurementValues).forEach(([key, data]) => {
+          if (key !== '_template') {
+            tempValues[key] = data.value
+          }
+        })
 
-      const hasMeasurementNotes = data.measurement.notes && data.measurement.notes.trim() !== ''
+        // Extract template info if available
+        if (measurementValues._template) {
+          console.log('Found template info:', measurementValues._template)
 
-      // Update open sections based on what data exists
-      openItems.value = []
-      if (hasUpperBodyMeasurements) openItems.value.push('upper')
-      if (hasLowerBodyMeasurements) openItems.value.push('lower')
-      if (hasCustomMeasurements) openItems.value.push('custom')
-      if (hasMeasurementNotes) openItems.value.push('notes')
+          // First load templates, then select the one used for this client
+          await loadTemplates(true) // Force refresh to ensure we have the latest templates
 
-      // Ensure at least one section is open
-      if (openItems.value.length === 0) openItems.value = ['upper']
-    } else {
-      // If no measurements exist, only open the first section
-      openItems.value = ['upper']
+          // Set the selected template ID
+          selectedTemplateId.value = measurementValues._template.id
+          console.log('Set selected template ID to:', selectedTemplateId.value)
+
+          // Load the template fields
+          await selectTemplate(measurementValues._template.id)
+
+          // After template is loaded, populate measurement values from our temporary object
+          console.log('Populating measurement values from:', tempValues)
+
+          // Process all fields from the template
+          const allFields = [
+            ...upperBodyFields.value,
+            ...lowerBodyFields.value,
+            ...otherFields.value,
+          ]
+
+          allFields.forEach(field => {
+            // Convert field name to the format used in measurements object (lowercase with underscores)
+            const fieldName = field.name.toLowerCase().replace(/\s+/g, '_')
+
+            // Set the value if it exists in our temporary values
+            if (tempValues[fieldName] !== undefined) {
+              console.log(`Setting value for ${fieldName}:`, tempValues[fieldName])
+              measurements.value[fieldName] = tempValues[fieldName]
+            } else {
+              console.log(`No value found for ${fieldName}, setting to null`)
+              measurements.value[fieldName] = null
+            }
+          })
+
+          console.log('Final measurements object:', measurements.value)
+        }
+      }
+      // Legacy schema (before migration)
+      else {
+        // Set notes
+        measurements.value.notes = data.measurement.notes || null
+
+        // Map legacy fields to new structure
+        const legacyFields = [
+          'height',
+          'weight',
+          'bust',
+          'waist',
+          'hip',
+          'inseam',
+          'shoulder',
+          'sleeve',
+          'neck',
+          'chest',
+          'thigh',
+        ]
+
+        legacyFields.forEach(field => {
+          if (data.measurement[field] !== null && data.measurement[field] !== undefined) {
+            measurements.value[field] = data.measurement[field]
+          }
+        })
+
+        // Handle additional measurements
+        if (data.measurement.additionalMeasurements) {
+          Object.entries(data.measurement.additionalMeasurements).forEach(([key, value]) => {
+            if (value !== undefined) {
+              measurements.value[key] = value
+            }
+          })
+        }
+      }
     }
 
     // Update page title with client name
@@ -885,12 +706,12 @@ const updateClient = async () => {
         email: form.value.email,
         phone: form.value.phone,
         address: form.value.address,
-        notes: form.value.notes,
         measurements: processedMeasurements,
       },
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      baseURL: window.location.origin,
     })
 
     // Show success message
@@ -900,18 +721,15 @@ const updateClient = async () => {
       color: 'green',
     })
 
-    // Navigate back to client details
+    // Redirect to client details page
     navigateTo(`/clients/${clientId}`)
   } catch (error) {
     console.error('Error updating client:', error)
     let errorMessage = 'Failed to update client'
 
     // Handle specific error cases
-    if (error.response?.status === 404) {
-      errorMessage = 'Client not found'
-    } else if (error.response?.status === 401) {
+    if (error.response?.status === 401) {
       errorMessage = 'Your session has expired. Please log in again.'
-      // Redirect to login
       navigateTo('/auth/login')
     }
 
@@ -926,13 +744,21 @@ const updateClient = async () => {
 }
 
 // Confirm delete
-const confirmDelete = () => {
-  showDeleteModal.value = true
+// Keeping this function for future use but prefixing with _ to indicate it's currently unused
+const _confirmDelete = () => {
+  useConfirm({
+    title: 'Delete Client',
+    message: 'Are you sure you want to delete this client? This action cannot be undone.',
+    confirmLabel: 'Delete',
+    cancelLabel: 'Cancel',
+    confirmColor: 'red',
+    onConfirm: deleteClient,
+  })
 }
 
 // Delete client
 const deleteClient = async () => {
-  isDeleting.value = true
+  isSubmitting.value = true
 
   try {
     // Get auth token from the auth store
@@ -943,7 +769,7 @@ const deleteClient = async () => {
       // Redirect to login if not authenticated
       useToast().add({
         title: 'Authentication required',
-        description: 'Please log in to delete clients',
+        description: 'Please log in to delete this client',
         color: 'orange',
       })
       navigateTo('/auth/login')
@@ -956,6 +782,7 @@ const deleteClient = async () => {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      baseURL: window.location.origin,
     })
 
     // Show success message
@@ -965,18 +792,15 @@ const deleteClient = async () => {
       color: 'green',
     })
 
-    // Navigate back to clients list
+    // Redirect to clients list
     navigateTo('/clients')
   } catch (error) {
     console.error('Error deleting client:', error)
     let errorMessage = 'Failed to delete client'
 
     // Handle specific error cases
-    if (error.response?.status === 404) {
-      errorMessage = 'Client not found'
-    } else if (error.response?.status === 401) {
+    if (error.response?.status === 401) {
       errorMessage = 'Your session has expired. Please log in again.'
-      // Redirect to login
       navigateTo('/auth/login')
     }
 
@@ -985,14 +809,14 @@ const deleteClient = async () => {
       description: errorMessage,
       color: 'red',
     })
-
-    // Close modal
-    showDeleteModal.value = false
   } finally {
-    isDeleting.value = false
+    isSubmitting.value = false
   }
 }
 
-// Fetch client data on mount
-onMounted(fetchClient)
+// Fetch client data and templates on mount
+onMounted(() => {
+  fetchClient()
+  loadTemplates()
+})
 </script>

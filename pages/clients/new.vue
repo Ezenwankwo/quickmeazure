@@ -521,12 +521,50 @@ const selectTemplate = async templateId => {
 
 // Process measurements for saving
 const processMeasurements = () => {
-  const processedMeasurements = { ...measurements.value }
-
-  // Add template ID if selected
-  if (selectedTemplateId.value) {
-    processedMeasurements.templateId = selectedTemplateId.value
+  // Create a base object with notes and values
+  const processedMeasurements = {
+    // Keep the notes field as is
+    notes: measurements.value.notes || null,
+    // Initialize values field to store all measurements
+    values: {},
   }
+
+  // Process all fields from the template
+  const allFields = [...upperBodyFields.value, ...lowerBodyFields.value, ...otherFields.value]
+
+  // Store ALL fields from the template, even those without values
+  allFields.forEach(field => {
+    // Convert field name to the format used in measurements object (lowercase with underscores)
+    const fieldName = field.name.toLowerCase().replace(/\s+/g, '_')
+    const value = measurements.value[fieldName]
+
+    // Store field metadata and value (even if null)
+    processedMeasurements.values[fieldName] = {
+      value: value !== null && value !== '' ? parseFloat(value) : null,
+      unit: field.unit || 'in',
+      name: field.name,
+      fieldId: field.id,
+      category: field.category || null,
+      isRequired: field.isRequired || false,
+      displayOrder: field.displayOrder || 0,
+    }
+  })
+
+  // Store template information in the values if selected
+  if (selectedTemplateId.value) {
+    const template = templates.value.find(t => t.id === selectedTemplateId.value)
+    if (template) {
+      processedMeasurements.values._template = {
+        id: template.id,
+        name: template.name,
+        gender: template.gender,
+        fields: allFields.map(f => f.id), // Store references to all fields in the template
+      }
+    }
+  }
+
+  // Log the processed measurements
+  console.log('Processed measurements for saving:', processedMeasurements)
 
   return processedMeasurements
 }

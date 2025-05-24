@@ -203,23 +203,44 @@ export default defineEventHandler(async event => {
       if (newClient.length > 0 && body.measurements) {
         const clientId = newClient[0].id
 
-        // Convert numeric strings to numbers
+        // Process measurements for the current database schema
         const processedMeasurements = {
           clientId,
-          height: body.measurements.height ? parseFloat(body.measurements.height) : null,
-          weight: body.measurements.weight ? parseFloat(body.measurements.weight) : null,
-          bust: body.measurements.bust ? parseFloat(body.measurements.bust) : null,
-          waist: body.measurements.waist ? parseFloat(body.measurements.waist) : null,
-          hip: body.measurements.hip ? parseFloat(body.measurements.hip) : null,
-          inseam: body.measurements.inseam ? parseFloat(body.measurements.inseam) : null,
-          shoulder: body.measurements.shoulder ? parseFloat(body.measurements.shoulder) : null,
-          sleeve: body.measurements.sleeve ? parseFloat(body.measurements.sleeve) : null,
-          neck: body.measurements.neck ? parseFloat(body.measurements.neck) : null,
-          chest: body.measurements.chest ? parseFloat(body.measurements.chest) : null,
-          thigh: body.measurements.thigh ? parseFloat(body.measurements.thigh) : null,
+          // Store all measurements in the values field
+          values: {},
           notes: body.measurements.notes || null,
-          additionalMeasurements: body.measurements.additionalMeasurements || {},
           lastUpdated: new Date(),
+        }
+
+        // Extract values from the client request
+        // If the client is sending data in the new format (with values field)
+        if (body.measurements.values) {
+          processedMeasurements.values = body.measurements.values
+        }
+        // Handle legacy format where measurements are sent as individual fields
+        else {
+          // Remove non-measurement fields
+          const { notes: _notes, templateId: _templateId, ...measurementData } = body.measurements
+
+          // Process each measurement field
+          Object.entries(measurementData).forEach(([key, value]) => {
+            // Skip empty values and non-measurement fields
+            if (value === null || value === '' || typeof value === 'object') return
+
+            // Add to values with basic metadata
+            processedMeasurements.values[key] = {
+              value: parseFloat(value),
+              unit: 'in', // Default unit
+              name: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+            }
+          })
+
+          // If additionalMeasurements exists, merge it into values
+          if (body.measurements.additionalMeasurements) {
+            Object.entries(body.measurements.additionalMeasurements).forEach(([key, value]) => {
+              processedMeasurements.values[key] = value
+            })
+          }
         }
 
         // Create measurement record

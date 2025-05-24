@@ -99,21 +99,11 @@ export default defineEventHandler(async event => {
           .where(eq(measurements.clientId, id))
           .limit(1)
 
-        // Convert numeric strings to numbers
+        // Process measurements for the new schema
         const processedMeasurements = {
-          height: body.measurements.height ? parseFloat(body.measurements.height) : null,
-          weight: body.measurements.weight ? parseFloat(body.measurements.weight) : null,
-          bust: body.measurements.bust ? parseFloat(body.measurements.bust) : null,
-          waist: body.measurements.waist ? parseFloat(body.measurements.waist) : null,
-          hip: body.measurements.hip ? parseFloat(body.measurements.hip) : null,
-          inseam: body.measurements.inseam ? parseFloat(body.measurements.inseam) : null,
-          shoulder: body.measurements.shoulder ? parseFloat(body.measurements.shoulder) : null,
-          sleeve: body.measurements.sleeve ? parseFloat(body.measurements.sleeve) : null,
-          neck: body.measurements.neck ? parseFloat(body.measurements.neck) : null,
-          chest: body.measurements.chest ? parseFloat(body.measurements.chest) : null,
-          thigh: body.measurements.thigh ? parseFloat(body.measurements.thigh) : null,
+          // Store all measurements in the values field
+          values: body.measurements.values || {},
           notes: body.measurements.notes || null,
-          additionalMeasurements: body.measurements.additionalMeasurements || {},
           lastUpdated: new Date(),
         }
 

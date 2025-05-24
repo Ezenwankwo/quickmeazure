@@ -84,113 +84,99 @@
         </template>
 
         <div v-if="client.measurement">
+          <!-- Template Information (if available) -->
+          <div v-if="client.measurement.values && client.measurement.values._template" class="mb-4">
+            <div class="bg-primary-50 border border-primary-200 rounded-lg p-3 text-primary-700">
+              <div class="flex items-center">
+                <UIcon name="i-heroicons-document-text" class="mr-2" />
+                <span class="font-medium">{{ client.measurement.values._template.name }}</span>
+                <span class="ml-2 text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded">
+                  {{
+                    client.measurement.values._template.gender.charAt(0).toUpperCase() +
+                    client.measurement.values._template.gender.slice(1)
+                  }}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <!-- Upper Body Measurements -->
-          <div class="mb-6">
-            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">Upper Body</h4>
+          <div v-if="upperBodyMeasurements.length > 0" class="mb-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              <UIcon name="i-heroicons-user-circle" class="w-4 h-4 mr-2 text-primary-500" />
+              Upper Body
+            </h4>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div
-                v-if="client.measurement.bust !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
+                v-for="measurement in upperBodyMeasurements"
+                :key="measurement.key"
+                :class="[
+                  'border rounded-lg p-3 shadow-sm',
+                  measurement.isEmpty ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
+                ]"
               >
-                <div class="text-xs text-gray-500 mb-1">Bust</div>
-                <div class="font-medium">{{ client.measurement.bust }}"</div>
-              </div>
-
-              <div
-                v-if="client.measurement.waist !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
-              >
-                <div class="text-xs text-gray-500 mb-1">Waist</div>
-                <div class="font-medium">{{ client.measurement.waist }}"</div>
-              </div>
-
-              <div
-                v-if="client.measurement.chest !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
-              >
-                <div class="text-xs text-gray-500 mb-1">Chest</div>
-                <div class="font-medium">{{ client.measurement.chest }}"</div>
-              </div>
-
-              <div
-                v-if="client.measurement.shoulder !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
-              >
-                <div class="text-xs text-gray-500 mb-1">Shoulder</div>
-                <div class="font-medium">{{ client.measurement.shoulder }}"</div>
-              </div>
-
-              <div
-                v-if="client.measurement.sleeve !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
-              >
-                <div class="text-xs text-gray-500 mb-1">Sleeve</div>
-                <div class="font-medium">{{ client.measurement.sleeve }}"</div>
-              </div>
-
-              <div
-                v-if="client.measurement.neck !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
-              >
-                <div class="text-xs text-gray-500 mb-1">Neck</div>
-                <div class="font-medium">{{ client.measurement.neck }}"</div>
+                <div class="flex justify-between items-center mb-1">
+                  <div class="text-xs text-gray-500">{{ measurement.name }}</div>
+                  <div v-if="measurement.isRequired" class="text-xs text-red-500">*</div>
+                </div>
+                <div v-if="!measurement.isEmpty" class="font-medium">
+                  {{ measurement.value }}{{ measurement.unit }}
+                </div>
+                <div v-else class="text-gray-400 italic text-sm">Not provided</div>
               </div>
             </div>
           </div>
 
           <!-- Lower Body Measurements -->
-          <div class="mb-6">
-            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">Lower Body</h4>
+          <div v-if="lowerBodyMeasurements.length > 0" class="mb-6">
+            <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              <UIcon name="i-heroicons-rectangle-stack" class="w-4 h-4 mr-2 text-primary-500" />
+              Lower Body
+            </h4>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div
-                v-if="client.measurement.hip !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
+                v-for="measurement in lowerBodyMeasurements"
+                :key="measurement.key"
+                :class="[
+                  'border rounded-lg p-3 shadow-sm',
+                  measurement.isEmpty ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
+                ]"
               >
-                <div class="text-xs text-gray-500 mb-1">Hip</div>
-                <div class="font-medium">{{ client.measurement.hip }}"</div>
-              </div>
-
-              <div
-                v-if="client.measurement.inseam !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
-              >
-                <div class="text-xs text-gray-500 mb-1">Inseam</div>
-                <div class="font-medium">{{ client.measurement.inseam }}"</div>
-              </div>
-
-              <div
-                v-if="client.measurement.thigh !== null"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
-              >
-                <div class="text-xs text-gray-500 mb-1">Thigh</div>
-                <div class="font-medium">{{ client.measurement.thigh }}"</div>
+                <div class="flex justify-between items-center mb-1">
+                  <div class="text-xs text-gray-500">{{ measurement.name }}</div>
+                  <div v-if="measurement.isRequired" class="text-xs text-red-500">*</div>
+                </div>
+                <div v-if="!measurement.isEmpty" class="font-medium">
+                  {{ measurement.value }}{{ measurement.unit }}
+                </div>
+                <div v-else class="text-gray-400 italic text-sm">Not provided</div>
               </div>
             </div>
           </div>
 
-          <!-- Custom Measurements -->
-          <div
-            v-if="
-              client.measurement.additionalMeasurements &&
-              Object.keys(client.measurement.additionalMeasurements).length > 0
-            "
-            class="mb-6"
-          >
+          <!-- Other Measurements -->
+          <div v-if="otherMeasurements.length > 0" class="mb-6">
             <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
-              Custom Measurements
+              <UIcon name="i-heroicons-variable" class="w-4 h-4 mr-2 text-primary-500" />
+              Other Measurements
             </h4>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div
-                v-for="(value, key) in client.measurement.additionalMeasurements"
-                :key="key"
-                class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm"
+                v-for="measurement in otherMeasurements"
+                :key="measurement.key"
+                :class="[
+                  'border rounded-lg p-3 shadow-sm',
+                  measurement.isEmpty ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200',
+                ]"
               >
-                <div class="text-xs text-gray-500 mb-1">
-                  {{ key }}
+                <div class="flex justify-between items-center mb-1">
+                  <div class="text-xs text-gray-500">{{ measurement.name }}</div>
+                  <div v-if="measurement.isRequired" class="text-xs text-red-500">*</div>
                 </div>
-                <div class="font-medium">
-                  {{ value }}
+                <div v-if="!measurement.isEmpty" class="font-medium">
+                  {{ measurement.value }}{{ measurement.unit }}
                 </div>
+                <div v-else class="text-gray-400 italic text-sm">Not provided</div>
               </div>
             </div>
           </div>
@@ -345,11 +331,155 @@
 const route = useRoute()
 const clientId = route.params.id
 
-// State
+// Client data
 const client = ref(null)
 const isLoading = ref(true)
+
+// Orders data
 const orders = ref([])
 const isLoadingOrders = ref(true)
+
+// Computed properties for categorized measurements
+const upperBodyMeasurements = computed(() => {
+  if (!client.value?.measurement?.values) return []
+
+  // Filter and format upper body measurements
+  return Object.entries(client.value.measurement.values)
+    .filter(([key, data]) => {
+      // Skip template info
+      if (key === '_template') return false
+
+      // IMPORTANT: Prioritize the explicit category from the template
+      if (data.category) {
+        const category = data.category.toLowerCase()
+        return category.includes('upper')
+      }
+
+      // Special case for waist - it can be in either upper or lower body
+      // For now, include it in upper body if it's not explicitly categorized
+      const name = (data.name || key).toLowerCase()
+      if (name.includes('waist')) {
+        return true
+      }
+
+      // Fallback to name-based categorization if no category is specified
+      return ['bust', 'chest', 'shoulder', 'sleeve', 'neck', 'arm'].some(term =>
+        name.includes(term)
+      )
+    })
+    .map(([key, data]) => ({
+      key,
+      name: data.name || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+      value: data.value,
+      unit: data.unit || '"',
+      category: data.category || 'Upper Body',
+      isRequired: data.isRequired || false,
+      displayOrder: data.displayOrder || 0,
+      // Fix: Properly handle zero values (0 is a valid measurement value)
+      isEmpty: data.value === null || data.value === '' || data.value === undefined,
+    }))
+    .sort((a, b) => {
+      // Sort by display order first, then by name
+      if (a.displayOrder !== b.displayOrder) {
+        return a.displayOrder - b.displayOrder
+      }
+      return a.name.localeCompare(b.name)
+    })
+})
+
+const lowerBodyMeasurements = computed(() => {
+  if (!client.value?.measurement?.values) return []
+
+  // Filter and format lower body measurements
+  return Object.entries(client.value.measurement.values)
+    .filter(([key, data]) => {
+      // Skip template info
+      if (key === '_template') return false
+
+      // IMPORTANT: Prioritize the explicit category from the template
+      if (data.category) {
+        const category = data.category.toLowerCase()
+        return category.includes('lower')
+      }
+
+      // Skip waist as it's handled in upper body when not explicitly categorized
+      const name = (data.name || key).toLowerCase()
+      if (name.includes('waist')) {
+        return false
+      }
+
+      // Fallback to name-based categorization if no category is specified
+      return ['hip', 'inseam', 'thigh', 'leg', 'calf', 'ankle'].some(term => name.includes(term))
+    })
+    .map(([key, data]) => ({
+      key,
+      name: data.name || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+      value: data.value,
+      unit: data.unit || '"',
+      category: data.category || 'Lower Body',
+      isRequired: data.isRequired || false,
+      displayOrder: data.displayOrder || 0,
+      // Fix: Properly handle zero values (0 is a valid measurement value)
+      isEmpty: data.value === null || data.value === '' || data.value === undefined,
+    }))
+    .sort((a, b) => {
+      // Sort by display order first, then by name
+      if (a.displayOrder !== b.displayOrder) {
+        return a.displayOrder - b.displayOrder
+      }
+      return a.name.localeCompare(b.name)
+    })
+})
+
+const otherMeasurements = computed(() => {
+  if (!client.value?.measurement?.values) return []
+
+  // Filter and format other measurements that don't fit in upper or lower body
+  return Object.entries(client.value.measurement.values)
+    .filter(([key, data]) => {
+      // Skip template info
+      if (key === '_template') return false
+
+      // Skip if already categorized as upper or lower body
+      if (data.category) {
+        const category = data.category.toLowerCase()
+        if (category.includes('upper') || category.includes('lower')) {
+          return false
+        }
+        return true // If it has a category but not upper/lower, include it here
+      }
+
+      // For items without a category, check if they match common upper/lower body terms
+      const name = (data.name || key).toLowerCase()
+
+      const upperBodyTerms = ['bust', 'chest', 'shoulder', 'sleeve', 'neck', 'arm']
+      const lowerBodyTerms = ['hip', 'inseam', 'thigh', 'leg', 'calf', 'ankle']
+
+      // If the name doesn't match any common body part terms, include it in other
+      return (
+        !upperBodyTerms.some(term => name.includes(term)) &&
+        !lowerBodyTerms.some(term => name.includes(term))
+      )
+    })
+    .map(([key, data]) => ({
+      key,
+      name: data.name || key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+      value: data.value,
+      unit: data.unit || '"',
+      category: data.category || 'Other',
+      isRequired: data.isRequired || false,
+      displayOrder: data.displayOrder || 0,
+      // Fix: Properly handle zero values (0 is a valid measurement value)
+      isEmpty: data.value === null || data.value === '' || data.value === undefined,
+    }))
+    .sort((a, b) => {
+      // Sort by display order first, then by name
+      if (a.displayOrder !== b.displayOrder) {
+        return a.displayOrder - b.displayOrder
+      }
+      return a.name.localeCompare(b.name)
+    })
+})
 
 // Set page metadata
 useHead({
@@ -369,6 +499,49 @@ watch(
     }
   }
 )
+
+// Debug function to analyze measurement data
+const debugMeasurements = data => {
+  if (!data.measurement?.values) return
+
+  console.log('Raw measurement values:', JSON.stringify(data.measurement.values, null, 2))
+
+  // Count total fields and fields with values
+  const allFields = Object.entries(data.measurement.values).filter(([key]) => key !== '_template')
+  const fieldsWithValues = allFields.filter(([_, data]) => {
+    return data.value !== null && data.value !== '' && data.value !== undefined
+  })
+
+  console.log(`Total fields: ${allFields.length}, Fields with values: ${fieldsWithValues.length}`)
+
+  // Check upper body fields
+  const upperBodyFields = upperBodyMeasurements.value
+  console.log('Upper body measurements:', upperBodyFields)
+  console.log('Upper body fields with values:', upperBodyFields.filter(m => !m.isEmpty).length)
+
+  // Check if any fields might be miscategorized
+  const upperBodyKeys = upperBodyFields.map(m => m.key)
+  const potentialUpperBodyFields = allFields.filter(([key, data]) => {
+    if (upperBodyKeys.includes(key)) return false
+
+    const name = (data.name || key).toLowerCase()
+    return ['upper', 'bust', 'chest', 'shoulder', 'sleeve', 'neck', 'arm', 'waist'].some(
+      term => name.includes(term) || (data.category || '').toLowerCase().includes(term)
+    )
+  })
+
+  if (potentialUpperBodyFields.length > 0) {
+    console.log(
+      'Potential upper body fields that might be miscategorized:',
+      potentialUpperBodyFields.map(([key, data]) => ({
+        key,
+        name: data.name,
+        category: data.category,
+        value: data.value,
+      }))
+    )
+  }
+}
 
 // Fetch client details
 const fetchClient = async () => {
@@ -398,6 +571,9 @@ const fetchClient = async () => {
     })
 
     client.value = data
+
+    // Run debug analysis on the measurement data
+    debugMeasurements(data)
   } catch (error) {
     console.error('Error fetching client:', error)
     let errorMessage = 'Failed to load client details. Please try again.'
