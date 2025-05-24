@@ -10,6 +10,7 @@ export default defineNuxtConfig({
     '@vite-pwa/nuxt',
     '@sentry/nuxt/module',
     '@nuxt/eslint',
+    '@pinia/nuxt',
   ],
   components: [{ path: '~/components', pathPrefix: false }],
   devtools: { enabled: true },

@@ -1,8 +1,6 @@
-/**
- * Composable that wraps Nuxt's useFetch with authentication
- * Provides enhanced utilities for API interaction with authentication,
- * error handling, and response formatting
- */
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import { useAuthStore } from './auth'
 
 export interface ApiResponse<T = any> {
   data: T | null
@@ -11,10 +9,14 @@ export interface ApiResponse<T = any> {
   statusCode?: number
 }
 
-export function useApiAuth() {
-  const auth = useSessionAuth()
-  const route = useRoute()
-  const toast = useToast()
+/**
+ * API store for centralized API interactions
+ * Replaces the useApiAuth composable with a centralized store
+ */
+export const useApiStore = defineStore('api', () => {
+  // State
+  const loading = ref(false)
+  const error = ref<string | null>(null)
   const isMounted = ref(false)
 
   // Set mounted state when component mounts
@@ -25,21 +27,7 @@ export function useApiAuth() {
   }
 
   /**
-   * Get the authorization headers for API calls
-   * @returns Object with Authorization header if user is logged in
-   */
-  const getAuthHeaders = (): HeadersInit => {
-    if (!auth.token.value) return {}
-
-    return {
-      Authorization: `Bearer ${auth.token.value}`,
-    }
-  }
-
-  /**
    * Format API response into a consistent structure
-   * @param response Raw API response
-   * @returns Formatted API response with consistent structure
    */
   const formatResponse = <T>(response: any): ApiResponse<T> => {
     // If response is already in our expected format, return it
@@ -56,10 +44,13 @@ export function useApiAuth() {
 
   /**
    * Handle API errors including 401 unauthorized responses
-   * @param error Error object from API call
    */
   const handleApiError = async (error: any): Promise<void> => {
     if (!error) return
+
+    const authStore = useAuthStore()
+    const route = useRoute()
+    const toast = useToast()
 
     // Check if this is an intentional logout
     const isIntentionalLogout =
@@ -77,38 +68,23 @@ export function useApiAuth() {
 
       if (!isHandlingRefresh) {
         try {
-          // Set flag to prevent refresh loops
-          if (import.meta.client) {
-            localStorage.setItem('isHandlingTokenRefresh', 'true')
-          }
-
           // Try to refresh the token
-          const result = await auth.refreshSession()
-
-          // Clear the handling flag
-          if (import.meta.client) {
-            localStorage.removeItem('isHandlingTokenRefresh')
-          }
+          const result = await authStore.refreshSession()
 
           // If refresh failed, handle session expiry
           if (!result.success) {
-            auth.handleSessionExpiry(true)
+            authStore.handleSessionExpiry(true)
           }
 
           return // Exit early if we've handled the refresh
         } catch (_) {
-          // Clear the handling flag
-          if (import.meta.client) {
-            localStorage.removeItem('isHandlingTokenRefresh')
-          }
-
           // If refresh failed, proceed with session expiry
-          auth.handleSessionExpiry(true)
+          authStore.handleSessionExpiry(true)
           return
         }
       } else {
         // We're already handling a refresh, just proceed with session expiry
-        auth.handleSessionExpiry(true)
+        authStore.handleSessionExpiry(true)
       }
     }
 
@@ -136,11 +112,12 @@ export function useApiAuth() {
 
   /**
    * Check if authentication is available
-   * @param redirect Whether to redirect to login page if not authenticated
-   * @returns Boolean indicating if authentication is available
    */
   const ensureAuthentication = (redirect = true): boolean => {
-    if (!auth.isLoggedIn.value || !auth.token.value) {
+    const authStore = useAuthStore()
+    const route = useRoute()
+
+    if (!authStore.isLoggedIn || !authStore.token) {
       // If we're not on a login/register page, redirect to login
       if (redirect && !route.path.includes('/auth/')) {
         navigateTo('/auth/login')
@@ -153,24 +130,24 @@ export function useApiAuth() {
   /**
    * Wrapped version of fetch with authentication support
    * Detects whether to use $fetch or useFetch based on mounted state
-   * @param url API endpoint URL
-   * @param options Fetch options
-   * @returns API response
    */
-  const authFetch = async <T = any>(url: string, options: any = {}): Promise<any> => {
+  const authFetch = async <T = any>(url: string, options: any = {}): Promise<ApiResponse<T>> => {
+    const authStore = useAuthStore()
+
     // Make sure headers exist in options
     const headers = {
       ...options.headers,
-      ...getAuthHeaders(),
+      ...authStore.getAuthHeaders(),
     }
 
     // If component is already mounted, use $fetch directly as recommended
     if (import.meta.client && isMounted.value) {
       try {
-        return await $fetch(url, {
+        const response = await $fetch(url, {
           ...options,
           headers,
         })
+        return formatResponse<T>(response)
       } catch (error: any) {
         await handleApiError(error)
         throw error
@@ -200,88 +177,58 @@ export function useApiAuth() {
       throw error.value
     }
 
-    return data.value
+    return formatResponse<T>(data.value)
   }
 
   /**
-   * Legacy method for making authenticated API calls with direct $fetch
-   * Maintained for backward compatibility
-   * @param url API endpoint URL
-   * @param options Fetch options
-   * @returns API response
+   * GET request with authentication
    */
-  const legacyFetch = async <T = any>(url: string, options: any = {}): Promise<ApiResponse<T>> => {
-    try {
-      // Check if we have a token
-      if (!ensureAuthentication()) {
-        throw new Error('No authentication token available')
-      }
-
-      // Add auth headers to the request
-      const headers = {
-        ...options.headers,
-        ...getAuthHeaders(),
-      }
-
-      // Make the API call with authentication headers
-      const response = await $fetch<T>(url, {
-        ...options,
-        headers,
-      })
-
-      // Format and return the response
-      return formatResponse<T>(response)
-    } catch (error: any) {
-      // Handle API errors
-      await handleApiError(error)
-
-      // Re-throw the error to be handled by the caller
-      throw error
-    }
+  const get = async <T = any>(url: string, options: any = {}): Promise<ApiResponse<T>> => {
+    return authFetch<T>(url, { ...options, method: 'GET' })
   }
 
   /**
-   * Authenticated version of useAsyncData
-   * @param key Unique key for the async data
-   * @param url API endpoint URL
-   * @param options UseFetch options
-   * @returns AsyncData result with auth handling
+   * POST request with authentication
    */
-  const authAsyncData = <T>(key: string, url: string, options: any = {}) => {
-    // Make sure headers exist in options
-    options.headers = {
-      ...options.headers,
-      ...getAuthHeaders(),
-    }
+  const post = async <T = any>(
+    url: string,
+    data: any,
+    options: any = {}
+  ): Promise<ApiResponse<T>> => {
+    return authFetch<T>(url, { ...options, method: 'POST', body: data })
+  }
 
-    // Add onResponse handler
-    const onResponseError = options.onResponseError
-    options.onResponseError = (context: any) => {
-      // Call original handler if it exists
-      if (onResponseError) {
-        onResponseError(context)
-      }
+  /**
+   * PUT request with authentication
+   */
+  const put = async <T = any>(
+    url: string,
+    data: any,
+    options: any = {}
+  ): Promise<ApiResponse<T>> => {
+    return authFetch<T>(url, { ...options, method: 'PUT', body: data })
+  }
 
-      // Handle API errors
-      handleApiError(context.error)
-    }
-
-    // Return the useAsyncData call
-    return useAsyncData<T>(key, () => $fetch(url, options), {
-      ...options,
-      onError: async (error: any) => {
-        await handleApiError(error)
-        if (options.onError) {
-          options.onError(error)
-        }
-      },
-    })
+  /**
+   * DELETE request with authentication
+   */
+  const del = async <T = any>(url: string, options: any = {}): Promise<ApiResponse<T>> => {
+    return authFetch<T>(url, { ...options, method: 'DELETE' })
   }
 
   return {
-    getAuthHeaders,
+    // State
+    loading,
+    error,
+
+    // Methods
+    formatResponse,
+    handleApiError,
+    ensureAuthentication,
     authFetch,
-    authAsyncData,
-    legacyFetch,
+    get,
+    post,
+    put,
+    del,
   }
-}
+})
