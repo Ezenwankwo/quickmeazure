@@ -99,6 +99,12 @@
                   >
                     <UIcon name="i-heroicons-cog-6-tooth" class="mr-2" />Settings
                   </ULink>
+                  <ULink
+                    to="/activity"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <UIcon name="i-heroicons-clock" class="mr-2" />Activity Log
+                  </ULink>
                   <div class="border-t border-gray-200 my-1" />
                   <button
                     class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
