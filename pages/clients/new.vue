@@ -66,232 +66,205 @@ class="block text-sm font-medium text-gray-700"
           </div>
         </div>
 
-        <!-- Template Selection Section -->
-        <div class="space-y-4">
-          <div class="max-w-md">
-            <div class="space-y-2">
-              <label
-for="template-select"
-class="block text-sm font-medium text-gray-700"
-                >Select a template</label
-              >
-              <USelect
-                id="template-select"
-                v-model="selectedTemplateId"
-                :options="templateOptions"
-                placeholder="Choose a measurement template"
-                class="w-full"
-                size="lg"
-                @update:model-value="selectTemplate"
-              />
-            </div>
-          </div>
-        </div>
-
         <!-- Measurements Section -->
         <div class="space-y-4">
           <h2 class="text-lg font-medium text-gray-900 border-b pb-2">Measurements</h2>
 
-          <!-- Upper Body Measurements -->
+          <!-- Template Selection Section -->
           <div class="space-y-4">
-            <h3 class="text-md font-medium text-gray-700 flex items-center">
-              <UIcon name="i-heroicons-user-circle" class="w-4 h-4 mr-2 text-primary-500" />
-              Upper Body
-            </h3>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div class="max-w-md">
               <div class="space-y-2">
-                <label for="bust" class="block text-sm font-medium text-gray-700">Bust</label>
-                <div class="flex">
-                  <UInput
-                    id="bust"
-                    v-model="measurements.bust"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                <div class="flex items-center justify-between">
+                  <label for="template-select" class="block text-sm font-medium text-gray-700">
+                    Select a measurement template
+                  </label>
+                  <UButton
+                    v-if="templatesLoading"
+                    variant="ghost"
+                    color="gray"
+                    size="xs"
+                    :loading="true"
+                    class="ml-2"
                   >
-                    in
-                  </span>
+                    Loading...
+                  </UButton>
                 </div>
-              </div>
 
-              <div class="space-y-2">
-                <label
-for="shoulder"
-class="block text-sm font-medium text-gray-700"
-                  >Shoulder</label
-                >
-                <div class="flex">
-                  <UInput
-                    id="shoulder"
-                    v-model="measurements.shoulder"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                  >
-                    in
-                  </span>
+                <USelect
+                  id="template-select"
+                  v-model="selectedTemplateId"
+                  :items="templateOptions"
+                  placeholder="Choose a measurement template"
+                  class="w-full"
+                  size="lg"
+                  :loading="templatesLoading"
+                  @update:model-value="selectTemplate"
+                />
+
+                <!-- Empty state message -->
+                <div v-if="!templatesLoading && !hasTemplates" class="mt-2 text-sm text-gray-500">
+                  <p>
+                    No measurement templates found.
+                    <NuxtLink
+to="/measurement-templates"
+class="text-primary-600 hover:underline"
+                      >Create a template</NuxtLink
+                    >
+                    first.
+                  </p>
                 </div>
-              </div>
 
-              <div class="space-y-2">
-                <label for="sleeve" class="block text-sm font-medium text-gray-700">Sleeve</label>
-                <div class="flex">
-                  <UInput
-                    id="sleeve"
-                    v-model="measurements.sleeve"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                <!-- Retry button if templates failed to load -->
+                <div v-if="!templatesLoading && !hasTemplates" class="mt-2">
+                  <UButton
+                    size="sm"
+                    variant="soft"
+                    color="gray"
+                    icon="i-heroicons-arrow-path"
+                    @click="loadTemplates(true)"
                   >
-                    in
-                  </span>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label for="neck" class="block text-sm font-medium text-gray-700">Neck</label>
-                <div class="flex">
-                  <UInput
-                    id="neck"
-                    v-model="measurements.neck"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                  >
-                    in
-                  </span>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label for="chest" class="block text-sm font-medium text-gray-700">Chest</label>
-                <div class="flex">
-                  <UInput
-                    id="chest"
-                    v-model="measurements.chest"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                  >
-                    in
-                  </span>
+                    Retry
+                  </UButton>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Lower Body Measurements -->
-          <div class="space-y-4 mt-8">
-            <h3 class="text-md font-medium text-gray-700 flex items-center">
-              <UIcon name="i-heroicons-rectangle-stack" class="w-4 h-4 mr-2 text-primary-500" />
-              Lower Body
-            </h3>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <div class="space-y-2">
-                <label for="waist" class="block text-sm font-medium text-gray-700">Waist</label>
-                <div class="flex">
-                  <UInput
-                    id="waist"
-                    v-model="measurements.waist"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+          <!-- Template-based Measurements -->
+          <div v-if="selectedTemplateId && hasFields">
+            <!-- Upper Body Measurements -->
+            <div v-if="upperBodyFields.length > 0" class="space-y-4">
+              <h3 class="text-md font-medium text-gray-700 flex items-center">
+                <UIcon name="i-heroicons-user-circle" class="w-4 h-4 mr-2 text-primary-500" />
+                Upper Body
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div v-for="field in upperBodyFields" :key="field.id" class="space-y-2">
+                  <label
+                    :for="field.name.toLowerCase()"
+                    class="block text-sm font-medium text-gray-700"
                   >
-                    in
-                  </span>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label for="hip" class="block text-sm font-medium text-gray-700">Hip</label>
-                <div class="flex">
-                  <UInput
-                    id="hip"
-                    v-model="measurements.hip"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                  >
-                    in
-                  </span>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label for="inseam" class="block text-sm font-medium text-gray-700">Inseam</label>
-                <div class="flex">
-                  <UInput
-                    id="inseam"
-                    v-model="measurements.inseam"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                  >
-                    in
-                  </span>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label for="thigh" class="block text-sm font-medium text-gray-700">Thigh</label>
-                <div class="flex">
-                  <UInput
-                    id="thigh"
-                    v-model="measurements.thigh"
-                    type="number"
-                    step="0.1"
-                    placeholder="0.0"
-                    class="w-full rounded-r-none focus:ring-primary-500"
-                    size="lg"
-                  />
-                  <span
-                    class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
-                  >
-                    in
-                  </span>
+                    {{ field.name }}
+                    <span v-if="field.isRequired" class="text-red-500">*</span>
+                  </label>
+                  <div class="flex">
+                    <UInput
+                      :id="field.name.toLowerCase()"
+                      v-model="measurements[field.name.toLowerCase()]"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      class="w-full rounded-r-none focus:ring-primary-500"
+                      size="lg"
+                    />
+                    <span
+                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                    >
+                      {{ field.unit || 'in' }}
+                    </span>
+                  </div>
+                  <p v-if="field.description" class="text-xs text-gray-500 mt-1">
+                    {{ field.description }}
+                  </p>
                 </div>
               </div>
             </div>
+
+            <!-- Lower Body Measurements -->
+            <div v-if="lowerBodyFields.length > 0" class="space-y-4 mt-8">
+              <h3 class="text-md font-medium text-gray-700 flex items-center">
+                <UIcon name="i-heroicons-rectangle-stack" class="w-4 h-4 mr-2 text-primary-500" />
+                Lower Body
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div v-for="field in lowerBodyFields" :key="field.id" class="space-y-2">
+                  <label
+                    :for="field.name.toLowerCase()"
+                    class="block text-sm font-medium text-gray-700"
+                  >
+                    {{ field.name }}
+                    <span v-if="field.isRequired" class="text-red-500">*</span>
+                  </label>
+                  <div class="flex">
+                    <UInput
+                      :id="field.name.toLowerCase()"
+                      v-model="measurements[field.name.toLowerCase()]"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      class="w-full rounded-r-none focus:ring-primary-500"
+                      size="lg"
+                    />
+                    <span
+                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                    >
+                      {{ field.unit || 'in' }}
+                    </span>
+                  </div>
+                  <p v-if="field.description" class="text-xs text-gray-500 mt-1">
+                    {{ field.description }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Other Measurements -->
+            <div v-if="otherFields.length > 0" class="space-y-4 mt-8">
+              <h3 class="text-md font-medium text-gray-700 flex items-center">
+                <UIcon name="i-heroicons-variable" class="w-4 h-4 mr-2 text-primary-500" />
+                Other Measurements
+              </h3>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div v-for="field in otherFields" :key="field.id" class="space-y-2">
+                  <label
+                    :for="field.name.toLowerCase()"
+                    class="block text-sm font-medium text-gray-700"
+                  >
+                    {{ field.name }}
+                    <span v-if="field.isRequired" class="text-red-500">*</span>
+                  </label>
+                  <div class="flex">
+                    <UInput
+                      :id="field.name.toLowerCase()"
+                      v-model="measurements[field.name.toLowerCase()]"
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      class="w-full rounded-r-none focus:ring-primary-500"
+                      size="lg"
+                    />
+                    <span
+                      class="inline-flex items-center px-3 border border-l-0 border-gray-300 bg-primary-50 text-primary-700 text-sm font-medium rounded-r-md"
+                    >
+                      {{ field.unit || 'in' }}
+                    </span>
+                  </div>
+                  <p v-if="field.description" class="text-xs text-gray-500 mt-1">
+                    {{ field.description }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No template selected message -->
+          <div v-else-if="selectedTemplateId === null" class="py-6 text-center text-gray-500">
+            <UIcon name="i-heroicons-document-text" class="w-12 h-12 mx-auto text-gray-400" />
+            <p class="mt-2 text-sm">Please select a measurement template to continue</p>
+          </div>
+
+          <!-- Template has no fields message -->
+          <div v-else-if="selectedTemplateId && !hasFields" class="py-6 text-center text-gray-500">
+            <UIcon name="i-heroicons-exclamation-circle" class="w-12 h-12 mx-auto text-amber-400" />
+            <p class="mt-2 text-sm">The selected template has no measurement fields defined</p>
+            <p class="text-xs mt-1">
+              <NuxtLink
+                :to="`/measurement-templates/${selectedTemplateId}/edit`"
+                class="text-primary-600 hover:underline"
+              >
+                Edit template
+              </NuxtLink>
+            </p>
           </div>
 
           <!-- Notes Section -->
@@ -331,34 +304,69 @@ useHead({
 })
 
 // Initialize measurement templates
-const { templates, fetchTemplates, loading: _templatesLoading } = useMeasurementTemplates()
+const { templates, fetchTemplates, loading: templatesLoading } = useMeasurementTemplates()
 
-// Fetch templates on component mount
-onMounted(async () => {
+// Fetch templates on component mount and when auth changes
+const auth = useSessionAuth()
+const hasLoadedTemplates = ref(false)
+
+// Watch for auth token changes to reload templates if needed
+watch(
+  () => auth.token.value,
+  async newToken => {
+    if (newToken && !hasLoadedTemplates.value) {
+      console.log('Auth token available, fetching templates...')
+      await loadTemplates()
+    }
+  },
+  { immediate: true }
+)
+
+// Load templates function
+async function loadTemplates(forceRefresh = false) {
+  if (hasLoadedTemplates.value && !forceRefresh) return
+
   try {
-    console.log('Fetching measurement templates...')
+    console.log('Fetching measurement templates...', forceRefresh ? '(forced refresh)' : '')
     await fetchTemplates()
     console.log('Templates fetched:', templates.value)
+    hasLoadedTemplates.value = true
   } catch (error) {
     console.error('Failed to fetch measurement templates:', error)
+    // Show error toast
+    useToast().add({
+      title: 'Error',
+      description: 'Failed to load measurement templates',
+      color: 'red',
+    })
   }
-})
+}
+
+// Also fetch on component mount for safety
+onMounted(loadTemplates)
 
 // Selected template
-const _selectedTemplateId = ref(null)
+const selectedTemplateId = ref(null)
 
 // Computed property for template options in the select dropdown
 const templateOptions = computed(() => {
-  console.log('Computing template options, templates:', templates.value)
+  console.log('Computing template options, templates count:', templates.value?.length || 0)
+  if (!templates.value || templates.value.length === 0) {
+    return []
+  }
+
   return templates.value.map(template => ({
     label: `${template.name} (${template.gender.charAt(0).toUpperCase() + template.gender.slice(1)})`,
     value: template.id,
   }))
 })
 
+// Flag to show loading or empty state
+const hasTemplates = computed(() => templateOptions.value.length > 0)
+
 // Computed property for selected template name
 const _selectedTemplateName = computed(() => {
-  const template = templates.value.find(t => t.id === _selectedTemplateId.value)
+  const template = templates.value.find(t => t.id === selectedTemplateId.value)
   return template ? template.name : ''
 })
 
@@ -371,16 +379,21 @@ const client = ref({
 
 // Measurement data
 const measurements = ref({
-  bust: null,
-  waist: null,
-  hip: null,
-  inseam: null,
-  shoulder: null,
-  sleeve: null,
-  neck: null,
-  chest: null,
-  thigh: null,
   notes: '',
+})
+
+// Measurement fields by category
+const upperBodyFields = ref([])
+const lowerBodyFields = ref([])
+const otherFields = ref([])
+
+// Flag to indicate if fields are available
+const hasFields = computed(() => {
+  return (
+    upperBodyFields.value.length > 0 ||
+    lowerBodyFields.value.length > 0 ||
+    otherFields.value.length > 0
+  )
 })
 
 const isSaving = ref(false)
@@ -391,32 +404,118 @@ const isFormValid = computed(() => {
 })
 
 // Function to select a template
-const selectTemplate = templateId => {
+const selectTemplate = async templateId => {
+  console.log('Selecting template with ID:', templateId)
+  selectedTemplateId.value = templateId
+
   // Find the selected template
   const template = templates.value.find(t => t.id === templateId)
+  console.log('Found template:', template)
 
-  if (template) {
-    // Reset current measurements
-    Object.keys(measurements.value).forEach(key => {
-      if (key !== 'notes') {
-        measurements.value[key] = null
+  if (!template) {
+    console.error('Template not found for ID:', templateId)
+    useToast().add({
+      title: 'Error',
+      description: 'Template not found',
+      color: 'red',
+    })
+    return
+  }
+
+  // Reset measurements object to only contain notes
+  const notes = measurements.value.notes
+  measurements.value = { notes }
+
+  try {
+    // Check if template has fields
+    if (!template.fields || template.fields.length === 0) {
+      console.warn('Template has no fields:', template.name)
+      upperBodyFields.value = []
+      lowerBodyFields.value = []
+      otherFields.value = []
+      return
+    }
+
+    console.log('Template fields:', template.fields)
+
+    // Categorize fields from the template
+    const upperBody = []
+    const lowerBody = []
+    const other = []
+
+    template.fields.forEach(field => {
+      // Extract category from metadata if available
+      const category = field.metadata?.category || ''
+      const fieldData = {
+        id: field.id,
+        name: field.name,
+        unit: field.unit || 'in',
+        description: field.description || '',
+        isRequired: field.isRequired,
+        displayOrder: field.displayOrder,
+        category: category,
+      }
+
+      // Categorize based on metadata or field name
+      if (
+        category.toLowerCase().includes('upper') ||
+        ['bust', 'chest', 'shoulder', 'sleeve', 'neck', 'arm'].some(term =>
+          field.name.toLowerCase().includes(term)
+        )
+      ) {
+        upperBody.push(fieldData)
+      } else if (
+        category.toLowerCase().includes('lower') ||
+        ['waist', 'hip', 'inseam', 'thigh', 'leg'].some(term =>
+          field.name.toLowerCase().includes(term)
+        )
+      ) {
+        lowerBody.push(fieldData)
+      } else {
+        other.push(fieldData)
       }
     })
 
-    // Apply template fields to measurements
-    if (template.fields && template.fields.length > 0) {
-      template.fields.forEach(field => {
-        if (Object.prototype.hasOwnProperty.call(measurements.value, field.name.toLowerCase())) {
-          measurements.value[field.name.toLowerCase()] = null
-        }
-      })
-    }
+    // Sort fields by display order
+    const sortByOrder = (a, b) => a.displayOrder - b.displayOrder
+    upperBody.sort(sortByOrder)
+    lowerBody.sort(sortByOrder)
+    other.sort(sortByOrder)
+
+    // Set the fields by category
+    upperBodyFields.value = upperBody
+    lowerBodyFields.value = lowerBody
+    otherFields.value = other
+
+    console.log('Set upperBodyFields:', upperBodyFields.value)
+    console.log('Set lowerBodyFields:', lowerBodyFields.value)
+    console.log('Set otherFields:', otherFields.value)
+
+    // Initialize measurement values for each field
+    const allFields = [...upperBody, ...lowerBody, ...other]
+    allFields.forEach(field => {
+      const fieldName = field.name.toLowerCase().replace(/\s+/g, '_')
+      measurements.value[fieldName] = null
+      console.log('Added field to measurements:', fieldName)
+    })
+
+    console.log('Updated measurements:', measurements.value)
 
     useToast().add({
       title: 'Template Selected',
       description: `Using ${template.name} template`,
       color: 'green',
     })
+  } catch (error) {
+    console.error('Error setting up template fields:', error)
+    useToast().add({
+      title: 'Error',
+      description: 'Failed to set up measurement fields',
+      color: 'red',
+    })
+    upperBodyFields.value = []
+    lowerBodyFields.value = []
+    otherFields.value = []
   }
 }
 

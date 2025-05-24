@@ -20,9 +20,7 @@
             <UIcon name="i-heroicons-users" class="text-primary-500" />
           </div>
         </template>
-        <div class="text-3xl font-bold">
-          {{ stats?.totalClients || 0 }}
-        </div>
+        <div class="text-3xl font-bold">{{ stats?.totalClients || 0 }}</div>
         <template #footer>
           <div class="text-sm text-gray-500">
             <span class="text-green-500 font-medium">+{{ stats?.newClientsThisMonth || 0 }}</span>
@@ -38,9 +36,7 @@
             <UIcon name="i-heroicons-shopping-bag" class="text-primary-500" />
           </div>
         </template>
-        <div class="text-3xl font-bold">
-          {{ stats?.activeOrders || 0 }}
-        </div>
+        <div class="text-3xl font-bold">{{ stats?.activeOrders || 0 }}</div>
         <template #footer>
           <div class="text-sm text-gray-500">
             <span class="font-medium">{{ stats?.completedOrdersThisMonth || 0 }}</span> completed
@@ -72,9 +68,7 @@
             <UIcon name="i-heroicons-credit-card" class="text-primary-500" />
           </div>
         </template>
-        <div class="text-xl font-bold">
-          {{ stats?.subscriptionPlan || 'Free Plan' }}
-        </div>
+        <div class="text-xl font-bold">{{ stats?.subscriptionPlan || 'Free Plan' }}</div>
         <template #footer>
           <div class="text-sm text-gray-500">
             <template v-if="stats?.clientsRemaining === Infinity"> Unlimited clients </template>
@@ -92,8 +86,8 @@
           <div class="flex justify-between items-center">
             <h3 class="font-medium">Recent Activity</h3>
             <UButton
-color="gray"
-variant="ghost"
+color="neutral"
+variant="subtle"
 to="/activity"
 size="xs"> View all </UButton>
           </div>
@@ -112,15 +106,11 @@ size="xs"> View all </UButton>
                 <UIcon :name="activity.icon || 'i-heroicons-bell'" class="text-primary-600" />
               </div>
               <div class="flex-1 min-w-0">
-                <!-- eslint-disable-next-line vue/no-v-html -->
-                <!-- Using v-html is necessary here as activity messages contain formatted HTML -->
                 <p
                   class="text-sm font-medium text-gray-900"
                   v-html="activity.message || 'Activity'"
-                />
-                <p class="text-xs text-gray-500">
-                  {{ activity.time || 'Recently' }}
-                </p>
+                ></p>
+                <p class="text-xs text-gray-500">{{ activity.time || 'Recently' }}</p>
               </div>
             </div>
           </div>
@@ -139,8 +129,8 @@ size="xs"> View all </UButton>
           <div class="flex justify-between items-center">
             <h3 class="font-medium">Orders Due Soon</h3>
             <UButton
-color="gray"
-variant="ghost"
+color="neutral"
+variant="subtle"
 to="/orders"
 size="xs"> View all </UButton>
           </div>
@@ -187,15 +177,13 @@ size="xs"> View all </UButton>
                   <th
                     scope="col"
                     class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  />
+                  ></th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr v-for="order in safeOrders" :key="order.id">
                   <td class="px-3 py-2 whitespace-nowrap">
-                    <div class="font-medium text-gray-900">
-                      {{ order.client }}
-                    </div>
+                    <div class="font-medium text-gray-900">{{ order.client }}</div>
                   </td>
                   <td class="px-3 py-2 whitespace-nowrap">
                     <UBadge :color="getDueDateColor(order.dueDate)" variant="subtle" size="sm">
@@ -265,8 +253,8 @@ size="xs"> View all </UButton>
 
 <script setup>
 // Import the API auth composable
-import { ref, computed, onMounted, _watch } from 'vue'
 import { useApiAuth } from '~/composables/useApiAuth'
+import { ref, computed, onMounted } from 'vue'
 import ClientGrowthChart from '~/components/charts/ClientGrowthChart.vue'
 
 // Set page metadata
@@ -388,7 +376,7 @@ const formatDueDate = date => {
 
 // Get color for due date badge
 const getDueDateColor = date => {
-  if (!date) return 'gray'
+  if (!date) return 'neutral'
 
   try {
     const now = new Date()
@@ -400,35 +388,35 @@ const getDueDateColor = date => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
     if (diffDays < 0) {
-      return 'red'
+      return 'error'
     } else if (diffDays === 0) {
-      return 'orange'
+      return 'warning'
     } else if (diffDays <= 2) {
-      return 'yellow'
+      return 'warning'
     } else {
-      return 'green'
+      return 'success'
     }
   } catch (error) {
     console.error('Error getting due date color:', error)
-    return 'gray'
+    return 'neutral'
   }
 }
 
 // Get color for status badge
 const getStatusColor = status => {
-  if (!status) return 'gray'
+  if (!status) return 'neutral'
 
   switch (status.toLowerCase()) {
     case 'completed':
-      return 'green'
+      return 'success'
     case 'in progress':
-      return 'blue'
+      return 'primary'
     case 'pending payment':
-      return 'yellow'
+      return 'warning'
     case 'overdue':
-      return 'red'
+      return 'error'
     default:
-      return 'gray'
+      return 'neutral'
   }
 }
 

@@ -99,11 +99,18 @@ const chartData = computed(() => {
       {
         label: 'New Clients',
         backgroundColor: props.hasRealData
-          ? 'rgba(79, 70, 229, 0.9)' // Primary color for real data
-          : 'rgba(209, 213, 219, 0.7)', // Lighter gray for demo data
+          ? 'rgba(79, 70, 229, 0.7)' // Primary color for bars
+          : 'rgba(156, 163, 175, 0.7)', // Gray for demo data bars
+        borderColor: props.hasRealData
+          ? 'rgba(79, 70, 229, 1)' // Primary color for bar border
+          : 'rgba(156, 163, 175, 1)', // Gray for demo data bar border
         data: dataSource.data,
+        borderWidth: 1,
         borderRadius: 4,
-        borderWidth: 0,
+        hoverBackgroundColor: props.hasRealData
+          ? 'rgba(79, 70, 229, 0.9)'
+          : 'rgba(156, 163, 175, 0.9)',
+        maxBarThickness: 40,
       },
     ],
   }

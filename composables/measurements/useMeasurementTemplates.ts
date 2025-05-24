@@ -12,21 +12,43 @@ export const useMeasurementTemplates = () => {
     error.value = null
 
     try {
-      console.log('Fetching templates from API...')
+      console.log('Fetching templates from API...', { includeArchived })
+
+      // Get auth token from the session auth store
+      const auth = useSessionAuth()
+      const token = auth.token.value
+
+      if (!token) {
+        console.warn('No authentication token found when fetching templates')
+      }
+
+      // Make API call with authentication headers
       const { data, error: fetchError } = await useFetch('/api/measurement-templates', {
         params: { includeArchived },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        // Add cache busting to ensure fresh data
+        key: `templates-${Date.now()}`,
+        // Force refresh to avoid caching issues
+        server: false,
+        cache: 'no-cache',
       })
 
-      console.log('API response:', data.value)
+      console.log('API response for templates:', data.value)
 
       if (fetchError.value) {
+        console.error('API error response:', fetchError.value)
         throw new Error(fetchError.value.message || 'Failed to fetch templates')
       }
 
       // Fix: Ensure we're correctly accessing the data property from the API response
       if (data.value && data.value.success) {
         templates.value = data.value.data || []
-        console.log('Templates set:', templates.value)
+        console.log('Templates loaded successfully:', templates.value.length, 'templates')
+        if (templates.value.length > 0) {
+          console.log('First template:', templates.value[0])
+        } else {
+          console.log('No templates returned from API')
+        }
       } else {
         console.error('Invalid API response format:', data.value)
         templates.value = []
@@ -200,6 +222,66 @@ export const useMeasurementTemplates = () => {
     return templates.value.find(t => t.id === templateId)
   }
 
+  // Fetch a single template with its fields
+  const fetchTemplateWithFields = async (templateId: number) => {
+    loading.value = true
+    error.value = null
+
+    try {
+      console.log('Fetching template with fields for ID:', templateId)
+
+      // Get auth token from the session auth store
+      const auth = useSessionAuth()
+      const token = auth.token.value
+
+      if (!token) {
+        console.warn('No authentication token found when fetching template')
+      }
+
+      // Make API call with authentication headers
+      const { data, error: fetchError } = await useFetch(
+        `/api/measurement-templates/${templateId}`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          // Add cache busting to ensure fresh data
+          key: `template-${templateId}-${Date.now()}`,
+          // Force refresh to avoid caching issues
+          server: false,
+          cache: 'no-cache',
+        }
+      )
+
+      console.log('API response for template with fields:', data.value)
+
+      if (fetchError.value) {
+        console.error('API error response:', fetchError.value)
+        throw new Error(fetchError.value.message || 'Failed to fetch template')
+      }
+
+      if (data.value && data.value.success) {
+        const template = data.value.data
+        console.log('Template with fields loaded successfully:', template)
+
+        // Update the template in the templates array
+        const index = templates.value.findIndex(t => t.id === templateId)
+        if (index !== -1) {
+          templates.value[index] = template
+        }
+
+        return template
+      } else {
+        console.error('Invalid API response format:', data.value)
+        throw new Error('Invalid API response format')
+      }
+    } catch (err: any) {
+      console.error('Error fetching template with fields:', err)
+      error.value = err.message || 'Failed to fetch template with fields'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Reset templates to default
   const resetTemplates = async () => {
     loading.value = true
@@ -240,6 +322,7 @@ export const useMeasurementTemplates = () => {
     unarchiveTemplate,
     deleteTemplate,
     getTemplateById,
+    fetchTemplateWithFields,
     resetTemplates,
   }
 }

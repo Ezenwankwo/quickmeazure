@@ -17,20 +17,50 @@ export async function getUserTemplates(userId: number, includeArchived: boolean 
     // Get database connection
     const db = useDrizzle()
 
-    // Query to get templates
-    const query = and(
-      eq(measurementTemplates.userId, userId),
-      includeArchived ? undefined : eq(measurementTemplates.isArchived, false)
+    // Log the request parameters
+    console.log(`Getting templates for user ${userId}, includeArchived: ${includeArchived}`)
+
+    // First, fetch the templates without the relation to avoid the map error
+    let templatesQuery
+
+    if (includeArchived) {
+      // If includeArchived is true, only filter by userId
+      templatesQuery = db
+        .select()
+        .from(measurementTemplates)
+        .where(eq(measurementTemplates.userId, userId))
+        .orderBy(measurementTemplates.isDefault, measurementTemplates.name)
+    } else {
+      // If includeArchived is false, filter by both userId and isArchived
+      templatesQuery = db
+        .select()
+        .from(measurementTemplates)
+        .where(
+          and(eq(measurementTemplates.userId, userId), eq(measurementTemplates.isArchived, false))
+        )
+        .orderBy(measurementTemplates.isDefault, measurementTemplates.name)
+    }
+
+    const templatesResult = await templatesQuery.execute()
+
+    // Now fetch fields for each template
+    const templates = await Promise.all(
+      templatesResult.map(async template => {
+        const fields = await db
+          .select()
+          .from(measurementFields)
+          .where(eq(measurementFields.templateId, template.id))
+          .execute()
+
+        return {
+          ...template,
+          fields,
+        }
+      })
     )
 
-    // Get templates
-    const templates = await db.query.measurementTemplates.findMany({
-      where: query,
-      with: {
-        fields: true,
-      },
-      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
-    })
+    // Log the result count
+    console.log(`Found ${templates.length} templates for user ${userId}`)
 
     return templates
   } catch (error) {
