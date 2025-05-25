@@ -4,7 +4,7 @@
     <PageHeader title="Settings" />
 
     <!-- Settings Tabs -->
-    <UTabs :items="tabs" class="w-full">
+    <UTabs :items="tabs" variant="link" class="w-full">
       <template #default="{ item }">
         <div class="flex items-center gap-x-2">
           <UIcon :name="item._icon" class="h-5 w-5" />
@@ -76,7 +76,7 @@ const tabs = [
   {
     label: 'Measurements',
     slot: 'measurements',
-    _icon: 'i-heroicons-ruler', // Used in custom template
+    _icon: 'i-heroicons-square-3-stack-3d', // Used in custom template
   },
   {
     label: 'Billing',

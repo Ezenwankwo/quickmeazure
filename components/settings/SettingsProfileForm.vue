@@ -14,83 +14,188 @@
       <UForm :state="form" class="space-y-6" @submit="saveProfile">
         <!-- Avatar -->
         <div class="flex items-center gap-x-6">
-          <img
-            v-if="form.avatar"
-            :src="form.avatar"
-            alt="Profile"
-            class="h-16 w-16 rounded-full object-cover"
-          />
-          <div v-else class="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
-            <UIcon name="i-heroicons-user" class="h-8 w-8 text-gray-400" />
+          <div class="relative group">
+            <img
+              v-if="form.avatar"
+              :src="form.avatar"
+              alt="Profile"
+              class="h-20 w-20 rounded-full object-cover border-2 border-primary-100 shadow-sm group-hover:opacity-90 transition-opacity"
+            />
+            <div
+              v-else
+              class="h-20 w-20 rounded-full bg-gray-100 flex items-center justify-center border-2 border-primary-100 shadow-sm group-hover:bg-gray-200 transition-colors"
+            >
+              <UIcon name="i-heroicons-user" class="h-10 w-10 text-gray-400" />
+            </div>
+            <div
+              class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <UButton
+                color="white"
+                variant="ghost"
+                size="xs"
+                class="rounded-full p-1"
+                icon="i-heroicons-camera"
+                @click="handleAvatarUpload"
+              >
+                <span class="sr-only">Change avatar</span>
+              </UButton>
+            </div>
           </div>
-
-          <UButton color="gray" variant="soft" @click="handleAvatarUpload"> Change avatar </UButton>
+          <div class="flex flex-col">
+            <span class="text-sm font-medium text-gray-700">Profile Photo</span>
+            <span class="text-xs text-gray-500">Upload a professional profile photo</span>
+            <div>
+              <UBadge
+                color="neutral"
+                variant="subtle"
+                class="mt-2 cursor-pointer hover:bg-neutral-200 transition-colors"
+                @click="handleAvatarUpload"
+              >
+                Change photo
+              </UBadge>
+            </div>
+          </div>
         </div>
 
-        <!-- Name -->
-        <UFormGroup label="Name" name="name">
-          <UInput v-model="form.name" placeholder="Your full name" />
-        </UFormGroup>
+        <!-- Form Fields -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+          <!-- Name -->
+          <div class="space-y-2">
+            <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
+            <UInput
+              id="name"
+              v-model="form.name"
+              placeholder="Your full name"
+              required
+              class="w-full"
+              size="lg"
+            />
+          </div>
 
-        <!-- Email -->
-        <UFormGroup label="Email" name="email">
-          <UInput v-model="form.email" type="email" placeholder="your.email@example.com" />
-        </UFormGroup>
+          <!-- Email -->
+          <div class="space-y-2">
+            <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+            <UInput
+              id="email"
+              v-model="form.email"
+              type="email"
+              placeholder="your.email@example.com"
+              required
+              class="w-full"
+              size="lg"
+            />
+          </div>
 
-        <!-- Business Name -->
-        <UFormGroup label="Business Name" name="businessName">
-          <UInput v-model="form.businessName" placeholder="Your business name" />
-        </UFormGroup>
+          <!-- Business Name -->
+          <div class="space-y-2">
+            <label
+for="businessName"
+class="block text-sm font-medium text-gray-700"
+              >Business or Company Name</label
+            >
+            <UInput
+              id="businessName"
+              v-model="form.businessName"
+              placeholder="Your business name"
+              class="w-full"
+              size="lg"
+            />
+          </div>
 
-        <!-- Phone -->
-        <UFormGroup label="Phone" name="phone">
-          <UInput v-model="form.phone" placeholder="Your phone number" />
-        </UFormGroup>
+          <!-- Phone -->
+          <div class="space-y-2">
+            <label for="phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
+            <UInput
+              id="phone"
+              v-model="form.phone"
+              placeholder="Your phone number"
+              class="w-full"
+              size="lg"
+            />
+          </div>
+
+          <!-- Location -->
+          <div class="space-y-2">
+            <label for="location" class="block text-sm font-medium text-gray-700">Location</label>
+            <UInput
+              id="location"
+              v-model="form.location"
+              placeholder="City, Country"
+              class="w-full"
+              size="lg"
+            />
+          </div>
+        </div>
 
         <!-- Specializations -->
-        <UFormGroup
-          label="Specializations"
-          name="specializations"
-          help="Select your areas of specialization"
-        >
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UCheckbox
+        <div class="space-y-3 w-full">
+          <label
+for="specializations"
+class="block text-sm font-medium text-gray-700"
+            >Areas of Specialization</label
+          >
+          <span class="text-xs text-gray-500">Select all the areas you specialize in</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+            <div
               v-for="specialization in specializationOptions"
               :key="specialization.value"
-              v-model="form.specializations"
-              :value="specialization.value"
-              :label="specialization.label"
-              class="p-2 rounded-lg hover:bg-gray-50"
-            />
+              class="p-2 rounded-lg hover:bg-gray-50 border border-gray-100"
+            >
+              <UCheckbox
+                :model-value="form.specializations?.includes(specialization.value)"
+                :label="specialization.label"
+                @update:model-value="updateSpecialization(specialization.value, $event)"
+              />
+            </div>
           </div>
-        </UFormGroup>
+        </div>
 
         <!-- Services -->
-        <UFormGroup label="Services" name="services" help="Select the services you provide">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UCheckbox
+        <div class="space-y-3 w-full">
+          <label
+for="services"
+class="block text-sm font-medium text-gray-700"
+            >Services Offered</label
+          >
+          <span class="text-xs text-gray-500">Select all the services your business provides</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+            <div
               v-for="service in services"
               :key="service.id"
-              v-model="form.services"
-              :value="service.id"
-              :label="service.name"
-              class="p-2 rounded-lg hover:bg-gray-50"
-            />
+              class="p-2 rounded-lg hover:bg-gray-50 border border-gray-100"
+            >
+              <UCheckbox
+                :model-value="form.services?.includes(service.id)"
+                :label="service.name"
+                @update:model-value="updateService(service.id, $event)"
+              />
+            </div>
           </div>
-        </UFormGroup>
+        </div>
 
         <!-- Bio -->
-        <UFormGroup label="Bio" name="bio" help="Brief description for your profile">
-          <UTextarea v-model="form.bio" placeholder="Tell us a little about yourself" />
-        </UFormGroup>
+        <div class="space-y-2 w-full">
+          <label for="bio" class="block text-sm font-medium text-gray-700">Professional Bio</label>
+          <UTextarea
+            id="bio"
+            v-model="form.bio"
+            placeholder="Tell us about your experience, specialties, and what makes your services unique..."
+            :rows="4"
+            class="w-full"
+            size="lg"
+          />
+        </div>
 
         <!-- Form Actions -->
-        <div class="flex justify-end pt-6">
+        <div class="flex justify-end py-2">
           <UButton
-type="submit"
-:loading="isSaving"
-icon="i-heroicons-check"
-color="primary">
+            type="submit"
+            :loading="isSaving"
+            :disabled="!formChanged"
+            icon="i-heroicons-check"
+            color="primary"
+          >
             Save Changes
           </UButton>
         </div>
@@ -100,7 +205,15 @@ color="primary">
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useUserStore } from '~/store/modules/user'
+import type { User } from '~/store/types'
+
+// Get the user store
+const userStore = useUserStore()
+
+// Original profile data to compare changes
+const originalProfile = ref<Partial<User>>({})
 
 // Form state
 const form = ref({
@@ -108,10 +221,62 @@ const form = ref({
   email: '',
   businessName: '',
   phone: '',
-  specializations: [],
-  services: [],
+  location: '',
+  specializations: [] as string[],
+  services: [] as string[],
   bio: '',
   avatar: '',
+})
+
+// Helper functions for checkbox arrays
+const updateSpecialization = (value: string, checked: boolean) => {
+  if (!form.value.specializations) {
+    form.value.specializations = []
+  }
+
+  if (checked) {
+    // Add to array if not already present
+    if (!form.value.specializations.includes(value)) {
+      form.value.specializations.push(value)
+    }
+  } else {
+    // Remove from array
+    form.value.specializations = form.value.specializations.filter(item => item !== value)
+  }
+}
+
+const updateService = (value: string, checked: boolean) => {
+  if (!form.value.services) {
+    form.value.services = []
+  }
+
+  if (checked) {
+    // Add to array if not already present
+    if (!form.value.services.includes(value)) {
+      form.value.services.push(value)
+    }
+  } else {
+    // Remove from array
+    form.value.services = form.value.services.filter(item => item !== value)
+  }
+}
+
+// Track if form has changed
+const formChanged = computed(() => {
+  if (!originalProfile.value) return false
+
+  return (
+    form.value.name !== originalProfile.value.name ||
+    form.value.email !== originalProfile.value.email ||
+    form.value.businessName !== originalProfile.value.businessName ||
+    form.value.phone !== originalProfile.value.phone ||
+    form.value.location !== originalProfile.value.location ||
+    form.value.bio !== originalProfile.value.bio ||
+    form.value.avatar !== originalProfile.value.avatar ||
+    JSON.stringify(form.value.specializations) !==
+      JSON.stringify(originalProfile.value.specializations) ||
+    JSON.stringify(form.value.services) !== JSON.stringify(originalProfile.value.services)
+  )
 })
 
 // Specialization options
@@ -140,25 +305,59 @@ const services = [
 
 const isSaving = ref(false)
 
-// Fetch profile data
+// Fetch profile data from the user store and API
 const fetchProfile = async () => {
   try {
-    const { data } = await useFetch('/api/user/profile')
+    // First check if we have profile data in the store
+    if (userStore.profile) {
+      // Use the store data to populate the form
+      updateFormFromProfile(userStore.profile)
+      originalProfile.value = { ...userStore.profile }
+    }
 
-    if (data.value) {
-      form.value = {
-        ...form.value,
-        ...data.value,
-      }
+    // Fetch the latest data from the API using the store function
+    const result = await userStore.fetchProfile()
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch profile')
+    }
+
+    if (result.data) {
+      // Update the form with the latest data
+      // (The store is already updated by the fetchProfile function)
+      updateFormFromProfile(result.data)
+      originalProfile.value = { ...result.data }
     }
   } catch (err) {
     console.error('Error fetching profile:', err)
     useToast().add({
       title: 'Error loading profile',
       description: 'Please try refreshing the page',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
+  }
+}
+
+// Helper function to update form from profile data
+const updateFormFromProfile = (profileData: any) => {
+  form.value = {
+    name: profileData.name || '',
+    email: profileData.email || '',
+    businessName: profileData.businessName || '',
+    phone: profileData.phone || '',
+    location: profileData.location || '',
+    specializations: profileData.specializations || [],
+    services: profileData.services || [],
+    bio: profileData.bio || '',
+    avatar: profileData.avatar || '',
+  }
+}
+
+// Reset form to original values
+const resetForm = () => {
+  if (originalProfile.value) {
+    updateFormFromProfile(originalProfile.value)
   }
 }
 
@@ -167,27 +366,30 @@ const saveProfile = async () => {
   isSaving.value = true
 
   try {
-    const { _data, error } = await useFetch('/api/user/profile', {
-      method: 'PUT',
-      body: form.value,
-    })
+    // Call the store function to update the profile
+    const result = await userStore.updateProfileData(form.value)
 
-    if (error.value) {
-      throw new Error(error.value.message || 'Failed to update profile')
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to update profile')
+    }
+
+    // Update the original profile data for comparison
+    if (result.data) {
+      originalProfile.value = { ...result.data }
     }
 
     useToast().add({
       title: 'Profile updated',
       description: 'Your profile information has been saved',
       icon: 'i-heroicons-check-circle',
-      color: 'green',
+      color: 'primary',
     })
   } catch (err) {
     console.error('Error saving profile:', err)
     useToast().add({
       title: 'Error saving profile',
       description: 'Please try again',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
   } finally {
@@ -197,14 +399,68 @@ const saveProfile = async () => {
 
 // Handle avatar upload
 const handleAvatarUpload = () => {
-  // This would typically open a file picker and handle the upload
-  // For now, we'll just show a toast
-  useToast().add({
-    title: 'Avatar upload',
-    description: 'This feature is not implemented yet',
-    color: 'blue',
-    icon: 'i-heroicons-information-circle',
-  })
+  // Create a file input element
+  const fileInput = document.createElement('input')
+  fileInput.type = 'file'
+  fileInput.accept = 'image/*'
+
+  // Handle file selection
+  fileInput.onchange = async event => {
+    const target = event.target as HTMLInputElement
+    const file = target.files?.[0]
+
+    if (!file) return
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      useToast().add({
+        title: 'File too large',
+        description: 'Please select an image under 5MB',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-triangle',
+      })
+      return
+    }
+
+    try {
+      // Show loading state
+      isSaving.value = true
+
+      // Use the user store to upload the avatar
+      const result = await userStore.uploadAvatar(file)
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to upload avatar')
+      }
+
+      // Update the form with the new avatar URL
+      if (result.data?.avatarUrl) {
+        form.value.avatar = result.data.avatarUrl
+
+        // The user store is already updated by the uploadAvatar function
+
+        useToast().add({
+          title: 'Avatar updated',
+          description: 'Your profile photo has been updated',
+          color: 'primary',
+          icon: 'i-heroicons-check-circle',
+        })
+      }
+    } catch (err) {
+      console.error('Error uploading avatar:', err)
+      useToast().add({
+        title: 'Upload failed',
+        description: 'Please try again',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-triangle',
+      })
+    } finally {
+      isSaving.value = false
+    }
+  }
+
+  // Trigger the file input click
+  fileInput.click()
 }
 
 // Lifecycle

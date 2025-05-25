@@ -247,6 +247,113 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
+   * Fetch user profile data from the API
+   * @returns Promise with the result of the operation
+   */
+  async function fetchProfile() {
+    try {
+      console.log('User store: Fetching profile data...')
+
+      // Call the profile API endpoint
+      const response = await $fetch('/api/profile', {
+        method: 'GET',
+      })
+
+      if (response) {
+        // Update the store with the fetched profile data
+        updateProfile(response)
+        console.log('User store: Profile data fetched and updated')
+      }
+
+      return {
+        success: true,
+        data: response,
+      }
+    } catch (error: any) {
+      console.error('Profile fetch failed:', error)
+
+      return {
+        success: false,
+        error: error.data?.message || error.message || 'Failed to fetch profile data',
+      }
+    }
+  }
+
+  /**
+   * Update user profile data via API
+   * @param profileData Profile data to update
+   * @returns Promise with the result of the operation
+   */
+  async function updateProfileData(profileData: Partial<User>) {
+    try {
+      console.log('User store: Updating profile data...')
+
+      // Call the profile API endpoint
+      const response = await $fetch('/api/profile', {
+        method: 'PUT',
+        body: profileData,
+      })
+
+      if (response) {
+        // Update the store with the updated profile data
+        updateProfile(response)
+        console.log('User store: Profile data updated successfully')
+      }
+
+      return {
+        success: true,
+        data: response,
+      }
+    } catch (error: any) {
+      console.error('Profile update failed:', error)
+
+      return {
+        success: false,
+        error: error.data?.message || error.message || 'Failed to update profile data',
+      }
+    }
+  }
+
+  /**
+   * Upload user avatar
+   * @param file Avatar image file to upload
+   * @returns Promise with the result of the operation
+   */
+  async function uploadAvatar(file: File) {
+    try {
+      console.log('User store: Uploading avatar...')
+
+      // Create FormData for file upload
+      const formData = new FormData()
+      formData.append('avatar', file)
+
+      // Call the avatar upload API endpoint
+      const response = await $fetch('/api/user/avatar', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (response?.avatarUrl) {
+        // Update only the avatar in the profile
+        updateProfile({ avatar: response.avatarUrl })
+        console.log('User store: Avatar updated successfully')
+      }
+
+      return {
+        success: true,
+        data: response,
+      }
+    } catch (error: any) {
+      console.error('Avatar upload failed:', error)
+
+      return {
+        success: false,
+        error: error.data?.message || error.message || 'Failed to upload avatar',
+      }
+    }
+  }
+
+  /**
    * Change user password
    * @param currentPassword Current password for verification
    * @param newPassword New password to set
@@ -305,6 +412,9 @@ export const useUserStore = defineStore('user', () => {
     reset,
     hasFeatureAccess,
     getRemainingClientSlots,
+    fetchProfile,
+    updateProfileData,
+    uploadAvatar,
     changePassword,
   }
 })

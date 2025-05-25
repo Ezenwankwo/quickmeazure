@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, desc, isNull, or, gt } from 'drizzle-orm'
 import { db } from '~/server/database'
-import { users, businessProfiles } from '~/server/database/schema'
+import { users, subscriptions, plans } from '~/server/database/schema'
 
 export default defineEventHandler(async event => {
   try {
@@ -12,46 +12,71 @@ export default defineEventHandler(async event => {
       })
     }
 
-    const result = await db
+    // Get user data with their latest active subscription
+    const userData = await db
       .select({
-        user: {
-          id: users.id,
-          email: users.email,
-          name: users.name,
-          subscriptionPlan: users.subscriptionPlan,
-          subscriptionExpiry: users.subscriptionExpiry,
-          createdAt: users.createdAt,
-          updatedAt: users.updatedAt,
-        },
-        business: {
-          id: businessProfiles.id,
-          shopName: businessProfiles.shopName,
-          businessType: businessProfiles.businessType,
-          yearsInBusiness: businessProfiles.yearsInBusiness,
-          businessDescription: businessProfiles.businessDescription,
-          phone: businessProfiles.phone,
-          address: businessProfiles.address,
-          city: businessProfiles.city,
-          state: businessProfiles.state,
-          specializations: businessProfiles.specializations,
-          services: businessProfiles.services,
-          createdAt: businessProfiles.createdAt,
-          updatedAt: businessProfiles.updatedAt,
-        },
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        avatar: users.avatar,
+        businessName: users.businessName,
+        phone: users.phone,
+        location: users.location,
+        bio: users.bio,
+        specializations: users.specializations,
+        services: users.services,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
       })
       .from(users)
-      .leftJoin(businessProfiles, eq(users.id, businessProfiles.userId))
       .where(eq(users.id, auth.userId))
       .limit(1)
+      .then(results => results[0])
 
-    if (!result.length) {
+    if (!userData) {
       throw createError({
         statusCode: 404,
         statusMessage: 'User not found',
       })
     }
 
-    return result[0]
+    // Get the user's active subscription
+    const activeSubscription = await db
+      .select({
+        id: subscriptions.id,
+        status: subscriptions.status,
+        startDate: subscriptions.startDate,
+        endDate: subscriptions.endDate,
+        planName: plans.name,
+      })
+      .from(subscriptions)
+      .leftJoin(plans, eq(subscriptions.planId, plans.id))
+      .where(
+        and(
+          eq(subscriptions.userId, auth.userId),
+          eq(subscriptions.status, 'active'),
+          or(isNull(subscriptions.endDate), gt(subscriptions.endDate, new Date()))
+        )
+      )
+      .orderBy(desc(subscriptions.startDate))
+      .limit(1)
+      .then(results => results[0] || null)
+
+    // Combine user data with subscription info
+    return {
+      ...userData,
+      subscription: activeSubscription
+        ? {
+            plan: activeSubscription.planName,
+            status: activeSubscription.status,
+            expiryDate: activeSubscription.endDate,
+          }
+        : {
+            plan: 'free',
+            status: 'inactive',
+            expiryDate: null,
+          },
+    }
   } catch (error) {
     console.error('Error fetching profile:', error)
     throw createError({

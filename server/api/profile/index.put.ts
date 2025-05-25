@@ -14,7 +14,19 @@ export default defineEventHandler(async event => {
     }
 
     const body = await readBody(event)
-    const { name, email, notifications, currentPassword, newPassword } = body
+    const {
+      name,
+      email,
+      businessName,
+      phone,
+      location,
+      bio,
+      specializations,
+      services,
+      avatar,
+      currentPassword,
+      newPassword,
+    } = body
 
     // Get current user
     const currentUser = await db
@@ -31,12 +43,21 @@ export default defineEventHandler(async event => {
       })
     }
 
-    // Build update object
+    // Build update object with all profile fields
     const updateData: any = {
       name,
       email,
+      businessName,
+      phone,
+      location,
+      bio,
       updatedAt: new Date(),
     }
+
+    // Only update these fields if they are provided
+    if (avatar !== undefined) updateData.avatar = avatar
+    if (specializations !== undefined) updateData.specializations = specializations
+    if (services !== undefined) updateData.services = services
 
     // Handle password change if provided
     if (currentPassword && newPassword) {
@@ -54,13 +75,6 @@ export default defineEventHandler(async event => {
 
       // Update the password in the database
       updateData.password = hashedPassword
-    }
-
-    // Handle notifications update if provided
-    if (notifications) {
-      // In a real app, we would store these in a user_preferences table
-      // For now, we'll just acknowledge the update
-      console.log('Notification preferences updated:', notifications)
     }
 
     // Update user
@@ -85,7 +99,15 @@ export default defineEventHandler(async event => {
         id: updatedUser.id,
         name: updatedUser.name,
         email: updatedUser.email,
-        notifications: notifications || { email: false, push: false },
+        businessName: updatedUser.businessName,
+        phone: updatedUser.phone,
+        location: updatedUser.location,
+        bio: updatedUser.bio,
+        specializations: updatedUser.specializations,
+        services: updatedUser.services,
+        avatar: updatedUser.avatar,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
       },
     }
   } catch (error: any) {
