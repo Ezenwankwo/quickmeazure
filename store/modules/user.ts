@@ -246,6 +246,43 @@ export const useUserStore = defineStore('user', () => {
     return Math.max(0, subscriptionDetails.value.clientLimit - currentClientCount)
   }
 
+  /**
+   * Change user password
+   * @param currentPassword Current password for verification
+   * @param newPassword New password to set
+   */
+  async function changePassword(currentPassword: string, newPassword: string) {
+    try {
+      console.log('User store: Attempting password change...')
+
+      // Call the change-password API endpoint
+      const response = await $fetch('/api/user/change-password', {
+        method: 'POST',
+        body: {
+          currentPassword,
+          newPassword,
+        },
+      })
+
+      console.log('User store: Password change response:', response)
+
+      return {
+        success: true,
+        message: 'Password updated successfully',
+      }
+    } catch (error: any) {
+      console.error('Password change failed:', error)
+
+      return {
+        success: false,
+        error:
+          error.data?.message ||
+          error.message ||
+          'An unexpected error occurred during password change',
+      }
+    }
+  }
+
   // Return public store interface
   return {
     // State
@@ -262,9 +299,12 @@ export const useUserStore = defineStore('user', () => {
     init,
     updateProfile,
     updateSubscriptionDetails,
+    getFeaturesByPlan,
+    getClientLimitByPlan,
     updatePreferences,
     reset,
     hasFeatureAccess,
     getRemainingClientSlots,
+    changePassword,
   }
 })

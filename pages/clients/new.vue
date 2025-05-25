@@ -314,7 +314,7 @@ import { useAuthStore, useMeasurementTemplatesStore } from '~/store'
 
 // Set page metadata
 useHead({
-  title: 'Add New Client - QuickMeazure',
+  title: 'Add New Client',
 })
 
 // Initialize measurement templates

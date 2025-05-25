@@ -229,6 +229,7 @@
               required
               size="lg"
               class="w-full"
+              :color="passwordMismatchError ? 'red' : undefined"
               :ui="{ trailing: 'pe-1' }"
             >
               <template #trailing>
@@ -242,7 +243,13 @@
                 />
               </template>
             </UInput>
-            <p v-if="formErrors.confirmPassword" class="mt-1 text-sm text-red-600">
+            <div v-if="passwordMismatchError" class="text-red-500 text-sm mt-1">
+              <div class="flex items-center">
+                <UIcon name="i-heroicons-exclamation-circle" class="mr-1 h-4 w-4" />
+                Passwords do not match
+              </div>
+            </div>
+            <p v-else-if="formErrors.confirmPassword" class="mt-1 text-sm text-red-600">
               {{ formErrors.confirmPassword }}
             </p>
           </div>
@@ -339,6 +346,11 @@ const passwordStrength = computed(() => {
   if (hasSpecialChar(password.value)) strength++
 
   return strength
+})
+
+const passwordMismatchError = computed(() => {
+  // Only show mismatch error if both fields have values and they don't match
+  return password.value && confirmPassword.value && password.value !== confirmPassword.value
 })
 
 // Form validation

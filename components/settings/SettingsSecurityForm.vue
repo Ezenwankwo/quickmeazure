@@ -1,488 +1,422 @@
 <template>
   <div class="space-y-6">
-    <UCard>
+    <UCard class="shadow-md border-0">
       <template #header>
         <div class="flex items-center">
           <UIcon name="i-heroicons-shield-check" class="mr-2 text-primary-500 h-5 w-5" />
           <h2 class="text-xl font-semibold text-gray-900">Security Settings</h2>
         </div>
-        <p class="mt-1 text-sm text-gray-500">
-          Manage your account security and authentication settings.
-        </p>
+        <p class="mt-1 text-sm text-gray-500">Manage your password settings.</p>
       </template>
-
       <div class="space-y-6">
-        <!-- Password Section -->
-        <div>
-          <h3 class="text-base font-medium text-gray-900 mb-4">Password</h3>
+        <div class="bg-gray-50 p-6 rounded-lg border border-gray-100">
+          <h3 class="text-base font-medium text-gray-900 mb-6 flex items-center">
+            <UIcon name="i-heroicons-key" class="mr-2 text-primary-500 h-5 w-5" />
+            Change Password
+          </h3>
+          <UForm :state="passwordForm" class="space-y-6" @submit="updatePassword">
+            <div class="space-y-6">
+              <div class="space-y-2">
+                <label for="currentPassword" class="block text-sm font-medium text-gray-700">
+                  Current Password
+                </label>
+                <UInput
+                  id="currentPassword"
+                  v-model="passwordForm.currentPassword"
+                  :type="showCurrentPassword ? 'text' : 'password'"
+                  placeholder="Enter current password"
+                  size="lg"
+                  class="w-full md:w-1/2"
+                >
+                  <template #trailing>
+                    <UButton
+                      color="gray"
+                      variant="ghost"
+                      icon
+                      @click="showCurrentPassword = !showCurrentPassword"
+                    >
+                      <UIcon
+                        :name="showCurrentPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                      />
+                    </UButton>
+                  </template>
+                </UInput>
+              </div>
 
-          <UForm :state="passwordForm" class="space-y-4" @submit="updatePassword">
-            <UFormGroup label="Current Password" name="currentPassword">
-              <UInput
-                v-model="passwordForm.currentPassword"
-                type="password"
-                placeholder="Enter your current password"
-              />
-            </UFormGroup>
+              <hr class="my-4 border-t border-gray-200" />
 
-            <UFormGroup label="New Password" name="newPassword">
-              <UInput
-                v-model="passwordForm.newPassword"
-                type="password"
-                placeholder="Enter a new password"
-              />
-            </UFormGroup>
+              <div class="space-y-2">
+                <label for="newPassword" class="block text-sm font-medium text-gray-700">
+                  New Password
+                </label>
+                <UInput
+                  id="newPassword"
+                  v-model="passwordForm.newPassword"
+                  :type="showNewPassword ? 'text' : 'password'"
+                  placeholder="Enter new password"
+                  size="lg"
+                  class="w-full md:w-1/2"
+                >
+                  <template #trailing>
+                    <UButton
+                      color="gray"
+                      variant="ghost"
+                      icon
+                      @click="showNewPassword = !showNewPassword"
+                    >
+                      <UIcon
+                        :name="showNewPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                      />
+                    </UButton>
+                  </template>
+                </UInput>
+                <div v-if="passwordForm.newPassword" class="mt-2">
+                  <div class="flex items-center gap-2">
+                    <div
+                      class="h-1 flex-grow rounded-full"
+                      :class="[passwordStrength >= 1 ? 'bg-green-500' : 'bg-gray-200']"
+                    />
+                    <div
+                      class="h-1 flex-grow rounded-full"
+                      :class="[passwordStrength >= 2 ? 'bg-green-500' : 'bg-gray-200']"
+                    />
+                    <div
+                      class="h-1 flex-grow rounded-full"
+                      :class="[passwordStrength >= 3 ? 'bg-green-500' : 'bg-gray-200']"
+                    />
+                    <div
+                      class="h-1 flex-grow rounded-full"
+                      :class="[passwordStrength >= 4 ? 'bg-green-500' : 'bg-gray-200']"
+                    />
+                  </div>
 
-            <UFormGroup label="Confirm New Password" name="confirmPassword">
-              <UInput
-                v-model="passwordForm.confirmPassword"
-                type="password"
-                placeholder="Confirm your new password"
-              />
-            </UFormGroup>
+                  <!-- Password criteria checklist -->
+                  <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-1">
+                    <div class="flex items-center">
+                      <UIcon
+                        :name="
+                          passwordForm.newPassword.length >= 8
+                            ? 'i-heroicons-check-circle'
+                            : 'i-heroicons-x-circle'
+                        "
+                        class="mr-1.5 text-xs"
+                        :class="
+                          passwordForm.newPassword.length >= 8 ? 'text-green-500' : 'text-gray-400'
+                        "
+                      />
+                      <span
+                        class="text-xs"
+                        :class="
+                          passwordForm.newPassword.length >= 8 ? 'text-green-600' : 'text-gray-500'
+                        "
+                        >8+ characters</span
+                      >
+                    </div>
+                    <div class="flex items-center">
+                      <UIcon
+                        :name="
+                          hasUpperCase(passwordForm.newPassword)
+                            ? 'i-heroicons-check-circle'
+                            : 'i-heroicons-x-circle'
+                        "
+                        class="mr-1.5 text-xs"
+                        :class="
+                          hasUpperCase(passwordForm.newPassword)
+                            ? 'text-green-500'
+                            : 'text-gray-400'
+                        "
+                      />
+                      <span
+                        class="text-xs"
+                        :class="
+                          hasUpperCase(passwordForm.newPassword)
+                            ? 'text-green-600'
+                            : 'text-gray-500'
+                        "
+                        >Uppercase letter</span
+                      >
+                    </div>
+                    <div class="flex items-center">
+                      <UIcon
+                        :name="
+                          hasLowerCase(passwordForm.newPassword)
+                            ? 'i-heroicons-check-circle'
+                            : 'i-heroicons-x-circle'
+                        "
+                        class="mr-1.5 text-xs"
+                        :class="
+                          hasLowerCase(passwordForm.newPassword)
+                            ? 'text-green-500'
+                            : 'text-gray-400'
+                        "
+                      />
+                      <span
+                        class="text-xs"
+                        :class="
+                          hasLowerCase(passwordForm.newPassword)
+                            ? 'text-green-600'
+                            : 'text-gray-500'
+                        "
+                        >Lowercase letter</span
+                      >
+                    </div>
+                    <div class="flex items-center">
+                      <UIcon
+                        :name="
+                          hasNumber(passwordForm.newPassword)
+                            ? 'i-heroicons-check-circle'
+                            : 'i-heroicons-x-circle'
+                        "
+                        class="mr-1.5 text-xs"
+                        :class="
+                          hasNumber(passwordForm.newPassword) ? 'text-green-500' : 'text-gray-400'
+                        "
+                      />
+                      <span
+                        class="text-xs"
+                        :class="
+                          hasNumber(passwordForm.newPassword) ? 'text-green-600' : 'text-gray-500'
+                        "
+                        >Number</span
+                      >
+                    </div>
+                    <div class="flex items-center col-span-2">
+                      <UIcon
+                        :name="
+                          hasSpecialChar(passwordForm.newPassword)
+                            ? 'i-heroicons-check-circle'
+                            : 'i-heroicons-x-circle'
+                        "
+                        class="mr-1.5 text-xs"
+                        :class="
+                          hasSpecialChar(passwordForm.newPassword)
+                            ? 'text-green-500'
+                            : 'text-gray-400'
+                        "
+                      />
+                      <span
+                        class="text-xs"
+                        :class="
+                          hasSpecialChar(passwordForm.newPassword)
+                            ? 'text-green-600'
+                            : 'text-gray-500'
+                        "
+                        >Special character</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-            <div class="flex justify-end">
-              <UButton type="submit" :loading="isUpdatingPassword" color="primary">
-                Update Password
-              </UButton>
+              <div class="space-y-2">
+                <label for="confirmPassword" class="block text-sm font-medium text-gray-700">
+                  Confirm New Password
+                </label>
+                <UInput
+                  id="confirmPassword"
+                  v-model="passwordForm.confirmPassword"
+                  :type="showConfirmPassword ? 'text' : 'password'"
+                  placeholder="Confirm new password"
+                  size="lg"
+                  class="w-full md:w-1/2"
+                  :color="passwordMismatchError ? 'red' : undefined"
+                >
+                  <template #trailing>
+                    <UButton
+                      color="gray"
+                      variant="ghost"
+                      icon
+                      @click="showConfirmPassword = !showConfirmPassword"
+                    >
+                      <UIcon
+                        :name="showConfirmPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                      />
+                    </UButton>
+                  </template>
+                </UInput>
+                <div v-if="passwordMismatchError" class="text-red-500 text-sm mt-1">
+                  <div class="flex items-center">
+                    <UIcon name="i-heroicons-exclamation-circle" class="mr-1 h-4 w-4" />
+                    Passwords do not match
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex justify-end space-x-4">
+                <UButton
+                  type="submit"
+                  color="primary"
+                  size="lg"
+                  :loading="isSubmitting"
+                  :disabled="!isFormValid"
+                >
+                  Update Password
+                </UButton>
+              </div>
             </div>
           </UForm>
         </div>
 
-        <!-- Two-Factor Authentication -->
-        <div class="pt-6 border-t border-gray-200">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h3 class="text-base font-medium text-gray-900">Two-Factor Authentication</h3>
-              <p class="text-sm text-gray-500 mt-1">
-                Add an extra layer of security to your account by requiring a verification code.
-              </p>
-            </div>
-            <UToggle v-model="twoFactorEnabled" @change="toggleTwoFactor" />
-          </div>
-
-          <div
-            v-if="twoFactorEnabled"
-            class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
-          >
-            <p class="text-sm text-gray-700 mb-3">
-              Two-factor authentication is currently
-              <span class="font-semibold text-green-600">enabled</span>.
-            </p>
-            <UButton
-              size="sm"
-              color="gray"
-              variant="soft"
-              @click="showDisableTwoFactorModal = true"
-            >
-              Disable Two-Factor Authentication
-            </UButton>
-          </div>
-
-          <div v-else class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p class="text-sm text-gray-700 mb-3">
-              Two-factor authentication is currently
-              <span class="font-semibold text-red-600">disabled</span>.
-            </p>
-            <UButton
-              size="sm"
-              color="primary"
-              variant="soft"
-              @click="showEnableTwoFactorModal = true"
-            >
-              Enable Two-Factor Authentication
-            </UButton>
-          </div>
-        </div>
-
-        <!-- Session Management -->
-        <div class="pt-6 border-t border-gray-200">
-          <div class="flex items-center justify-between mb-4">
-            <div>
-              <h3 class="text-base font-medium text-gray-900">Active Sessions</h3>
-              <p class="text-sm text-gray-500 mt-1">
-                Manage your active sessions across different devices.
-              </p>
-            </div>
-            <UButton
-              size="sm"
-              color="red"
-              variant="soft"
-              icon="i-heroicons-power"
-              :loading="isLoggingOut"
-              @click="logoutAllSessions"
-            >
-              Logout All Devices
-            </UButton>
-          </div>
-
-          <div class="mt-4 space-y-3">
-            <div
-              v-for="(session, index) in activeSessions"
-              :key="index"
-              class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
-            >
-              <div class="flex items-center">
-                <UIcon :name="getDeviceIcon(session.device)" class="h-5 w-5 text-gray-500 mr-3" />
-                <div>
-                  <p class="text-sm font-medium text-gray-900">
-                    {{ session.device }}
-                  </p>
-                  <p class="text-xs text-gray-500">
-                    {{ session.location }} • Last active {{ session.lastActive }}
-                  </p>
-                </div>
-              </div>
-              <UButton
-v-if="session.current"
-size="xs"
-color="green"
-variant="soft"
-disabled>
-                Current
-              </UButton>
-              <UButton
-                v-else
-                size="xs"
-                color="red"
-                variant="soft"
-                icon="i-heroicons-x-mark"
-                @click="terminateSession(session.id)"
-              >
-                Terminate
-              </UButton>
-            </div>
-          </div>
+        <!-- Password Tips -->
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <h4 class="text-sm font-medium text-blue-800 mb-2 flex items-center">
+            <UIcon name="i-heroicons-information-circle" class="mr-2 h-5 w-5" />
+            Password Security Tips
+          </h4>
+          <ul class="text-xs text-blue-700 space-y-1 ml-7 list-disc">
+            <li>Use a unique password you don't use elsewhere</li>
+            <li>Include uppercase and lowercase letters, numbers, and symbols</li>
+            <li>Avoid using easily guessable information like birthdays</li>
+            <li>Consider using a password manager for added security</li>
+          </ul>
         </div>
       </div>
     </UCard>
-
-    <!-- Enable 2FA Modal -->
-    <UModal v-model="showEnableTwoFactorModal">
-      <UCard>
-        <template #header>
-          <h3 class="text-lg font-semibold text-gray-900">Enable Two-Factor Authentication</h3>
-        </template>
-
-        <div class="space-y-4">
-          <p class="text-sm text-gray-700">
-            Scan the QR code below with your authenticator app to enable two-factor authentication.
-          </p>
-
-          <div class="flex justify-center py-4">
-            <div
-              class="h-48 w-48 bg-gray-100 flex items-center justify-center border border-gray-300 rounded-lg"
-            >
-              <UIcon name="i-heroicons-qr-code" class="h-24 w-24 text-gray-400" />
-            </div>
-          </div>
-
-          <UFormGroup label="Verification Code" help="Enter the code from your authenticator app">
-            <UInput v-model="twoFactorCode" placeholder="Enter 6-digit code" />
-          </UFormGroup>
-        </div>
-
-        <template #footer>
-          <div class="flex justify-end gap-3">
-            <UButton color="gray" variant="ghost" @click="showEnableTwoFactorModal = false">
-              Cancel
-            </UButton>
-            <UButton color="primary" :loading="isEnablingTwoFactor" @click="enableTwoFactor">
-              Verify and Enable
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
-
-    <!-- Disable 2FA Modal -->
-    <UModal v-model="showDisableTwoFactorModal">
-      <UCard>
-        <template #header>
-          <div class="flex items-center">
-            <UIcon name="i-heroicons-exclamation-triangle" class="mr-2 text-yellow-500 h-5 w-5" />
-            <h3 class="text-lg font-semibold text-gray-900">Disable Two-Factor Authentication</h3>
-          </div>
-        </template>
-
-        <div class="space-y-4">
-          <p class="text-sm text-gray-700">
-            Are you sure you want to disable two-factor authentication? This will make your account
-            less secure.
-          </p>
-
-          <UFormGroup label="Password" help="Confirm your password to continue">
-            <UInput
-              v-model="disableTwoFactorPassword"
-              type="password"
-              placeholder="Enter your password"
-            />
-          </UFormGroup>
-        </div>
-
-        <template #footer>
-          <div class="flex justify-end gap-3">
-            <UButton color="gray" variant="ghost" @click="showDisableTwoFactorModal = false">
-              Cancel
-            </UButton>
-            <UButton color="red" :loading="isDisablingTwoFactor" @click="disableTwoFactor">
-              Disable Two-Factor
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed } from 'vue'
+import { useToast } from '#imports'
+import { useUserStore } from '~/store/modules/user'
 
-// Password form
+const toast = useToast()
+const userStore = useUserStore()
+
 const passwordForm = ref({
   currentPassword: '',
   newPassword: '',
   confirmPassword: '',
 })
 
-// Two-factor auth
-const twoFactorEnabled = ref(false)
-const twoFactorCode = ref('')
-const showEnableTwoFactorModal = ref(false)
-const showDisableTwoFactorModal = ref(false)
-const disableTwoFactorPassword = ref('')
+const showCurrentPassword = ref(false)
+const showNewPassword = ref(false)
+const showConfirmPassword = ref(false)
+const isSubmitting = ref(false)
 
-// Loading states
-const isUpdatingPassword = ref(false)
-const isEnablingTwoFactor = ref(false)
-const isDisablingTwoFactor = ref(false)
-const isLoggingOut = ref(false)
+// Password validation functions
+const hasLowerCase = (str: string) => /[a-z]/.test(str)
+const hasUpperCase = (str: string) => /[A-Z]/.test(str)
+const hasNumber = (str: string) => /\d/.test(str)
+const hasSpecialChar = (str: string) => /[!@#$%^&*()_+\-={}();':"\\|,.<>/?]/.test(str)
 
-// Sessions
-const activeSessions = ref([
-  {
-    id: '1',
-    device: 'MacBook Pro (Chrome)',
-    location: 'New York, USA',
-    lastActive: 'Just now',
-    current: true,
-  },
-  {
-    id: '2',
-    device: 'iPhone 13 (Safari)',
-    location: 'New York, USA',
-    lastActive: '2 hours ago',
-    current: false,
-  },
-  {
-    id: '3',
-    device: 'Windows PC (Firefox)',
-    location: 'Chicago, USA',
-    lastActive: '3 days ago',
-    current: false,
-  },
-])
+// Calculate password strength
+const passwordStrength = computed(() => {
+  if (!passwordForm.value.newPassword) return 0
 
-// Fetch security settings
-const fetchSecuritySettings = async () => {
+  let strength = 0
+  if (passwordForm.value.newPassword.length >= 8) strength++
+  if (hasLowerCase(passwordForm.value.newPassword) && hasUpperCase(passwordForm.value.newPassword))
+    strength++
+  if (hasNumber(passwordForm.value.newPassword)) strength++
+  if (hasSpecialChar(passwordForm.value.newPassword)) strength++
+
+  return strength
+})
+
+// Check if passwords match
+const passwordMismatchError = computed(() => {
+  // Only show mismatch error if both fields have values and they don't match
+  return (
+    passwordForm.value.newPassword &&
+    passwordForm.value.confirmPassword &&
+    passwordForm.value.newPassword !== passwordForm.value.confirmPassword
+  )
+})
+
+// Form validation
+const isFormValid = computed(() => {
+  // Check if all required fields are filled
+  const fieldsValid =
+    !!passwordForm.value.currentPassword &&
+    !!passwordForm.value.newPassword &&
+    passwordForm.value.newPassword === passwordForm.value.confirmPassword
+
+  // Check if password meets all criteria
+  const passwordValid =
+    passwordForm.value.newPassword.length >= 8 &&
+    hasUpperCase(passwordForm.value.newPassword) &&
+    hasLowerCase(passwordForm.value.newPassword) &&
+    hasNumber(passwordForm.value.newPassword) &&
+    hasSpecialChar(passwordForm.value.newPassword)
+
+  const result = fieldsValid && passwordValid
+  console.log('Form validation:', {
+    fieldsValid,
+    passwordValid,
+    isValid: result,
+    currentPassword: !!passwordForm.value.currentPassword,
+    newPassword: !!passwordForm.value.newPassword,
+    passwordsMatch: passwordForm.value.newPassword === passwordForm.value.confirmPassword,
+    passwordLength: passwordForm.value.newPassword
+      ? passwordForm.value.newPassword.length >= 8
+      : false,
+    hasUpperCase: passwordForm.value.newPassword
+      ? hasUpperCase(passwordForm.value.newPassword)
+      : false,
+    hasLowerCase: passwordForm.value.newPassword
+      ? hasLowerCase(passwordForm.value.newPassword)
+      : false,
+    hasNumber: passwordForm.value.newPassword ? hasNumber(passwordForm.value.newPassword) : false,
+    hasSpecialChar: passwordForm.value.newPassword
+      ? hasSpecialChar(passwordForm.value.newPassword)
+      : false,
+  })
+  return result
+})
+
+async function updatePassword() {
+  if (!isFormValid.value) return
+
+  isSubmitting.value = true
   try {
-    // In a real app, you would fetch these from an API
-    // For now, we'll just use the mock data
-    twoFactorEnabled.value = false
-  } catch (err) {
-    console.error('Error fetching security settings:', err)
-    useToast().add({
-      title: 'Error loading security settings',
-      description: 'Please try refreshing the page',
-      color: 'red',
-      icon: 'i-heroicons-exclamation-triangle',
-    })
-  }
-}
+    console.log('Submitting password change request to user store...')
 
-// Update password
-const updatePassword = async () => {
-  isUpdatingPassword.value = true
+    // Call the changePassword method from the user store
+    const result = await userStore.changePassword(
+      passwordForm.value.currentPassword,
+      passwordForm.value.newPassword
+    )
 
-  try {
-    // Validate passwords match
-    if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-      throw new Error('New passwords do not match')
+    console.log('Password change result:', result)
+
+    if (result.success) {
+      // Success response
+      toast.add({
+        title: 'Password updated',
+        description: 'Your password has been successfully changed',
+        icon: 'i-heroicons-check-circle',
+        color: 'primary',
+      })
+
+      // Reset form
+      passwordForm.value = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }
+      showCurrentPassword.value = false
+      showNewPassword.value = false
+      showConfirmPassword.value = false
+    } else {
+      // Handle error from the store method
+      throw new Error(result.error || 'Failed to update password')
     }
-
-    // In a real app, you would call an API here
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    useToast().add({
-      title: 'Password updated',
-      description: 'Your password has been successfully changed',
-      icon: 'i-heroicons-check-circle',
-      color: 'green',
-    })
-
-    // Reset form
-    passwordForm.value = {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    }
-  } catch (err) {
-    console.error('Error updating password:', err)
-    useToast().add({
-      title: 'Error updating password',
-      description: err.message || 'Please try again',
-      color: 'red',
+  } catch (error) {
+    console.error('Failed to update password:', error)
+    toast.add({
+      title: 'Password Update Failed',
+      description: error.message || 'An unexpected error occurred. Please try again.',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
   } finally {
-    isUpdatingPassword.value = false
-  }
-}
-
-// Toggle two-factor auth
-const toggleTwoFactor = () => {
-  if (twoFactorEnabled.value) {
-    showDisableTwoFactorModal.value = true
-  } else {
-    showEnableTwoFactorModal.value = true
-  }
-  // Reset the toggle to its previous state until the action is confirmed
-  twoFactorEnabled.value = !twoFactorEnabled.value
-}
-
-// Enable two-factor auth
-const enableTwoFactor = async () => {
-  isEnablingTwoFactor.value = true
-
-  try {
-    // In a real app, you would call an API here
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    twoFactorEnabled.value = true
-    showEnableTwoFactorModal.value = false
-    twoFactorCode.value = ''
-
-    useToast().add({
-      title: 'Two-factor authentication enabled',
-      description: 'Your account is now more secure',
-      icon: 'i-heroicons-check-circle',
-      color: 'green',
-    })
-  } catch (err) {
-    console.error('Error enabling 2FA:', err)
-    useToast().add({
-      title: 'Error enabling two-factor authentication',
-      description: 'Please try again',
-      color: 'red',
-      icon: 'i-heroicons-exclamation-triangle',
-    })
-  } finally {
-    isEnablingTwoFactor.value = false
-  }
-}
-
-// Disable two-factor auth
-const disableTwoFactor = async () => {
-  isDisablingTwoFactor.value = true
-
-  try {
-    // In a real app, you would call an API here
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    twoFactorEnabled.value = false
-    showDisableTwoFactorModal.value = false
-    disableTwoFactorPassword.value = ''
-
-    useToast().add({
-      title: 'Two-factor authentication disabled',
-      description: 'Two-factor authentication has been turned off',
-      icon: 'i-heroicons-check-circle',
-      color: 'yellow',
-    })
-  } catch (err) {
-    console.error('Error disabling 2FA:', err)
-    useToast().add({
-      title: 'Error disabling two-factor authentication',
-      description: 'Please try again',
-      color: 'red',
-      icon: 'i-heroicons-exclamation-triangle',
-    })
-  } finally {
-    isDisablingTwoFactor.value = false
-  }
-}
-
-// Terminate session
-const terminateSession = async sessionId => {
-  try {
-    // In a real app, you would call an API here
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // Remove the session from the list
-    activeSessions.value = activeSessions.value.filter(session => session.id !== sessionId)
-
-    useToast().add({
-      title: 'Session terminated',
-      description: 'The device has been logged out',
-      icon: 'i-heroicons-check-circle',
-      color: 'green',
-    })
-  } catch (err) {
-    console.error('Error terminating session:', err)
-    useToast().add({
-      title: 'Error terminating session',
-      description: 'Please try again',
-      color: 'red',
-      icon: 'i-heroicons-exclamation-triangle',
-    })
-  }
-}
-
-// Logout all sessions
-const logoutAllSessions = async () => {
-  isLoggingOut.value = true
-
-  try {
-    // In a real app, you would call an API here
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // Keep only the current session
-    activeSessions.value = activeSessions.value.filter(session => session.current)
-
-    useToast().add({
-      title: 'All devices logged out',
-      description: 'All other devices have been logged out',
-      icon: 'i-heroicons-check-circle',
-      color: 'green',
-    })
-  } catch (err) {
-    console.error('Error logging out all sessions:', err)
-    useToast().add({
-      title: 'Error logging out devices',
-      description: 'Please try again',
-      color: 'red',
-      icon: 'i-heroicons-exclamation-triangle',
-    })
-  } finally {
-    isLoggingOut.value = false
-  }
-}
-
-// Get device icon
-const getDeviceIcon = device => {
-  if (device.includes('iPhone') || device.includes('iPad')) {
-    return 'i-heroicons-device-phone-mobile'
-  } else if (device.includes('Android')) {
-    return 'i-heroicons-device-phone-mobile'
-  } else if (device.includes('Mac')) {
-    return 'i-heroicons-computer-desktop'
-  } else {
-    return 'i-heroicons-computer-desktop'
+    isSubmitting.value = false
   }
 }
 
 // Lifecycle
-onMounted(async () => {
-  await fetchSecuritySettings()
+onMounted(() => {
+  // Nothing to fetch since we only have password functionality now
 })
 </script>

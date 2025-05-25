@@ -19,13 +19,6 @@
         </div>
       </template>
 
-      <!-- Notifications Tab -->
-      <template #notifications>
-        <div class="py-6">
-          <SettingsNotificationsForm />
-        </div>
-      </template>
-
       <!-- Security Tab -->
       <template #security>
         <div class="py-6">
@@ -74,11 +67,6 @@ const tabs = [
     label: 'Profile',
     slot: 'profile',
     _icon: 'i-heroicons-user-circle', // Used in custom template
-  },
-  {
-    label: 'Notifications',
-    slot: 'notifications',
-    _icon: 'i-heroicons-bell', // Used in custom template
   },
   {
     label: 'Security',

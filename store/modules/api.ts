@@ -172,12 +172,9 @@ export const useApiStore = defineStore<ApiState>('api', () => {
 
         // Ensure we have a valid response
         if (response === undefined || response === null) {
-          console.error('API Store: Empty response received')
-          return {
-            data: null as unknown as T,
-            success: false,
-            error: 'Empty response received from server',
-          }
+          const error = new Error('Empty response received from server')
+          console.error('API Store: Empty response received', { url })
+          throw error
         }
 
         // Format the response to ensure it matches our ApiResponse interface
@@ -185,18 +182,14 @@ export const useApiStore = defineStore<ApiState>('api', () => {
         console.log('API Store: Formatted response:', formattedResponse)
         return formattedResponse
       } catch (error: any) {
-        // Handle errors and return a formatted error response
+        // Handle errors and log them before rethrowing
         console.error('API Store: GET request failed', {
           url,
           error: error.message,
           stack: error.stack,
         })
 
-        return {
-          data: null as unknown as T,
-          success: false,
-          error: error.message || 'An error occurred during the request',
-        }
+        throw error
       }
     })
   }
@@ -212,23 +205,25 @@ export const useApiStore = defineStore<ApiState>('api', () => {
     const nuxtApp = useNuxtApp()
     return trackRequest(async () => {
       try {
+        console.log('API Store: Making POST request to', url, data)
         const response = await nuxtApp.$api.post<T>(url, data, options)
 
         if (response === undefined || response === null) {
-          return {
-            data: null as unknown as T,
-            success: false,
-            error: 'Empty response received from server',
-          }
+          const error = new Error('Empty response received from server')
+          console.error('API Store: Empty response received', { url, data })
+          throw error
         }
 
+        console.log('API Store: POST response received:', response)
         return formatResponse<T>(response)
       } catch (error: any) {
-        return {
-          data: null as unknown as T,
-          success: false,
-          error: error.message || 'An error occurred during the request',
-        }
+        console.error('API Store: POST request failed', {
+          url,
+          data,
+          error: error.message,
+          stack: error.stack,
+        })
+        throw error
       }
     })
   }
@@ -244,23 +239,25 @@ export const useApiStore = defineStore<ApiState>('api', () => {
     const nuxtApp = useNuxtApp()
     return trackRequest(async () => {
       try {
+        console.log('API Store: Making PUT request to', url, data)
         const response = await nuxtApp.$api.put<T>(url, data, options)
 
         if (response === undefined || response === null) {
-          return {
-            data: null as unknown as T,
-            success: false,
-            error: 'Empty response received from server',
-          }
+          const error = new Error('Empty response received from server')
+          console.error('API Store: Empty response received', { url, data })
+          throw error
         }
 
+        console.log('API Store: PUT response received:', response)
         return formatResponse<T>(response)
       } catch (error: any) {
-        return {
-          data: null as unknown as T,
-          success: false,
-          error: error.message || 'An error occurred during the request',
-        }
+        console.error('API Store: PUT request failed', {
+          url,
+          data,
+          error: error.message,
+          stack: error.stack,
+        })
+        throw error
       }
     })
   }
@@ -272,23 +269,24 @@ export const useApiStore = defineStore<ApiState>('api', () => {
     const nuxtApp = useNuxtApp()
     return trackRequest(async () => {
       try {
+        console.log('API Store: Making DELETE request to', url)
         const response = await nuxtApp.$api.delete<T>(url, options)
 
         if (response === undefined || response === null) {
-          return {
-            data: null as unknown as T,
-            success: false,
-            error: 'Empty response received from server',
-          }
+          const error = new Error('Empty response received from server')
+          console.error('API Store: Empty response received', { url })
+          throw error
         }
 
+        console.log('API Store: DELETE response received:', response)
         return formatResponse<T>(response)
       } catch (error: any) {
-        return {
-          data: null as unknown as T,
-          success: false,
-          error: error.message || 'An error occurred during the request',
-        }
+        console.error('API Store: DELETE request failed', {
+          url,
+          error: error.message,
+          stack: error.stack,
+        })
+        throw error
       }
     })
   }
@@ -304,23 +302,25 @@ export const useApiStore = defineStore<ApiState>('api', () => {
     const nuxtApp = useNuxtApp()
     return trackRequest(async () => {
       try {
+        console.log('API Store: Making PATCH request to', url, data)
         const response = await nuxtApp.$api.patch<T>(url, data, options)
 
         if (response === undefined || response === null) {
-          return {
-            data: null as unknown as T,
-            success: false,
-            error: 'Empty response received from server',
-          }
+          const error = new Error('Empty response received from server')
+          console.error('API Store: Empty response received', { url, data })
+          throw error
         }
 
+        console.log('API Store: PATCH response received:', response)
         return formatResponse<T>(response)
       } catch (error: any) {
-        return {
-          data: null as unknown as T,
-          success: false,
-          error: error.message || 'An error occurred during the request',
-        }
+        console.error('API Store: PATCH request failed', {
+          url,
+          data,
+          error: error.message,
+          stack: error.stack,
+        })
+        throw error
       }
     })
   }
