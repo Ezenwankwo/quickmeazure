@@ -34,7 +34,7 @@ export default defineEventHandler(async event => {
       const db = useDrizzle()
 
       // Read request body (plan change details)
-      const { planId, billingInterval } = await readBody(event)
+      const { planId, billingInterval, paymentReference, cardDetails } = await readBody(event)
 
       if (!planId) {
         throw createError({
@@ -124,6 +124,9 @@ export default defineEventHandler(async event => {
       if (plan.price > 0) {
         console.log('Creating subscription payment record for plan change')
         try {
+          // Use the provided payment reference if available, otherwise generate one
+          const reference = paymentReference || `plan-change-${Date.now()}`
+
           const paymentRecord = await db
             .insert(tables.subscriptionPayments)
             .values({
@@ -132,7 +135,7 @@ export default defineEventHandler(async event => {
               amount: price,
               currency: 'NGN',
               status: 'successful',
-              reference: `plan-change-${Date.now()}`,
+              reference: reference,
               description: `Subscription changed to ${plan.name} (${billingInterval === 'year' ? 'yearly' : 'monthly'})`,
               provider: 'paystack',
               metadata: {
@@ -145,9 +148,55 @@ export default defineEventHandler(async event => {
             .returning()
 
           console.log('Created subscription payment record:', paymentRecord[0]?.id)
+
+          // Create or update payment method if card details are provided
+          if (cardDetails) {
+            console.log('Processing payment method for plan change')
+
+            // Check if the user already has a payment method
+            const existingPaymentMethod = await db.query.paymentMethods.findFirst({
+              where: eq(tables.paymentMethods.userId, Number(userId)),
+            })
+
+            if (existingPaymentMethod) {
+              // Update the existing payment method
+              console.log('Updating existing payment method for user ID:', userId)
+
+              await db
+                .update(tables.paymentMethods)
+                .set({
+                  type: cardDetails.type || 'card',
+                  last4: cardDetails.last4,
+                  expiryMonth: cardDetails.expiryMonth,
+                  expiryYear: cardDetails.expiryYear,
+                  brand: cardDetails.brand,
+                  provider: 'paystack',
+                  providerId: cardDetails.providerId || reference,
+                  metadata: cardDetails.metadata || {},
+                  updatedAt: new Date(),
+                })
+                .where(eq(tables.paymentMethods.id, existingPaymentMethod.id))
+            } else {
+              // Create a new payment method
+              console.log('Creating new payment method for user ID:', userId)
+
+              await db.insert(tables.paymentMethods).values({
+                userId: Number(userId),
+                type: cardDetails.type || 'card',
+                last4: cardDetails.last4,
+                expiryMonth: cardDetails.expiryMonth,
+                expiryYear: cardDetails.expiryYear,
+                brand: cardDetails.brand,
+                isDefault: true, // Always true since it's the only one
+                provider: 'paystack',
+                providerId: cardDetails.providerId || reference,
+                metadata: cardDetails.metadata || {},
+              })
+            }
+          }
         } catch (paymentError) {
           // Log the error but don't fail the whole operation
-          console.error('Failed to create subscription payment record:', paymentError)
+          console.error('Failed to process payment information:', paymentError)
         }
       }
 

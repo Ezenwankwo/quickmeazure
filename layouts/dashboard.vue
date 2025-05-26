@@ -13,9 +13,10 @@
         <ClientOnly>
           <!-- Navigation for authenticated users -->
           <div class="flex items-center space-x-2 sm:space-x-4">
+            <!-- Notification Drawer -->
             <UDrawer v-model="isNotificationsOpen" direction="right">
               <template #default>
-                <UChip :text="notifications.length" size="3xl">
+                <UChip :text="notificationStore.unreadCount" size="3xl">
                   <UButton
                     icon="i-heroicons-bell"
                     color="neutral"
@@ -39,12 +40,16 @@
 
                   <div class="space-y-3">
                     <div
-                      v-for="(notification, index) in notifications"
-                      :key="index"
+                      v-for="notification in notificationStore.notifications"
+                      :key="notification.id"
                       class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                      @click="markNotificationAsRead(notification.id)"
                     >
                       <div class="flex items-start gap-3">
-                        <UIcon :name="notification.icon" class="text-primary-600 mt-0.5 size-5" />
+                        <UIcon
+                          :name="getNotificationIcon(notification)"
+                          class="text-primary-600 mt-0.5 size-5"
+                        />
                         <div class="flex-1">
                           <div class="font-medium">
                             {{ notification.title }}
@@ -53,7 +58,17 @@
                             {{ notification.message }}
                           </p>
                           <div class="text-xs text-gray-500 mt-1">
-                            {{ notification.time }}
+                            {{ formatNotificationDate(notification.createdAt) }}
+                          </div>
+                          <div v-if="notification.actionUrl" class="mt-2">
+                            <UButton
+                              size="xs"
+                              :to="notification.actionUrl"
+                              class="text-xs"
+                              @click.stop
+                            >
+                              {{ notification.actionText || 'View' }}
+                            </UButton>
                           </div>
                         </div>
                         <UBadge
@@ -68,14 +83,30 @@
                       </div>
                     </div>
 
-                    <div v-if="notifications.length === 0" class="text-center py-8 text-gray-500">
+                    <div
+                      v-if="notificationStore.notifications.length === 0"
+                      class="text-center py-8 text-gray-500"
+                    >
                       <UIcon name="i-heroicons-inbox" class="mx-auto mb-2 size-8" />
                       <p>No notifications</p>
+                    </div>
+
+                    <div v-if="notificationStore.notifications.length > 0" class="pt-3 border-t">
+                      <UButton
+                        block
+                        color="gray"
+                        variant="soft"
+                        size="sm"
+                        @click="markAllNotificationsAsRead"
+                      >
+                        Mark all as read
+                      </UButton>
                     </div>
                   </div>
                 </div>
               </template>
             </UDrawer>
+
             <div class="relative dropdown-container">
               <UButton
                 color="gray"
@@ -84,7 +115,7 @@
                 trailing-icon="i-heroicons-chevron-down"
                 @click="isDropdownOpen = !isDropdownOpen"
               >
-                <span class="hidden sm:inline">{{ user?.name || 'User' }}</span>
+                <span class="hidden sm:inline">{{ authStore.user?.name || 'User' }}</span>
                 <UIcon name="i-heroicons-user-circle" class="sm:hidden text-lg" />
               </UButton>
 
@@ -277,56 +308,76 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useAuthStore } from '~/store/modules/auth'
 import { useSubscriptionStore } from '~/store/modules/subscription'
+import { useNotificationStore } from '~/store/modules/notification'
+import { formatDistanceToNow } from 'date-fns'
 
 const authStore = useAuthStore()
-const user = computed(() => authStore.user)
+const notificationStore = useNotificationStore()
 const route = useRoute()
 
 // State for dropdowns and drawers
 const isDropdownOpen = ref(false)
 const isNotificationsOpen = ref(false)
 
-// Dummy notifications data
-const notifications = ref([
-  {
-    id: 1,
-    title: 'New Order',
-    message: 'You have received a new order from John Doe',
-    time: '10 minutes ago',
-    icon: 'i-heroicons-shopping-bag',
-    read: false,
-  },
-  {
-    id: 2,
-    title: 'Measurement Updated',
-    message: 'Client Sarah Johnson updated her measurements',
-    time: '2 hours ago',
-    icon: 'i-heroicons-variable',
-    read: false,
-  },
-  {
-    id: 3,
-    title: 'Payment Received',
-    message: 'Payment of $150 received for order #1234',
-    time: 'Yesterday',
-    icon: 'i-heroicons-banknotes',
-    read: true,
-  },
-  {
-    id: 4,
-    title: 'Style Added',
-    message: 'New style "Summer Collection" has been added',
-    time: '3 days ago',
-    icon: 'i-heroicons-swatch',
-    read: true,
-  },
-])
+// Format notification date to relative time (e.g., "2 hours ago")
+const formatNotificationDate = date => {
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    return formatDistanceToNow(dateObj, { addSuffix: true })
+  } catch (_error) {
+    return 'Unknown date'
+  }
+}
+
+// Get icon based on notification type and severity
+const getNotificationIcon = notification => {
+  if (notification.type === 'payment') {
+    return notification.severity === 'critical'
+      ? 'i-heroicons-credit-card-solid'
+      : 'i-heroicons-credit-card'
+  } else if (notification.type === 'subscription') {
+    return notification.severity === 'critical'
+      ? 'i-heroicons-calendar-solid'
+      : 'i-heroicons-calendar'
+  } else if (notification.type === 'usage') {
+    return notification.severity === 'critical'
+      ? 'i-heroicons-chart-bar-solid'
+      : 'i-heroicons-chart-bar'
+  } else {
+    return notification.severity === 'critical'
+      ? 'i-heroicons-exclamation-circle-solid'
+      : 'i-heroicons-information-circle'
+  }
+}
+
+// Mark notification as read
+const markNotificationAsRead = async id => {
+  try {
+    await notificationStore.markAsRead(id)
+  } catch (_error) {
+    console.error('Failed to mark notification as read:', _error)
+  }
+}
+
+// Mark all notifications as read
+const markAllNotificationsAsRead = async () => {
+  try {
+    await notificationStore.markAllAsRead()
+  } catch (_error) {
+    console.error('Failed to mark all notifications as read:', _error)
+  }
+}
 
 // Close dropdown when clicking outside or on route change
 onMounted(() => {
+  // Fetch notifications on component mount
+  notificationStore.fetchNotifications()
+  // Run notification checks to generate client-side notifications
+  notificationStore.runNotificationChecks()
+
   document.addEventListener('click', e => {
     const dropdown = document.querySelector('.dropdown-container')
     if (isDropdownOpen.value && dropdown && !dropdown.contains(e.target)) {

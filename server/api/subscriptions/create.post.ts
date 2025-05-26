@@ -64,6 +64,7 @@ export default defineEventHandler(async event => {
         paymentReference,
         billingPeriod,
         amount,
+        cardDetails, // Added to capture card details from payment provider
       } = await readBody(event)
 
       // Validate required fields - planId and billingPeriod are always required
@@ -211,6 +212,58 @@ export default defineEventHandler(async event => {
             ).getTime() / 1000
           ),
         })
+
+        // For paid plans, save or update the payment method
+        // Using the single payment method approach - each user has only one payment method
+        if (!isFreeOrGrowthPlan && paymentReference && cardDetails) {
+          try {
+            console.log('Processing payment method for subscription')
+
+            // Check if the user already has a payment method
+            const existingPaymentMethod = await db.query.paymentMethods.findFirst({
+              where: eq(tables.paymentMethods.userId, Number(userId)),
+            })
+
+            if (existingPaymentMethod) {
+              // Update the existing payment method
+              console.log('Updating existing payment method for user ID:', userId)
+
+              await db
+                .update(tables.paymentMethods)
+                .set({
+                  type: cardDetails.type || 'card',
+                  last4: cardDetails.last4,
+                  expiryMonth: cardDetails.expiryMonth,
+                  expiryYear: cardDetails.expiryYear,
+                  brand: cardDetails.brand,
+                  provider: 'paystack',
+                  providerId: cardDetails.providerId || paymentReference,
+                  metadata: cardDetails.metadata || {},
+                  updatedAt: new Date(),
+                })
+                .where(eq(tables.paymentMethods.id, existingPaymentMethod.id))
+            } else {
+              // Create a new payment method
+              console.log('Creating new payment method for user ID:', userId)
+
+              await db.insert(tables.paymentMethods).values({
+                userId: Number(userId),
+                type: cardDetails.type || 'card',
+                last4: cardDetails.last4,
+                expiryMonth: cardDetails.expiryMonth,
+                expiryYear: cardDetails.expiryYear,
+                brand: cardDetails.brand,
+                isDefault: true, // Always true since it's the only one
+                provider: 'paystack',
+                providerId: cardDetails.providerId || paymentReference,
+                metadata: cardDetails.metadata || {},
+              })
+            }
+          } catch (paymentMethodError) {
+            // Log the error but don't fail the subscription creation
+            console.error('Error processing payment method:', paymentMethodError)
+          }
+        }
 
         return {
           success: true,

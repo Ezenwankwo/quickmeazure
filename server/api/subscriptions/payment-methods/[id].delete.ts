@@ -1,6 +1,7 @@
 /**
- * Delete a payment method for the user
- * This endpoint is called when a user wants to remove a payment method
+ * Delete the payment method for the user
+ * This endpoint is called when a user wants to remove their payment method
+ * In the single payment method approach, this completely removes the user's payment information
  */
 import { useDrizzle, tables, eq, and } from '~/server/utils/drizzle'
 import { verifyToken } from '~/server/utils/auth'

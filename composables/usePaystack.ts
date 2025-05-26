@@ -91,15 +91,18 @@ export const usePaystack = () => {
    * Process payment method verification with Paystack
    */
   const processPaymentMethodVerification = async (options: {
+    email?: string
     onSuccess?: () => void
     onError?: (error: any) => void
   }) => {
+    console.log('processPaymentMethodVerification called with options:', options)
     try {
       // Check if user is logged in and has email
       if (!authStore.user?.email) {
         throw new Error('User email not available')
       }
 
+      console.log('Initializing Paystack payment for verification')
       // Initialize Paystack payment for 50 naira
       initializePaystackPayment({
         key: config.public.paystackKey,
@@ -162,6 +165,8 @@ export const usePaystack = () => {
       }
     }
   }
+
+  console.log('usePaystack composable initialized')
 
   return {
     processPayment,

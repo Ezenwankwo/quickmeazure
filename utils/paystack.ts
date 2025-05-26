@@ -28,23 +28,34 @@ interface PaystackResponse {
  * @param config Payment configuration
  */
 export const initializePaystackPayment = (config: PaystackConfig): void => {
-  // Ensure the Paystack script is loaded
-  if (!document.getElementById('paystack-script')) {
-    const script = document.createElement('script')
-    script.id = 'paystack-script'
-    script.src = 'https://js.paystack.co/v1/inline.js'
-    script.async = true
+  console.log('initializePaystackPayment called with config:', { ...config, key: '[REDACTED]' })
 
-    script.onload = () => {
-      // Once script is loaded, initialize payment
-      openPaystackPopup(config)
-    }
-
-    document.head.appendChild(script)
-  } else {
-    // Script already loaded, initialize payment
-    openPaystackPopup(config)
+  // Force reload the script each time to avoid issues with stale instances
+  const existingScript = document.getElementById('paystack-script')
+  if (existingScript) {
+    console.log('Removing existing Paystack script')
+    existingScript.remove()
   }
+
+  console.log('Loading Paystack script')
+  const script = document.createElement('script')
+  script.id = 'paystack-script'
+  script.src = 'https://js.paystack.co/v1/inline.js'
+  script.async = true
+
+  script.onload = () => {
+    console.log('Paystack script loaded successfully')
+    // Once script is loaded, initialize payment
+    setTimeout(() => {
+      openPaystackPopup(config)
+    }, 500) // Add a small delay to ensure the script is fully initialized
+  }
+
+  script.onerror = error => {
+    console.error('Failed to load Paystack script:', error)
+  }
+
+  document.head.appendChild(script)
 }
 
 /**
@@ -52,12 +63,15 @@ export const initializePaystackPayment = (config: PaystackConfig): void => {
  * @param config Payment configuration
  */
 const openPaystackPopup = (config: PaystackConfig): void => {
+  console.log('openPaystackPopup called')
   const paystack = (window as any).PaystackPop
 
   if (!paystack) {
-    console.error('Paystack script not loaded properly')
+    console.error('Paystack script not loaded properly - PaystackPop not available in window')
     return
   }
+
+  console.log('PaystackPop found in window object')
 
   // Generate a reference if not provided
   if (!config.ref) {
@@ -123,5 +137,11 @@ const openPaystackPopup = (config: PaystackConfig): void => {
     },
   })
 
-  handler.openIframe()
+  console.log('Opening Paystack payment iframe')
+  try {
+    handler.openIframe()
+    console.log('Paystack iframe opened successfully')
+  } catch (error) {
+    console.error('Error opening Paystack iframe:', error)
+  }
 }

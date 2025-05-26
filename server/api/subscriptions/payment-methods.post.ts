@@ -1,6 +1,7 @@
 /**
- * Create a new payment method for the user
+ * Create or update a payment method for the user
  * This endpoint is called after a successful Paystack payment verification
+ * Using the single payment method approach - each user has only one payment method
  */
 import { useDrizzle, tables, eq } from '~/server/utils/drizzle'
 import { verifyToken } from '~/server/utils/auth'
@@ -20,7 +21,7 @@ export default defineEventHandler(async event => {
     }
 
     // Verify user token
-    console.log('Verifying token for payment method creation endpoint')
+    console.log('Verifying token for payment method endpoint')
     const authHeader = getHeader(event, 'authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return {
@@ -49,50 +50,71 @@ export default defineEventHandler(async event => {
     // Initialize the database
     const db = useDrizzle()
 
-    // Insert the new payment method
-    console.log('Creating payment method for user ID:', userId)
+    // Check if the user already has a payment method
+    const existingPaymentMethod = await db.query.paymentMethods.findFirst({
+      where: eq(tables.paymentMethods.userId, Number(userId)),
+    })
 
-    const newPaymentMethod = await db
-      .insert(tables.paymentMethods)
-      .values({
-        userId: Number(userId),
-        type: cardDetails.type || 'card',
-        last4: cardDetails.last4,
-        expiryMonth: cardDetails.expiryMonth,
-        expiryYear: cardDetails.expiryYear,
-        brand: cardDetails.brand,
-        isDefault: true, // Make this the default payment method
-        provider: 'paystack',
-        providerId: cardDetails.providerId || reference,
-        metadata: cardDetails.metadata || {},
-      })
-      .returning()
+    let paymentMethod
 
-    // If this is the first payment method or set as default,
-    // update any existing payment methods to not be default
-    if (newPaymentMethod.length > 0 && newPaymentMethod[0].isDefault) {
-      await db
+    if (existingPaymentMethod) {
+      // Update the existing payment method
+      console.log('Updating existing payment method for user ID:', userId)
+
+      paymentMethod = await db
         .update(tables.paymentMethods)
-        .set({ isDefault: false })
-        .where(
-          eq(tables.paymentMethods.userId, Number(userId)) &&
-            eq(tables.paymentMethods.id, newPaymentMethod[0].id, true)
-        )
+        .set({
+          type: cardDetails.type || 'card',
+          last4: cardDetails.last4,
+          expiryMonth: cardDetails.expiryMonth,
+          expiryYear: cardDetails.expiryYear,
+          brand: cardDetails.brand,
+          provider: 'paystack',
+          providerId: cardDetails.providerId || reference,
+          metadata: cardDetails.metadata || {},
+          updatedAt: new Date(),
+        })
+        .where(eq(tables.paymentMethods.id, existingPaymentMethod.id))
+        .returning()
+    } else {
+      // Create a new payment method
+      console.log('Creating new payment method for user ID:', userId)
+
+      paymentMethod = await db
+        .insert(tables.paymentMethods)
+        .values({
+          userId: Number(userId),
+          type: cardDetails.type || 'card',
+          last4: cardDetails.last4,
+          expiryMonth: cardDetails.expiryMonth,
+          expiryYear: cardDetails.expiryYear,
+          brand: cardDetails.brand,
+          isDefault: true, // Always true since it's the only one
+          provider: 'paystack',
+          providerId: cardDetails.providerId || reference,
+          metadata: cardDetails.metadata || {},
+        })
+        .returning()
     }
 
+    const result = paymentMethod[0]
+
     return {
-      statusCode: 201,
+      statusCode: existingPaymentMethod ? 200 : 201,
       success: true,
-      message: 'Payment method created successfully',
+      message: existingPaymentMethod
+        ? 'Payment method updated successfully'
+        : 'Payment method created successfully',
       data: {
-        id: newPaymentMethod[0].id,
-        type: newPaymentMethod[0].type,
-        last4: newPaymentMethod[0].last4,
-        expiryMonth: newPaymentMethod[0].expiryMonth,
-        expiryYear: newPaymentMethod[0].expiryYear,
-        brand: newPaymentMethod[0].brand,
-        isDefault: newPaymentMethod[0].isDefault,
-        createdAt: newPaymentMethod[0].createdAt,
+        id: result.id,
+        type: result.type,
+        last4: result.last4,
+        expiryMonth: result.expiryMonth,
+        expiryYear: result.expiryYear,
+        brand: result.brand,
+        isDefault: true, // Always true in the single payment method approach
+        createdAt: result.createdAt,
+        updatedAt: result.updatedAt,
       },
     }
   } catch (err: any) {

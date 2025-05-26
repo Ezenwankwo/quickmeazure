@@ -248,15 +248,40 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   /**
    * Subscribe to a plan
    * @param planId ID of the plan to subscribe to
+   * @param paymentReference Payment reference from payment provider
+   * @param cardDetails Card details from payment provider
    */
-  const subscribeToPlan = async (planId: string) => {
+  const subscribeToPlan = async (planId: string, paymentReference?: string, cardDetails?: any) => {
     try {
       loading.value = true
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/subscribe'
+      const url = '/api/subscriptions/create'
       console.log('Subscribing to plan:', planId)
+
+      // Get plan details to determine if it's a paid plan
+      const plan = plans.value.find(p => p.id === planId)
+      const isPaidPlan = plan && plan.price > 0
+
+      // For paid plans, we need payment reference and card details
+      if (isPaidPlan && (!paymentReference || !cardDetails)) {
+        throw new Error('Payment reference and card details are required for paid plans')
+      }
+
+      // Prepare request body
+      const requestBody: any = {
+        planId,
+        planName: plan?.name || '',
+        billingPeriod: plan?.interval === 'year' ? 'annual' : 'monthly',
+      }
+
+      // Add payment details for paid plans
+      if (isPaidPlan && paymentReference) {
+        requestBody.paymentReference = paymentReference
+        requestBody.amount = plan?.price || 0
+        requestBody.cardDetails = cardDetails
+      }
 
       const fetchResponse = await fetch(url, {
         method: 'POST',
@@ -264,7 +289,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
           'Content-Type': 'application/json',
           Authorization: authStore.token ? `Bearer ${authStore.token}` : '',
         },
-        body: JSON.stringify({ planId }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!fetchResponse.ok) {
@@ -290,9 +315,14 @@ export const useSubscriptionStore = defineStore('subscription', () => {
 
   /**
    * Change subscription plan
-   * @param params Object containing planId and billingInterval
+   * @param params Object containing planId, billingInterval, and optional payment information
    */
-  const changePlan = async (params: { planId: string; billingInterval: string }) => {
+  const changePlan = async (params: {
+    planId: string
+    billingInterval: string
+    paymentReference?: string
+    cardDetails?: any
+  }) => {
     try {
       loading.value = true
       error.value = null
@@ -312,9 +342,21 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         throw new Error('Invalid plan ID format')
       }
 
-      const requestParams = {
-        ...params,
+      // Check if this is a paid plan that requires payment information
+      const targetPlan = plans.value.find(p => p.id === params.planId.toString())
+      const isPaidPlan = targetPlan && targetPlan.price > 0
+
+      // Prepare request parameters
+      const requestParams: any = {
         planId: planIdNum,
+        billingInterval: params.billingInterval,
+      }
+
+      // Include payment information if provided
+      if (isPaidPlan && params.paymentReference) {
+        console.log('Including payment information in plan change request')
+        requestParams.paymentReference = params.paymentReference
+        requestParams.cardDetails = params.cardDetails
       }
 
       console.log('Changing plan to:', requestParams)

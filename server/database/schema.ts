@@ -339,6 +339,23 @@ export const orderPayments = pgTable('order_payments', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
+// Notifications table for user notifications
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references('users', 'id'),
+  type: text('type').notNull(), // 'payment', 'subscription', 'usage', 'system'
+  severity: text('severity').notNull(), // 'info', 'warning', 'critical'
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  read: boolean('read').notNull().default(false),
+  actionUrl: text('action_url'),
+  actionText: text('action_text'),
+  expiresAt: timestamp('expires_at'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
 // Export types
 export type User = typeof users.$inferSelect
 export type Plan = typeof plans.$inferSelect
@@ -351,6 +368,7 @@ export type Style = typeof styles.$inferSelect
 export type Measurement = typeof measurements.$inferSelect
 export type SubscriptionPayment = typeof subscriptionPayments.$inferSelect
 export type OrderPayment = typeof orderPayments.$inferSelect
+export type Notification = typeof notifications.$inferSelect
 export type PaymentMethod = typeof paymentMethods.$inferSelect
 export type MeasurementTemplate = typeof measurementTemplates.$inferSelect
 export type NewMeasurementTemplate = typeof measurementTemplates.$inferInsert
