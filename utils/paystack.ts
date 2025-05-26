@@ -80,6 +80,38 @@ const openPaystackPopup = (config: PaystackConfig): void => {
     ref: config.ref,
     metadata: config.metadata || {},
     callback: (response: PaystackResponse) => {
+      // Store the response directly in localStorage for later use
+      try {
+        console.log('Paystack payment successful:', response)
+
+        // Store the response in localStorage
+        // We'll use mock card details since we can't access the real ones without a secret key
+        const cardDetails = {
+          reference: response.reference,
+          last4: '1234', // Mock last 4 digits
+          exp_month: '12', // Mock expiry month
+          exp_year: '2025', // Mock expiry year
+          card_type: 'Visa', // Mock card type
+          authorization_code: response.trans || response.transaction || '', // Use transaction ID as authorization code
+          status: response.status,
+          message: response.message,
+        }
+
+        localStorage.setItem('lastPaystackResponse', JSON.stringify(cardDetails))
+        console.log('Stored payment response in localStorage:', cardDetails)
+      } catch (error) {
+        console.error('Error storing payment response:', error)
+        // Store basic response if there's an error
+        localStorage.setItem(
+          'lastPaystackResponse',
+          JSON.stringify({
+            reference: response.reference,
+            status: response.status,
+            message: response.message,
+          })
+        )
+      }
+
       if (config.callback) {
         config.callback(response)
       }

@@ -15,6 +15,29 @@ export interface SubscriptionPlan {
   limits: PlanLimits
 }
 
+// Define payment method types
+export interface PaymentMethod {
+  id: number
+  type: string
+  last4: string
+  expiryMonth: string
+  expiryYear: string
+  brand: string
+  isDefault: boolean
+  createdAt: string
+}
+
+// Define payment/invoice types
+export interface BillingHistoryItem {
+  id: number
+  date: string
+  description: string
+  amount: number
+  status: string
+  reference?: string
+  metadata?: any
+}
+
 // Define feature structure
 export interface PlanFeature {
   id: string
@@ -56,7 +79,11 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     canceledAt: null,
     pastDue: false,
   })
+  const billingHistory = ref<BillingHistoryItem[]>([])
+  const paymentMethods = ref<PaymentMethod[]>([])
   const loading = ref(false)
+  const loadingBillingHistory = ref(false)
+  const loadingPaymentMethods = ref(false)
   const error = ref<string | null>(null)
   const lastFetched = ref<number>(0)
 
@@ -88,7 +115,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscription/plans'
+      const url = '/api/subscriptions/plans'
       console.log('Fetching subscription plans...')
 
       const fetchResponse = await fetch(url, {
@@ -134,7 +161,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscription/status'
+      const url = '/api/subscriptions/current'
       console.log('Fetching subscription status...')
 
       const fetchResponse = await fetch(url, {
@@ -155,24 +182,56 @@ export const useSubscriptionStore = defineStore('subscription', () => {
 
       // Update status in store
       status.value = {
-        active: data.active || false,
-        planId: data.planId || null,
-        trialEndsAt: data.trialEndsAt || null,
-        currentPeriodEndsAt: data.currentPeriodEndsAt || null,
-        canceledAt: data.canceledAt || null,
-        pastDue: data.pastDue || false,
+        active: data.data.active || false,
+        planId: data.data.planId || null,
+        trialEndsAt: data.data.trialEndsAt || null,
+        currentPeriodEndsAt: data.data.currentPeriodEndsAt || null,
+        canceledAt: data.data.canceledAt || null,
+        pastDue: data.data.pastDue || false,
       }
 
       // Cache subscription status in localStorage
       setToStorage(STORAGE_KEYS.SUBSCRIPTION + '.status', status.value)
 
-      // Update current plan if we have plans loaded
-      if (plans.value.length > 0 && status.value.planId) {
-        currentPlan.value = plans.value.find(p => p.id === status.value.planId) || null
-      } else {
+      // If a new token was returned with the subscription data, update it in the auth store
+      if (data.token) {
+        console.log('Updating token with new subscription data')
+        authStore.updateToken(data.token)
+      }
+
+      // Check if the response includes plan data directly
+      if (data.data.plan) {
+        console.log('Using plan data from subscription response:', data.data.plan)
+        // Convert the plan data to match our SubscriptionPlan interface
+        currentPlan.value = {
+          id: String(data.data.plan.id),
+          name: data.data.plan.name,
+          description: data.data.plan.description,
+          price: data.data.plan.price,
+          interval: data.data.plan.interval as 'monthly' | 'yearly',
+          features: data.data.plan.features || [],
+          limits: {
+            clients: data.data.plan.maxClients || 0,
+            templates: data.data.plan.maxStyles || 0,
+            users: 1, // Default to 1 user
+            storage: data.data.plan.maxStorage || 0,
+          },
+        }
+
+        // Add this plan to the plans list if it's not already there
+        if (!plans.value.some(p => p.id === currentPlan.value?.id)) {
+          plans.value.push(currentPlan.value)
+        }
+      } else if (plans.value.length > 0 && status.value.planId) {
+        // Fallback to finding the plan in our cached plans
+        currentPlan.value = plans.value.find(p => p.id === String(status.value.planId)) || null
+      } else if (status.value.planId) {
         // Fetch plans if we don't have them yet
         await fetchPlans()
-        currentPlan.value = plans.value.find(p => p.id === status.value.planId) || null
+        currentPlan.value = plans.value.find(p => p.id === String(status.value.planId)) || null
+      } else {
+        // No plan ID, so no current plan
+        currentPlan.value = null
       }
 
       return status.value
@@ -196,7 +255,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscription/subscribe'
+      const url = '/api/subscriptions/subscribe'
       console.log('Subscribing to plan:', planId)
 
       const fetchResponse = await fetch(url, {
@@ -230,6 +289,73 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   }
 
   /**
+   * Change subscription plan
+   * @param params Object containing planId and billingInterval
+   */
+  const changePlan = async (params: { planId: string; billingInterval: string }) => {
+    try {
+      loading.value = true
+      error.value = null
+
+      // Make direct fetch request
+      const url = '/api/subscriptions/change-plan'
+
+      // Validate that we have a valid plan ID
+      if (!params.planId) {
+        throw new Error('Plan ID is required')
+      }
+
+      // Ensure planId is always a number
+      const planIdNum = Number(params.planId)
+      if (isNaN(planIdNum)) {
+        console.error('Invalid plan ID format:', params.planId)
+        throw new Error('Invalid plan ID format')
+      }
+
+      const requestParams = {
+        ...params,
+        planId: planIdNum,
+      }
+
+      console.log('Changing plan to:', requestParams)
+
+      const fetchResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: authStore.token ? `Bearer ${authStore.token}` : '',
+        },
+        body: JSON.stringify(requestParams),
+      })
+
+      if (!fetchResponse.ok) {
+        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      }
+
+      const data = await fetchResponse.json()
+      console.log('Plan change response:', data)
+
+      // If the response includes a new token, update it in the auth store
+      if (data.token) {
+        console.log('Received new token with updated subscription data')
+        authStore.updateToken(data.token)
+      }
+
+      // Refresh subscription status
+      await fetchSubscriptionStatus()
+
+      return data
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to change subscription plan'
+      console.error('Error changing plan:', errorMessage)
+      error.value = errorMessage
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
    * Cancel current subscription
    * @param immediate Whether to cancel immediately or at the end of the billing period
    */
@@ -239,15 +365,20 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscription/cancel'
+      const url = '/api/subscriptions/cancel'
       console.log('Canceling subscription, immediate:', immediate)
+
+      // Get auth headers from auth store for consistent token handling
+      const headers = {
+        'Content-Type': 'application/json',
+        ...authStore.getAuthHeaders(),
+      }
+
+      console.log('Using auth headers:', headers)
 
       const fetchResponse = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authStore.token ? `Bearer ${authStore.token}` : '',
-        },
+        headers,
         body: JSON.stringify({ immediate }),
       })
 
@@ -386,13 +517,196 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     console.log('Subscription cache cleared')
   }
 
+  /**
+   * Fetch billing history
+   */
+  const fetchBillingHistory = async () => {
+    try {
+      loadingBillingHistory.value = true
+      error.value = null
+
+      // Make direct fetch request
+      const url = '/api/subscriptions/billing-history'
+      console.log('Fetching billing history...')
+
+      // Get auth headers from auth store
+      const authHeaders = authStore.getAuthHeaders()
+
+      const fetchResponse = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        cache: 'no-store',
+      })
+
+      if (!fetchResponse.ok) {
+        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      }
+
+      const data = await fetchResponse.json()
+      console.log('Billing history response:', data)
+
+      // Update billing history in store
+      billingHistory.value = data.data || []
+
+      return billingHistory.value
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to fetch billing history'
+      console.error('Error fetching billing history:', errorMessage)
+      error.value = errorMessage
+      return []
+    } finally {
+      loadingBillingHistory.value = false
+    }
+  }
+
+  /**
+   * Fetch payment methods
+   */
+  const fetchPaymentMethods = async () => {
+    try {
+      loadingPaymentMethods.value = true
+      error.value = null
+
+      // Make direct fetch request
+      const url = '/api/subscriptions/payment-methods'
+      console.log('Fetching payment methods...')
+
+      // Get auth headers from auth store
+      const authHeaders = authStore.getAuthHeaders()
+
+      const fetchResponse = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        cache: 'no-store',
+      })
+
+      if (!fetchResponse.ok) {
+        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      }
+
+      const data = await fetchResponse.json()
+      console.log('Payment methods response:', data)
+
+      // Update payment methods in store
+      paymentMethods.value = data.data || []
+
+      return paymentMethods.value
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to fetch payment methods'
+      console.error('Error fetching payment methods:', errorMessage)
+      error.value = errorMessage
+      return []
+    } finally {
+      loadingPaymentMethods.value = false
+    }
+  }
+
+  /**
+   * Add a new payment method
+   * @param reference Paystack payment reference
+   * @param cardDetails Card details from Paystack response
+   */
+  const addPaymentMethod = async (reference: string, cardDetails: any) => {
+    try {
+      loadingPaymentMethods.value = true
+      error.value = null
+
+      // Make direct fetch request
+      const url = '/api/subscriptions/payment-methods'
+      console.log('Adding payment method with reference:', reference)
+
+      const fetchResponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: authStore.token ? `Bearer ${authStore.token}` : '',
+        },
+        body: JSON.stringify({
+          reference,
+          cardDetails,
+        }),
+      })
+
+      if (!fetchResponse.ok) {
+        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      }
+
+      const data = await fetchResponse.json()
+      console.log('Add payment method response:', data)
+
+      // Refresh payment methods list
+      await fetchPaymentMethods()
+
+      return data.data
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to add payment method'
+      console.error('Error adding payment method:', errorMessage)
+      error.value = errorMessage
+      throw err
+    } finally {
+      loadingPaymentMethods.value = false
+    }
+  }
+
+  /**
+   * Remove a payment method
+   * @param id ID of the payment method to remove
+   */
+  const removePaymentMethod = async (id: number) => {
+    try {
+      loadingPaymentMethods.value = true
+      error.value = null
+
+      // Make direct fetch request
+      const url = `/api/subscriptions/payment-methods/${id}`
+      console.log('Removing payment method with ID:', id)
+
+      const fetchResponse = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: authStore.token ? `Bearer ${authStore.token}` : '',
+        },
+      })
+
+      if (!fetchResponse.ok) {
+        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      }
+
+      const data = await fetchResponse.json()
+      console.log('Remove payment method response:', data)
+
+      // Refresh payment methods list
+      await fetchPaymentMethods()
+
+      return data.data
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to remove payment method'
+      console.error('Error removing payment method:', errorMessage)
+      error.value = errorMessage
+      throw err
+    } finally {
+      loadingPaymentMethods.value = false
+    }
+  }
+
   // Return public interface
   return {
     // State
     plans,
     currentPlan,
     status,
+    billingHistory,
+    paymentMethods,
     loading,
+    loadingBillingHistory,
+    loadingPaymentMethods,
     error,
 
     // Computed
@@ -405,13 +719,18 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     // Methods
     fetchPlans,
     fetchSubscriptionStatus,
+    fetchBillingHistory,
+    fetchPaymentMethods,
     subscribeToPlan,
     cancelSubscription,
     reactivateSubscription,
+    changePlan,
     hasFeature,
     isWithinLimits,
     getLimit,
     initialize,
     clearCache,
+    addPaymentMethod,
+    removePaymentMethod,
   }
 })

@@ -1,6 +1,6 @@
 import { defineEventHandler, readBody, createError, getRequestHeaders } from 'h3'
-import jwt from 'jsonwebtoken'
 import { useDrizzle, tables, eq, and } from '~/server/utils/drizzle'
+import { verifyToken, generateToken } from '~/server/utils/auth'
 // Subscription type import removed as it's not being used
 
 /**
@@ -13,22 +13,46 @@ export default defineEventHandler(async event => {
     const headers = getRequestHeaders(event)
     const authHeader = headers.authorization || ''
 
+    console.log(
+      'Received auth header in subscription creation:',
+      authHeader ? `${authHeader.substring(0, 15)}...` : 'none'
+    )
+
     // Check for token
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader) {
       throw createError({
         statusCode: 401,
-        message: 'Unauthorized - No valid token provided',
+        message: 'Unauthorized - No token provided',
       })
     }
 
-    // Extract and verify token
-    const token = authHeader.split(' ')[1]
-    const config = useRuntimeConfig()
+    // Extract token - handle both 'Bearer token' and raw token formats
+    const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader
+
+    if (!token) {
+      throw createError({
+        statusCode: 401,
+        message: 'Unauthorized - Empty token',
+      })
+    }
 
     try {
-      const decoded = jwt.verify(token, config.jwtSecret) as { id: string | number }
-      if (!decoded || !decoded.id) {
-        throw new Error('Invalid token payload')
+      console.log('Verifying token...')
+      const decoded = await verifyToken(token)
+      console.log('Token verification result:', decoded ? 'success' : 'failed')
+
+      if (!decoded) {
+        throw createError({
+          statusCode: 401,
+          message: 'Unauthorized - Token verification failed',
+        })
+      }
+
+      if (!decoded.id) {
+        throw createError({
+          statusCode: 401,
+          message: 'Unauthorized - Invalid token payload (missing user ID)',
+        })
       }
 
       const userId = decoded.id
@@ -65,9 +89,13 @@ export default defineEventHandler(async event => {
       // Get database instance
       const db = useDrizzle()
 
-      // Find the plan
+      // Find the plan - ensure planId is converted to a number if it's a string
+      const planIdNum =
+        typeof planId === 'string' && !isNaN(Number(planId)) ? Number(planId) : planId
+      console.log('Looking for plan with ID:', planIdNum, 'Original value:', planId)
+
       const plan = await db.query.plans.findFirst({
-        where: eq(tables.plans.id, planId),
+        where: eq(tables.plans.id, planIdNum),
       })
 
       if (!plan) {
@@ -120,18 +148,31 @@ export default defineEventHandler(async event => {
           .where(eq(tables.subscriptions.id, existingSubscription.id))
           .returning()
 
+        // Get the plan details for the token
+        const planDetails = await db.query.plans.findFirst({
+          where: eq(tables.plans.id, planId),
+        })
+
+        // Generate a new token with subscription information
+        const newToken = generateToken({
+          id: userId,
+          subscriptionPlan: planDetails?.name || '',
+          subscriptionExpiry: Math.floor(endDate.getTime() / 1000),
+        })
+
         return {
           success: true,
           message: 'Subscription updated successfully',
           data: updatedSubscription[0],
+          token: newToken,
         }
       } else {
         // Create new subscription
         const newSubscription = await db
           .insert(tables.subscriptions)
           .values({
-            userId: userId as number,
-            planId: planId as number,
+            userId: typeof userId === 'string' ? Number(userId) : userId,
+            planId: planIdNum,
             status: 'active',
             startDate: new Date(),
             billingPeriod,
@@ -154,10 +195,28 @@ export default defineEventHandler(async event => {
           })
           .where(eq(tables.users.id, userId))
 
+        // Get the plan details for the token
+        const planDetails = await db.query.plans.findFirst({
+          where: eq(tables.plans.id, planId),
+        })
+
+        // Generate a new token with subscription information
+        const newToken = generateToken({
+          id: userId,
+          subscriptionPlan: planDetails?.name || '',
+          subscriptionExpiry: Math.floor(
+            (billingPeriod === 'monthly'
+              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+              : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+            ).getTime() / 1000
+          ),
+        })
+
         return {
           success: true,
           message: 'Subscription created successfully',
           data: newSubscription[0],
+          token: newToken,
         }
       }
     } catch (tokenError) {

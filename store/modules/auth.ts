@@ -609,7 +609,48 @@ export const useAuthStore = defineStore(
       }
     }
 
-    // We don't need the updateLastActivity method anymore since we removed inactivity detection
+    /**
+     * Update the token with a new one, typically after subscription changes
+     * @param newToken The new token to use
+     */
+    function updateToken(newToken: string) {
+      if (!newToken) {
+        console.error('Cannot update token: No token provided')
+        return
+      }
+
+      try {
+        // Parse the new token
+        const userData = parseJwtToken(newToken)
+        if (!userData) {
+          console.error('Failed to parse user data from new token')
+          return
+        }
+
+        // Update token and user data
+        token.value = newToken
+        user.value = userData
+
+        // Update user store
+        const userStore = useUserStore()
+        userStore.init(userData)
+
+        // Recalculate session expiry if needed (maintain the same expiry time)
+        if (!sessionExpiry.value || sessionExpiry.value < Date.now()) {
+          sessionExpiry.value = Date.now() + SESSION_DURATION
+        }
+
+        // Update session timeout
+        setupSessionTimeout()
+
+        // Save to localStorage
+        persistAuthState()
+
+        console.log('Token updated successfully with new subscription data')
+      } catch (error) {
+        console.error('Error updating token:', error)
+      }
+    }
 
     // Return public store interface
     return {
@@ -633,6 +674,7 @@ export const useAuthStore = defineStore(
       handleSessionExpiry,
       getClientLimit,
       getAuthHeaders,
+      updateToken,
     }
   },
   {

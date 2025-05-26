@@ -47,9 +47,7 @@
       <!-- Billing Tab -->
       <template #billing>
         <div class="py-6">
-          <ClientOnly>
-            <SettingsBillingTab />
-          </ClientOnly>
+          <SettingsBillingForm />
         </div>
       </template>
     </UTabs>
@@ -57,6 +55,8 @@
 </template>
 
 <script setup lang="ts">
+import SettingsBillingForm from '~/components/settings/SettingsBillingForm.vue'
+
 definePageMeta({
   middleware: ['auth'],
 })

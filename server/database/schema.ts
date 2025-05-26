@@ -50,12 +50,8 @@ export const plans = pgTable('plans', {
 // Subscriptions table to track user subscriptions
 export const subscriptions = pgTable('subscriptions', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.id),
-  planId: integer('plan_id')
-    .notNull()
-    .references(() => plans.id),
+  userId: integer('user_id').notNull().references('users', 'id'),
+  planId: integer('plan_id').notNull().references('plans', 'id'),
   status: text('status').notNull().default('active'), // active, canceled, expired, pending
   startDate: timestamp('start_date').notNull().defaultNow(),
   endDate: timestamp('end_date'), // When the subscription expires
@@ -190,18 +186,27 @@ export const measurements = pgTable(
   }
 )
 
-// Payments table
+// Payments table - Enhanced to support both order and subscription payments
 export const payments = pgTable('payments', {
   id: serial('id').primaryKey(),
-  orderId: integer('order_id')
-    .notNull()
-    .references(() => orders.id),
+  orderId: integer('order_id').references(() => orders.id),
+  subscriptionId: integer('subscription_id').references('subscriptions', 'id'),
+  userId: integer('user_id').notNull().references('users', 'id'),
   amount: real('amount').notNull(),
+  currency: text('currency').notNull().default('NGN'),
   paymentMethod: text('payment_method').notNull(),
+  paymentMethodId: integer('payment_method_id').references('payment_methods', 'id'),
   paymentDate: timestamp('payment_date').notNull(),
+  status: text('status').notNull().default('successful'), // 'successful', 'failed', 'pending'
+  reference: text('reference'), // Payment reference from provider
+  description: text('description'),
+  provider: text('provider').default('paystack'),
+  providerReference: text('provider_reference'),
+  metadata: jsonb('metadata'),
   notes: text('notes'),
-  createdAt: timestamp('created_at').notNull(),
-  createdBy: text('created_by').notNull(), // User ID who created the payment
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdBy: text('created_by'), // User ID who created the payment
+  updatedAt: timestamp('updated_at').defaultNow(),
 })
 
 // Measurement Templates
@@ -281,6 +286,59 @@ export const userMeasurementSettings = pgTable('user_measurement_settings', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 
+// Payment methods table
+export const paymentMethods = pgTable('payment_methods', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references('users', 'id'),
+  type: text('type').notNull(), // 'card', 'bank', etc.
+  last4: varchar('last4', { length: 4 }),
+  expiryMonth: varchar('expiry_month', { length: 2 }),
+  expiryYear: varchar('expiry_year', { length: 4 }),
+  brand: text('brand'), // 'visa', 'mastercard', etc.
+  isDefault: boolean('is_default').notNull().default(false),
+  provider: text('provider').notNull().default('paystack'),
+  providerId: text('provider_id'), // ID from the payment provider
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// Subscription Payments table for subscription-related transactions
+export const subscriptionPayments = pgTable('subscription_payments', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references('users', 'id'),
+  subscriptionId: integer('subscription_id').references('subscriptions', 'id').notNull(),
+  amount: real('amount').notNull(),
+  currency: text('currency').notNull().default('NGN'),
+  status: text('status').notNull(), // 'successful', 'failed', 'pending'
+  reference: text('reference'), // Payment reference from provider
+  description: text('description'),
+  paymentMethodId: integer('payment_method_id').references('payment_methods', 'id'),
+  provider: text('provider').notNull().default('paystack'),
+  providerReference: text('provider_reference'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+// Order Payments table for order-related transactions
+export const orderPayments = pgTable('order_payments', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references('users', 'id'),
+  orderId: integer('order_id').references('orders', 'id').notNull(),
+  amount: real('amount').notNull(),
+  currency: text('currency').notNull().default('NGN'),
+  status: text('status').notNull(), // 'successful', 'failed', 'pending'
+  reference: text('reference'), // Payment reference from provider
+  description: text('description'),
+  paymentMethodId: integer('payment_method_id').references('payment_methods', 'id'),
+  provider: text('provider').notNull().default('paystack'),
+  providerReference: text('provider_reference'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
 // Export types
 export type User = typeof users.$inferSelect
 export type Plan = typeof plans.$inferSelect
@@ -291,7 +349,9 @@ export type Client = typeof clients.$inferSelect
 export type Order = typeof orders.$inferSelect
 export type Style = typeof styles.$inferSelect
 export type Measurement = typeof measurements.$inferSelect
-export type Payment = typeof payments.$inferSelect
+export type SubscriptionPayment = typeof subscriptionPayments.$inferSelect
+export type OrderPayment = typeof orderPayments.$inferSelect
+export type PaymentMethod = typeof paymentMethods.$inferSelect
 export type MeasurementTemplate = typeof measurementTemplates.$inferSelect
 export type NewMeasurementTemplate = typeof measurementTemplates.$inferInsert
 export type MeasurementField = typeof measurementFields.$inferSelect
