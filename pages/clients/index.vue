@@ -6,7 +6,7 @@
       :primary-action="{
         label: 'Add New Client',
         icon: 'i-heroicons-plus',
-        to: '/clients/new',
+        to: routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW],
       }"
     />
 
@@ -120,7 +120,11 @@ icon="i-heroicons-arrow-path"
             }}
           </p>
           <div class="mt-6">
-            <UButton v-if="!search && !isFilterApplied" to="/clients/new" color="primary">
+            <UButton
+              v-if="!search && !isFilterApplied"
+              :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW]"
+              color="primary"
+            >
               Add client
             </UButton>
             <UButton
@@ -162,12 +166,15 @@ variant="outline"
                   >
                     <span class="text-primary-700 font-medium">{{ getInitials(client.name) }}</span>
                   </div>
-                  <NuxtLink
-                    :to="`/clients/${client.id}`"
-                    class="font-medium text-primary-600 hover:underline"
-                  >
-                    {{ client.name }}
-                  </NuxtLink>
+                  <UButton
+                    :to="getEditClientPath(client.id)"
+                    color="gray"
+                    variant="ghost"
+                    icon="i-heroicons-pencil"
+                    :ui="{ rounded: 'rounded-full' }"
+                    class="p-2"
+                  />
+                  {{ client.name }}
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
@@ -179,14 +186,14 @@ variant="outline"
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex space-x-2">
                   <UButton
-                    :to="`/clients/${client.id}`"
+                    :to="getViewClientPath(client.id)"
                     color="gray"
                     variant="ghost"
                     icon="i-heroicons-eye"
                     size="xs"
                   />
                   <UButton
-                    :to="`/clients/${client.id}/edit`"
+                    :to="getEditClientPath(client.id)"
                     color="gray"
                     variant="ghost"
                     icon="i-heroicons-pencil-square"
@@ -226,7 +233,7 @@ variant="outline"
                 </div>
                 <div>
                   <NuxtLink
-                    :to="`/clients/${client.id}`"
+                    :to="getViewClientPath(client.id)"
                     class="font-semibold text-lg text-gray-800 hover:text-primary-700"
                   >
                     {{ client.name }}
@@ -249,7 +256,7 @@ variant="outline"
               <!-- Action buttons -->
               <div class="flex mt-4 pt-3 border-t border-gray-100">
                 <UButton
-                  :to="`/clients/${client.id}`"
+                  :to="getViewClientPath(client.id)"
                   color="gray"
                   variant="ghost"
                   size="sm"
@@ -259,7 +266,7 @@ variant="outline"
                   View
                 </UButton>
                 <UButton
-                  :to="`/clients/${client.id}/edit`"
+                  :to="getEditClientPath(client.id)"
                   color="gray"
                   variant="ghost"
                   size="sm"
@@ -294,10 +301,11 @@ variant="outline"
             }}
           </p>
           <UButton
-v-if="!search && !isFilterApplied"
-to="/clients/new"
-color="primary"
-size="lg">
+            v-if="!search && !isFilterApplied"
+            :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW]"
+            color="primary"
+            size="lg"
+          >
             Add client
           </UButton>
           <UButton
@@ -443,9 +451,62 @@ size="sm"
   </div>
 </template>
 
-<script setup>
-// Import stores
+<script setup lang="ts">
+// Import stores and utilities
 import { useAuthStore } from '~/store/modules/auth'
+import { useAppRoutes } from '~/composables/useRoutes'
+
+// Composable
+const routes = useAppRoutes()
+const _router = useRouter() // Prefix with underscore to indicate it's intentionally unused
+
+// Constants
+const _NEW_CLIENT_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW] as string
+
+// Type for route function with params
+type RouteFunction = (params: { id: string }) => string
+
+const getEditClientPath = (id: string): string =>
+  (routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.EDIT] as RouteFunction)({ id })
+
+const getViewClientPath = (id: string): string =>
+  (routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.VIEW] as RouteFunction)({ id })
+
+// Types
+interface Client {
+  id: string
+  name: string
+  email?: string
+  phone?: string
+  address?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface Filters {
+  dateAdded: string
+  hasOrders: string
+}
+
+// State
+const search = ref('')
+const sortBy = ref('name-asc')
+const currentPage = ref(1)
+const _itemsPerPage = ref(10) // Prefix with underscore to indicate it's intentionally unused
+const isFilterOpen = ref(false)
+const isDeleteModalOpen = ref(false)
+const clientToDelete = ref<Client | null>(null)
+const filters = ref<Filters>({
+  dateAdded: '',
+  hasOrders: '',
+})
+
+// Data
+const clients = ref<Client[]>([])
+const filteredClients = ref<Client[]>([])
+const isLoading = ref(true)
+const error = ref<string | null>(null)
 
 // Set page metadata
 useHead({
@@ -483,7 +544,7 @@ const columns = [
 // State management
 const clients = ref([])
 const isLoading = ref(true)
-const error = ref(null) // Add the missing error ref
+const error = ref(null)
 const search = ref('')
 const isFilterOpen = ref(false)
 const filteredClients = ref([])

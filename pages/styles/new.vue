@@ -6,7 +6,7 @@
           icon="i-heroicons-arrow-left"
           color="gray"
           variant="ghost"
-          to="/styles"
+          :to="STYLES_PATH"
           class="mr-2"
         />
         <h1 class="text-xl font-bold">Add New Style</h1>
@@ -91,8 +91,18 @@ variant="outline"
   </div>
 </template>
 
-<script setup>
-// Set page metadata
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useAppRoutes } from '~/composables/useRoutes'
+import { useRouter } from 'vue-router'
+
+// Composable
+const routes = useAppRoutes()
+const router = useRouter()
+
+// Constants
+const STYLES_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.INDEX] as string
+
 useHead({
   title: 'Add New Style - QuickMeazure',
 })
@@ -201,8 +211,8 @@ const saveStyle = async () => {
       color: 'green',
     })
 
-    // Navigate to the style detail page
-    navigateTo(`/styles/${newStyle.value.id}/detail`)
+    // Redirect to styles list on success
+    await router.push(`${STYLES_PATH}/${newStyle.value.id}/detail`)
   } catch (error) {
     console.error('Error creating style:', error)
     if (error.data) {

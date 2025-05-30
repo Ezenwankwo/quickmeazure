@@ -141,12 +141,22 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, nextTick as _nextTick } from 'vue'
+import { useToast } from '#imports'
 import { monthlyPlans, annualPlans } from '~/data/subscription-plans'
+import { useAppRoutes } from '~/composables/useRoutes'
 import { usePaystack } from '~/composables/usePaystack'
 import { useSubscriptionManagement } from '~/composables/useSubscriptionManagement'
 import PlanSelectionModal from '~/components/plans/PlanSelectionModal.vue'
+
+// Composable
+const routes = useAppRoutes()
+const toast = useToast()
+const router = useRouter()
+
+// Constants
+const DASHBOARD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX] as string
 
 // Add toast composable
 const toast = useToast()
@@ -252,8 +262,8 @@ const skipPayment = async () => {
 function onPaymentSuccess(response) {
   console.log('Payment successful', response)
   toast.success('Payment successful! Redirecting to next step...')
-  // Redirect to setup measurements
-  router.push('/auth/setup-measurements')
+  // Redirect to dashboard after successful confirmation
+  await router.push(DASHBOARD_PATH)
 }
 
 // Handle payment errors

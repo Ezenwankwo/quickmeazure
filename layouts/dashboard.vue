@@ -4,7 +4,10 @@
     <header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
       <div class="container mx-auto px-4 py-3 flex justify-between items-center">
         <div class="flex items-center">
-          <ULink to="/" class="flex items-center space-x-2">
+          <ULink
+            :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.HOME]"
+            class="flex items-center space-x-2"
+          >
             <UIcon name="i-heroicons-scissors" class="text-primary-600 text-2xl" />
             <span class="text-xl font-bold text-primary-600">QuickMeazure</span>
           </ULink>
@@ -125,7 +128,7 @@
               >
                 <div class="py-1">
                   <ULink
-                    to="/settings"
+                    :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.SETTINGS]"
                     class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     <UIcon name="i-heroicons-cog-6-tooth" class="mr-2" />Settings
@@ -239,65 +242,74 @@
     <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
       <nav class="grid grid-cols-5 gap-1 p-2">
         <NuxtLink
-          to="/dashboard"
+          :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX]"
           class="flex-col h-auto py-2 rounded-lg flex items-center gap-1.5 font-medium text-sm transition-colors"
-          :class="
-            route.path === '/dashboard'
-              ? 'bg-primary-50 font-semibold text-primary-700 border-t-2 border-primary-600'
-              : 'text-gray-500'
-          "
+          :class="{
+            'text-primary-600 bg-primary-50':
+              $route.path === routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX],
+            'text-gray-600 hover:text-gray-900 hover:bg-gray-100':
+              $route.path !== routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX],
+          }"
         >
           <UIcon name="i-heroicons-home" class="size-5 shrink-0" />
           <span class="text-xs mt-1">Dashboard</span>
         </NuxtLink>
 
         <NuxtLink
-          to="/clients"
+          :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.CLIENTS.INDEX]"
           class="flex-col h-auto py-2 rounded-lg flex items-center gap-1.5 font-medium text-sm transition-colors"
-          :class="
-            route.path.startsWith('/clients') && route.path !== '/clients/new'
-              ? 'bg-primary-50 font-semibold text-primary-700 border-t-2 border-primary-600'
-              : 'text-gray-500'
-          "
+          :class="{
+            'text-primary-600 bg-primary-50': $route.path.startsWith(
+              routes.ROUTE_PATHS[routes.ROUTE_NAMES.CLIENTS.INDEX]
+            ),
+            'text-gray-600 hover:text-gray-900 hover:bg-gray-100': !$route.path.startsWith(
+              routes.ROUTE_PATHS[routes.ROUTE_NAMES.CLIENTS.INDEX]
+            ),
+          }"
         >
           <UIcon name="i-heroicons-users" class="size-5 shrink-0" />
           <span class="text-xs mt-1">Clients</span>
         </NuxtLink>
 
         <NuxtLink
-          to="/clients/new"
+          :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.MEASUREMENTS.INDEX]"
           class="flex-col h-auto py-2 rounded-lg flex items-center gap-1.5 font-medium text-sm transition-colors"
-          :class="
-            route.path === '/clients/new'
-              ? 'bg-primary-50 font-semibold text-primary-700 border-t-2 border-primary-600'
-              : 'text-gray-500'
-          "
+          :class="{
+            'text-primary-600 bg-primary-50':
+              $route.path === routes.ROUTE_PATHS[routes.ROUTE_NAMES.MEASUREMENTS.INDEX],
+            'text-gray-600 hover:text-gray-900 hover:bg-gray-100':
+              $route.path !== routes.ROUTE_PATHS[routes.ROUTE_NAMES.MEASUREMENTS.INDEX],
+          }"
         >
-          <UIcon name="i-heroicons-variable" class="size-5 shrink-0" />
-          <span class="text-xs mt-1">Measure</span>
+          <UIcon name="i-heroicons-plus" class="size-5 shrink-0" />
+          <span class="text-xs mt-1">New Client</span>
         </NuxtLink>
 
         <NuxtLink
-          to="/styles"
+          :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.REPORTS.INDEX]"
           class="flex-col h-auto py-2 rounded-lg flex items-center gap-1.5 font-medium text-sm transition-colors"
-          :class="
-            route.path.startsWith('/styles')
-              ? 'bg-primary-50 font-semibold text-primary-700 border-t-2 border-primary-600'
-              : 'text-gray-500'
-          "
+          :class="{
+            'text-primary-600 bg-primary-50':
+              $route.path === routes.ROUTE_PATHS[routes.ROUTE_NAMES.REPORTS.INDEX],
+            'text-gray-600 hover:text-gray-900 hover:bg-gray-100':
+              $route.path !== routes.ROUTE_PATHS[routes.ROUTE_NAMES.REPORTS.INDEX],
+          }"
         >
-          <UIcon name="i-heroicons-swatch" class="size-5 shrink-0" />
-          <span class="text-xs mt-1">Styles</span>
+          <UIcon name="i-heroicons-cog-6-tooth" class="size-5 shrink-0" />
+          <span class="text-xs mt-1">Settings</span>
         </NuxtLink>
 
         <NuxtLink
-          to="/orders"
+          :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.ORDERS.INDEX]"
           class="flex-col h-auto py-2 rounded-lg flex items-center gap-1.5 font-medium text-sm transition-colors"
-          :class="
-            route.path.startsWith('/orders')
-              ? 'bg-primary-50 font-semibold text-primary-700 border-t-2 border-primary-600'
-              : 'text-gray-500'
-          "
+          :class="{
+            'text-primary-600 bg-primary-50': $route.path.startsWith(
+              routes.ROUTE_PATHS[routes.ROUTE_NAMES.ORDERS.INDEX]
+            ),
+            'text-gray-600 hover:text-gray-900 hover:bg-gray-100': !$route.path.startsWith(
+              routes.ROUTE_PATHS[routes.ROUTE_NAMES.ORDERS.INDEX]
+            ),
+          }"
         >
           <UIcon name="i-heroicons-shopping-bag" class="size-5 shrink-0" />
           <span class="text-xs mt-1">Orders</span>
@@ -307,12 +319,16 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
+import { formatDistanceToNow } from 'date-fns'
+import { useAppRoutes } from '~/composables/useRoutes'
 import { useAuthStore } from '~/store/modules/auth'
 import { useSubscriptionStore } from '~/store/modules/subscription'
 import { useNotificationStore } from '~/store/modules/notification'
-import { formatDistanceToNow } from 'date-fns'
+
+// Composable
+const routes = useAppRoutes()
 
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()

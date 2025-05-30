@@ -55,7 +55,14 @@
 </template>
 
 <script setup lang="ts">
+import { useAppRoutes } from '~/composables/useRoutes'
 import SettingsBillingForm from '~/components/settings/SettingsBillingForm.vue'
+
+// Composable
+const routes = useAppRoutes()
+
+// Constants
+const _DASHBOARD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX] as string // Prefix with underscore to indicate it's intentionally unused
 
 definePageMeta({
   middleware: ['auth'],

@@ -7,7 +7,7 @@
           icon="i-heroicons-arrow-left"
           color="gray"
           variant="ghost"
-          to="/styles"
+          :to="STYLES_PATH"
           class="mr-3"
         />
         <h1 class="text-2xl font-bold text-gray-800">Style Details</h1>
@@ -92,7 +92,7 @@ class="mt-2"> Return to Styles </UButton>
                 color="primary"
                 variant="outline"
                 icon="i-heroicons-pencil"
-                :to="`/styles/${$route.params.id}/edit`"
+                :to="getEditStylePath(style.id)"
                 :disabled="isLoading"
               />
               <UButton
@@ -201,9 +201,22 @@ size="sm">
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
+import { useAppRoutes } from '~/composables/useRoutes'
 import DeleteModal from '~/components/DeleteModal.vue'
+
+// Composable
+const routes = useAppRoutes()
+
+// Constants
+const STYLES_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.INDEX] as string
+const getEditStylePath = (id: string): string =>
+  (
+    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.EDIT] as (params: {
+      id: string
+    }) => string
+  )({ id })
 
 // Set page metadata
 useHead({

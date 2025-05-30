@@ -1,11 +1,19 @@
-<script setup>
-// Redirect from /styles/[id] to /styles/[id]/detail
+<script setup lang="ts">
+import { useAppRoutes } from '~/composables/useRoutes'
+
+// Composable
+const routes = useAppRoutes()
 const route = useRoute()
 const router = useRouter()
 
 // On component mount, redirect to the detail page
 onMounted(() => {
-  router.replace(`/styles/${route.params.id}/detail`)
+  const detailPath = (
+    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.VIEW] as (params: {
+      id: string
+    }) => string
+  )({ id: route.params.id as string })
+  router.replace(detailPath)
 })
 </script>
 

@@ -74,16 +74,11 @@ icon
               </UInput>
               <div class="flex justify-between mt-1">
                 <div class="flex items-center">
-                  <UCheckbox
-                    id="remember"
-                    v-model="form.rememberMe"
-                    name="remember"
-                    color="primary"
-                  />
+                  <UCheckbox v-model="form.rememberMe" name="remember" color="primary" />
                   <label for="remember" class="ml-2 text-sm text-gray-600">Remember me</label>
                 </div>
                 <NuxtLink
-                  to="/auth/forgot-password"
+                  :to="REGISTER_PATH"
                   class="text-sm font-medium text-primary hover:text-primary"
                 >
                   Forgot your password?
@@ -105,8 +100,14 @@ icon
           </UButton>
 
           <div class="text-center my-4">
-            <p class="text-sm text-gray-600">
-              Don't have an account? <ULink to="/auth/register" class="font-medium">Sign up</ULink>
+            <p class="mt-4 text-center text-sm text-gray-600">
+              Don't have an account?
+              <NuxtLink
+                :to="REGISTER_PATH"
+                class="font-medium text-primary-600 hover:text-primary-500"
+              >
+                Sign up
+              </NuxtLink>
             </p>
           </div>
         </form>
@@ -116,36 +117,40 @@ icon
 </template>
 
 <script setup lang="ts">
-// Set page metadata
-import { useAuthStore } from '~/store'
-import type { LoginCredentials } from '~/store/types'
+import { ref } from 'vue'
+import { useAppRoutes } from '~/composables/useRoutes'
+import { useAuthStore } from '~/stores/auth-store'
+import type { LoginCredentials as _LoginCredentials } from '~/types/auth'
+import { useToast } from '~~/composables/useToast'
 
-useHead({
-  title: 'Login',
-})
+// Composable
+const routes = useAppRoutes()
+const _router = useRouter()
+const toast = useToast()
+const authStore = useAuthStore()
+
+// Constants
+const _FORGOT_PASSWORD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.FORGOT_PASSWORD] as string
+const REGISTER_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.REGISTER] as string
+const DASHBOARD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX] as string
 
 // Set layout for this page
 definePageMeta({
   layout: 'auth',
 })
 
-const route = useRoute()
-
-// Initialize form with default empty values - safe for SSR
-const form = ref<LoginCredentials>({
+// Form state
+const form = ref({
   email: '',
   password: '',
-  remember: false,
+  rememberMe: false,
 })
 
-// Initialize reactive state
+// UI state
+const showPassword = ref(false)
 const isSubmitting = ref(false)
 const loading = ref(false)
 const error = ref('')
-const showPassword = ref(false)
-
-// Add toast composable
-const toast = useToast()
 
 // Use Auth store
 const authStore = useAuthStore()
@@ -188,17 +193,8 @@ const handleLogin = async () => {
       // Only redirect if not already redirected by the auth service
       // The auth service redirects users without a subscription to the confirm page
       if (!result.redirected) {
-        // Determine redirect destination
-        const destination = route.query.redirect
-          ? decodeURIComponent(route.query.redirect.toString())
-          : '/dashboard' // Changed from '/clients/new' to '/dashboard'
-
-        console.log('Redirecting to:', destination)
-
-        // Use a slight delay to ensure auth state is fully updated before navigation
-        setTimeout(() => {
-          navigateTo(destination)
-        }, 100)
+        // Redirect to dashboard after successful login
+        await navigateTo(DASHBOARD_PATH)
       }
     } else {
       // Set error message for display in the UI

@@ -6,7 +6,7 @@
           icon="i-heroicons-arrow-left"
           color="gray"
           variant="ghost"
-          to="/clients"
+          :to="CLIENTS_PATH"
           class="mr-2"
         />
         <h1 class="text-2xl font-bold">New Client</h1>
@@ -307,10 +307,18 @@ class="block text-sm font-medium text-gray-700"
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useAppRoutes } from '~/composables/useRoutes'
 import { useAuthStore, useMeasurementTemplatesStore } from '~/store'
+
+// Composable
+const routes = useAppRoutes()
+const router = useRouter()
+
+// Constants
+const CLIENTS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.INDEX] as string
 
 // Set page metadata
 useHead({
@@ -673,8 +681,8 @@ const saveClient = async () => {
     const newClient = await saveClientToApi()
 
     if (newClient) {
-      // Navigate to client detail page
-      navigateTo(`/clients/${newClient.id}`)
+      // Redirect to clients list on success
+      await router.push(`${CLIENTS_PATH}/${newClient.id}`)
     }
   } finally {
     isSaving.value = false

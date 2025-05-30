@@ -7,7 +7,7 @@
           color="gray"
           variant="ghost"
           size="lg"
-          to="/orders"
+          :to="ORDERS_PATH"
           class="mr-2"
         />
         <h1 class="text-xl font-bold">Create New Order</h1>
@@ -236,10 +236,18 @@ required>
   </div>
 </template>
 
-<script setup>
-// Set page metadata
-// Import auth composable
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAppRoutes } from '~/composables/useRoutes'
 import { useSessionAuth } from '~/composables/useSessionAuth'
+
+// Composable
+const routes = useAppRoutes()
+const router = useRouter()
+
+// Constants
+const ORDERS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.INDEX] as string
 
 useHead({
   title: 'Create New Order - QuickMeazure',
@@ -398,7 +406,7 @@ const saveOrder = async () => {
   try {
     // Get auth token from the auth store
     const auth = useSessionAuth()
-    const token = auth.token.value
+    const _token = auth.token.value // Prefix with underscore to indicate it's intentionally unused
 
     // Format due date
     let dueDate = null
@@ -406,37 +414,31 @@ const saveOrder = async () => {
       dueDate = new Date(form.value.dueDate)
     }
 
-    // Call the create order API
-    const newOrder = await $fetch('/api/orders', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: {
-        clientId:
-          typeof form.value.clientId === 'object' ? form.value.clientId.value : form.value.clientId,
-        styleId: form.value.styleId
-          ? typeof form.value.styleId === 'object'
-            ? form.value.styleId.value
-            : form.value.styleId
-          : null,
-        status: form.value.status,
-        dueDate: dueDate,
-        totalAmount: form.value.totalAmount,
-        depositAmount: form.value.depositAmount || 0,
-        notes: form.value.notes,
-      },
+    // Create the order
+    await createOrder({
+      clientId:
+        typeof form.value.clientId === 'object' ? form.value.clientId.value : form.value.clientId,
+      styleId: form.value.styleId
+        ? typeof form.value.styleId === 'object'
+          ? form.value.styleId.value
+          : form.value.styleId
+        : null,
+      status: form.value.status,
+      dueDate,
+      totalAmount: form.value.totalAmount,
+      depositAmount: form.value.depositAmount || 0,
+      notes: form.value.notes,
     })
 
-    // Show success notification
+    // Show success message
     useToast().add({
-      title: 'Order Created',
-      description: 'New order has been created successfully.',
+      title: 'Order created',
+      description: 'The order has been created successfully.',
       color: 'green',
     })
 
-    // Redirect to order detail page
-    navigateTo(`/orders/${newOrder.id}/detail`)
+    // Redirect to orders list on success
+    await router.push(ORDERS_PATH)
   } catch (error) {
     console.error('Error creating order:', error)
     let errorMessage = 'Failed to create order. Please try again.'

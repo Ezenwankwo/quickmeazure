@@ -403,7 +403,7 @@ class="block text-sm font-medium text-gray-700"
                 >
                   <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto order-2 sm:order-1">
                     <UButton
-                      to="/auth/confirm"
+                      :to="ROUTE_NAMES.AUTH.CONFIRM"
                       variant="outline"
                       color="gray"
                       class="w-full sm:w-auto"
@@ -450,8 +450,8 @@ class="block text-sm font-medium text-gray-700"
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-// We don't need storeToRefs here since we're not using reactive store properties
-import { useToast, useHead, useRouter, useSessionAuth, navigateTo } from '#imports'
+import { useToast, useHead, useSessionAuth, navigateTo } from '#imports'
+import { ROUTE_NAMES } from '~/constants/routes'
 import { useMeasurementTemplatesStore } from '~/store'
 import { _useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
 
@@ -480,7 +480,6 @@ interface MeasurementTemplate {
 
 const { user } = useSessionAuth()
 const toast = useToast()
-const router = useRouter()
 
 // Initialize API loading state
 const _apiLoading = ref(false)
@@ -918,25 +917,8 @@ async function saveTemplates() {
     // Force a small delay to ensure state updates are processed
     await new Promise(resolve => setTimeout(resolve, 500))
 
-    // Use the most direct approach - window.location
-    window.location.href = '/dashboard'
-
-    // The code below won't execute due to the page redirect above
-    // Keeping as fallback in case the redirect doesn't happen
-    try {
-      console.log('Trying router navigation...')
-      await router.push('/dashboard')
-      console.log('Navigation with router.push completed')
-    } catch (navError) {
-      console.error('Error with router navigation:', navError)
-      try {
-        console.log('Trying navigateTo...')
-        await navigateTo('/dashboard', { replace: true })
-        console.log('Fallback navigation with navigateTo completed')
-      } catch (finalError) {
-        console.error('All navigation methods failed:', finalError)
-      }
-    }
+    // Use the centralized route for navigation
+    await navigateTo(ROUTE_NAMES.DASHBOARD.INDEX, { replace: true })
   } catch (error: any) {
     console.error('Error saving templates:', error)
 

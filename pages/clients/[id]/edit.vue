@@ -6,7 +6,7 @@
           icon="i-heroicons-arrow-left"
           color="gray"
           variant="ghost"
-          :to="`/clients/${clientId}`"
+          :to="getClientPath(clientId)"
           class="mr-2"
         />
         <h1 class="text-2xl font-bold">Edit Client</h1>
@@ -288,15 +288,28 @@ class="text-primary-600 hover:underline"
   </div>
 </template>
 
-<script setup>
-// Import the measurement templates store
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMeasurementTemplatesStore } from '~/store'
+import { useAppRoutes } from '~/composables/useRoutes'
+
+// Composable
+const routes = useAppRoutes()
+const route = useRoute()
+const router = useRouter()
 
 // Get client ID from route
-const route = useRoute()
-const clientId = route.params.id
+const clientId = route.params.id as string
+
+// Constants
+const _CLIENTS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.INDEX] as string
+const getClientPath = (id: string): string =>
+  (
+    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.VIEW] as (params: {
+      id: string
+    }) => string
+  )({ id })
 
 // Client form data
 const form = ref({
@@ -725,8 +738,8 @@ const updateClient = async () => {
       color: 'green',
     })
 
-    // Redirect to client details page
-    navigateTo(`/clients/${clientId}`)
+    // Redirect to client detail page after successful update
+    await router.push(getClientPath(clientId))
   } catch (error) {
     console.error('Error updating client:', error)
     let errorMessage = 'Failed to update client'

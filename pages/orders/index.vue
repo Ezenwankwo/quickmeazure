@@ -6,7 +6,7 @@
       :primary-action="{
         label: 'Create New Order',
         icon: 'i-heroicons-plus',
-        to: '/orders/new',
+        to: NEW_ORDER_PATH,
       }"
     />
 
@@ -573,11 +573,22 @@ icon="i-heroicons-plus">
   </div>
 </template>
 
-<script setup>
-import DeleteModal from '~/components/DeleteModal.vue'
-
-// Import auth composable
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useAppRoutes } from '~/composables/useRoutes'
 import { useSessionAuth } from '~/composables/useSessionAuth'
+
+// Composable
+const routes = useAppRoutes()
+
+// Constants
+const NEW_ORDER_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.NEW] as string
+const _getOrderPath = (id: string): string =>
+  (
+    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.VIEW] as (params: {
+      id: string
+    }) => string
+  )({ id })
 
 // Set page metadata
 useHead({

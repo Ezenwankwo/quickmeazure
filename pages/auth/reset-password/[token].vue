@@ -1,6 +1,17 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-gray-50">
+  <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
     <div class="w-full max-w-md space-y-8 p-10 bg-white rounded-xl shadow">
+      <!-- Back to login link -->
+      <div class="text-left">
+        <ULink
+          :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.LOGIN]"
+          class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+        >
+          <UIcon name="i-heroicons-arrow-left" class="mr-1 h-4 w-4" />
+          Back to login
+        </ULink>
+      </div>
+
       <div class="text-center">
         <h2 class="text-2xl md:text-3xl font-bold">Reset your password</h2>
         <p class="mt-2 text-sm text-gray-600">Enter your new password below</p>
@@ -76,10 +87,9 @@ icon
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // Set page metadata
-// Explicitly import UI components
-import { UInput, UButton, UIcon } from '#components'
+import { useAppRoutes } from '~/composables/useRoutes'
 
 useHead({
   title: 'Reset Password - QuickMeazure',
@@ -90,14 +100,17 @@ definePageMeta({
   layout: 'auth',
 })
 
+// Composable
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const routes = useAppRoutes()
 
+// State
 const password = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
-const token = ref(route.params.token)
+const token = ref(route.params.token as string)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 

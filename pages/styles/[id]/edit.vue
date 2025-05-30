@@ -5,7 +5,7 @@
         icon="i-heroicons-arrow-left"
         color="gray"
         variant="ghost"
-        :to="`/styles/${$route.params.id}/detail`"
+        :to="_getStyleDetailPath($route.params.id as string)"
         class="mr-4"
       />
       <h1 class="text-xl font-bold">Edit Style</h1>
@@ -127,9 +127,21 @@ color="primary"
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
+import { useAppRoutes } from '~/composables/useRoutes'
 import { useApiAuth } from '~/composables/useApiAuth'
+
+// Composable
+const routes = useAppRoutes()
+
+// Constants
+const _getStyleDetailPath = (id: string): string =>
+  (
+    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.VIEW] as (params: {
+      id: string
+    }) => string
+  )({ id })
 
 // Set page metadata
 useHead({

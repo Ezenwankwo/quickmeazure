@@ -7,7 +7,7 @@
       :primary-action="{
         label: 'New Client',
         icon: 'i-heroicons-plus',
-        to: '/clients/new',
+        to: NEW_CLIENT_PATH,
       }"
     />
 
@@ -106,10 +106,9 @@ size="xs"> View all </UButton>
                 <UIcon :name="activity.icon || 'i-heroicons-bell'" class="text-primary-600" />
               </div>
               <div class="flex-1 min-w-0">
-                <p
-                  class="text-sm font-medium text-gray-900"
-                  v-html="activity.message || 'Activity'"
-                ></p>
+                <p class="text-sm font-medium text-gray-900">
+                  {{ activity.message || 'Activity' }}
+                </p>
                 <p class="text-xs text-gray-500">{{ activity.time || 'Recently' }}</p>
               </div>
             </div>
@@ -202,7 +201,7 @@ size="xs"> View all </UButton>
                       color="gray"
                       variant="ghost"
                       size="xs"
-                      :to="`/orders/${order.id}`"
+                      :to="`${ORDERS_PATH}/${order.id}`"
                     />
                   </td>
                 </tr>
@@ -251,11 +250,20 @@ size="xs"> View all </UButton>
   </div>
 </template>
 
-<script setup>
-// Import the API auth composable
-import { useApiAuth } from '~/composables/useApiAuth'
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useAppRoutes } from '~/composables/useRoutes'
+import { useApiAuth } from '~/composables/useApiAuth'
 import ClientGrowthChart from '~/components/charts/ClientGrowthChart.vue'
+
+// Composable
+const routes = useAppRoutes()
+const { fetchWithAuth: _fetchWithAuth } = useApiAuth() // Prefix with underscore to indicate it's intentionally unused
+
+// Constants
+const NEW_CLIENT_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW] as string
+const _CLIENTS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.INDEX] as string
+const ORDERS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.INDEX] as string
 
 // Set page metadata
 useHead({

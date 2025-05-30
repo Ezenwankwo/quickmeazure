@@ -7,8 +7,12 @@
 
     <!-- Title and Subtitle - Outside Card -->
     <div class="text-center mb-6 w-full max-w-md">
-      <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Create your account</h2>
-      <p class="mt-2 text-gray-600">Start managing your tailor business.</p>
+      <p class="mt-4 text-center text-sm text-gray-600">
+        Already have an account?
+        <NuxtLink :to="LOGIN_PATH" class="font-medium text-primary-600 hover:text-primary-500">
+          Sign in
+        </NuxtLink>
+      </p>
     </div>
 
     <div class="max-w-md w-full space-y-6 bg-white p-4 sm:p-8 rounded-xl shadow">
@@ -264,8 +268,14 @@ name="terms"
 required
 size="lg" />
             <label for="terms" class="ml-2 block text-sm text-gray-700">
-              I agree to the <ULink to="/legal/terms" class="font-medium">terms</ULink> and
-              <ULink to="/legal/privacy" class="font-medium">privacy policies</ULink>
+              I agree to the
+              <ULink :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.LEGAL.TERMS]" class="font-medium">
+                terms
+              </ULink>
+              and
+              <ULink :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.LEGAL.PRIVACY]" class="font-medium">
+                privacy policies
+              </ULink>
               <span class="text-red-500">*</span>
             </label>
           </div>
@@ -290,7 +300,10 @@ size="lg" />
 
         <div class="text-center my-4">
           <p class="text-sm text-gray-600">
-            Already have an account? <ULink to="/auth/login" class="font-medium">Sign in</ULink>
+            Already have an account?
+            <ULink :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.LOGIN]" class="font-medium">
+              Sign in
+            </ULink>
           </p>
         </div>
       </form>
@@ -299,25 +312,17 @@ size="lg" />
 </template>
 
 <script setup lang="ts">
-// Set page metadata
+import { ref, computed } from 'vue'
+import { useAppRoutes } from '~/composables/useRoutes'
 import { useAuthStore } from '~/store'
 import type { RegistrationData } from '~/store/types'
 
-useHead({
-  title: 'Register',
-})
-
-// Set layout for this page
-definePageMeta({
-  layout: 'auth',
-})
-
-// Import route composable
-const _route = useRoute()
+const routes = useAppRoutes()
 const router = useRouter()
 const toast = useToast()
 
-// Form data
+const LOGIN_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.LOGIN] as string
+
 const name = ref('')
 const email = ref('')
 const password = ref('')
@@ -327,14 +332,13 @@ const isLoading = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const formErrors = ref({})
-// Get auth store
+
 const authStore = useAuthStore()
 
-// Password validation
-const hasLowerCase = str => /[a-z]/.test(str)
-const hasUpperCase = str => /[A-Z]/.test(str)
-const hasNumber = str => /\d/.test(str)
-const hasSpecialChar = str => /[!@#$%^&*()_+\-={}();':"\\|,.<>/?]/.test(str)
+const hasLowerCase = (str: string) => /[a-z]/.test(str)
+const hasUpperCase = (str: string) => /[A-Z]/.test(str)
+const hasNumber = (str: string) => /\d/.test(str)
+const hasSpecialChar = (str: string) => /[!@#$%^&*()_+\-={}();':"\\|,.<>/?]/.test(str)
 
 const passwordStrength = computed(() => {
   if (!password.value) return 0
@@ -349,14 +353,10 @@ const passwordStrength = computed(() => {
 })
 
 const passwordMismatchError = computed(() => {
-  // Only show mismatch error if both fields have values and they don't match
   return password.value && confirmPassword.value && password.value !== confirmPassword.value
 })
 
-// Form validation
-// Validate form fields in real-time
 const isFormValid = computed(() => {
-  // Check if all required fields are filled
   const fieldsValid =
     !!name.value &&
     !!email.value &&
@@ -364,7 +364,6 @@ const isFormValid = computed(() => {
     password.value === confirmPassword.value &&
     agreeToTerms.value
 
-  // Check if password meets all criteria
   const passwordValid =
     password.value.length >= 8 &&
     hasUpperCase(password.value) &&
@@ -378,19 +377,16 @@ const isFormValid = computed(() => {
 const validateForm = () => {
   const errors = {}
 
-  // Validate name
   if (!name.value.trim()) {
     errors.name = 'Name is required'
   }
 
-  // Validate email
   if (!email.value.trim()) {
     errors.email = 'Email is required'
   } else if (!/^\S+@\S+\.\S+$/.test(email.value)) {
     errors.email = 'Please enter a valid email address'
   }
 
-  // Validate password
   if (!password.value) {
     errors.password = 'Password is required'
   } else {
@@ -417,12 +413,10 @@ const validateForm = () => {
     }
   }
 
-  // Validate password confirmation
   if (password.value !== confirmPassword.value) {
     errors.confirmPassword = 'Passwords do not match'
   }
 
-  // Validate terms agreement
   if (!agreeToTerms.value) {
     errors.terms = 'You must agree to the terms and privacy policy'
   }
@@ -431,32 +425,25 @@ const validateForm = () => {
   return Object.keys(errors).length === 0
 }
 
-// Handle registration
 async function handleRegister() {
-  // Reset form errors
   formErrors.value = {}
 
-  // Validate form
   if (!validateForm()) {
     return
   }
 
-  // Submit the form
   isLoading.value = true
 
   try {
-    // Create registration data object with our typed interface
     const registrationData: RegistrationData = {
       name: name.value,
       email: email.value,
       password: password.value,
     }
 
-    // Register using the auth store with our typed data
     const result = await authStore.register(registrationData)
 
     if (result.success) {
-      // Show success toast
       toast.add({
         title: 'Registration Successful',
         description: 'Your account has been created!',
@@ -464,13 +451,10 @@ async function handleRegister() {
         icon: 'i-heroicons-check-circle',
       })
 
-      // Navigate to subscription confirmation page instead of dashboard
-      router.push('/auth/confirm')
+      await router.push(LOGIN_PATH)
     } else {
-      // Handle registration failure
       const errorMessage = result.error || 'Registration failed'
 
-      // Determine which field has the error
       if (
         errorMessage.toLowerCase().includes('email is already registered') ||
         errorMessage.toLowerCase().includes('email already exists') ||

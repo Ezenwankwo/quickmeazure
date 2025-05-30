@@ -6,7 +6,7 @@
       :primary-action="{
         label: 'Back to Clients',
         icon: 'i-heroicons-arrow-left',
-        to: '/clients',
+        to: CLIENTS_PATH,
       }"
     />
 
@@ -326,10 +326,25 @@
   </div>
 </template>
 
-<script setup>
-// Get client ID from route
+<script setup lang="ts">
+import { useAppRoutes } from '~/composables/useRoutes'
+
+// Composable
+const routes = useAppRoutes()
 const route = useRoute()
-const clientId = route.params.id
+const _router = useRouter() // Prefix with underscore to indicate it's intentionally unused
+
+// Get client ID from route
+const clientId = route.params.id as string
+
+// Constants
+const CLIENTS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.INDEX] as string
+const _getEditClientPath = (id: string): string =>
+  (
+    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.EDIT] as (params: {
+      id: string
+    }) => string
+  )({ id })
 
 // Client data
 const client = ref(null)

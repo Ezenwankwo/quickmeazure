@@ -1,5 +1,16 @@
 <template>
   <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 space-y-6">
+    <!-- Back to login link -->
+    <div class="w-full max-w-md text-left">
+      <ULink
+        :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.LOGIN]"
+        class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
+      >
+        <UIcon name="i-heroicons-arrow-left" class="mr-1 h-4 w-4" />
+        Back to login
+      </ULink>
+    </div>
+
     <!-- Title and Subtitle - Outside Card -->
     <div class="text-center mb-6 w-full max-w-md">
       <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Forgot your password?</h2>
@@ -40,7 +51,18 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { useAppRoutes } from '~/composables/useRoutes'
+import { useRouter } from 'vue-router'
+
+// Composable
+const routes = useAppRoutes()
+const router = useRouter()
+const toast = useToast()
+
+// Constants
+const LOGIN_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.LOGIN] as string
+
 // Set page metadata
 useHead({
   title: 'Forgot Password',
@@ -51,9 +73,9 @@ definePageMeta({
   layout: 'auth',
 })
 
+// State
 const email = ref('')
 const loading = ref(false)
-const toast = useToast()
 
 const sendResetLink = async () => {
   if (!email.value) return
@@ -74,13 +96,13 @@ const sendResetLink = async () => {
         icon: 'i-heroicons-check-circle',
       })
 
-      // For development, log the reset URL to the console
-      if (response.resetUrl) {
-        console.log('Reset URL:', response.resetUrl)
-      }
-
       // Clear email
       email.value = ''
+
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        router.push(LOGIN_PATH)
+      }, 2000)
     }
   } catch (_error) {
     // Don't reveal if the email exists or not for security

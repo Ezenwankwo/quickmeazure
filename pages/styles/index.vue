@@ -7,7 +7,7 @@
       :primary-action="{
         label: 'Add New Style',
         icon: 'i-heroicons-plus',
-        to: '/styles/new',
+        to: NEW_STYLE_PATH,
       }"
     />
 
@@ -179,7 +179,7 @@ class="px-4 sm:px-6 py-2">
                       variant="ghost"
                       icon="i-heroicons-pencil-square"
                       size="2xs"
-                      :to="`/styles/${style.id}/edit`"
+                      :to="getEditStylePath(style.id)"
                       class="hover:bg-primary-100"
                     />
                   </UTooltip>
@@ -230,9 +230,29 @@ class="px-4 sm:px-6 py-2">
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useAppRoutes } from '~/composables/useRoutes'
 import DeleteModal from '~/components/DeleteModal.vue'
 import { useAuthStore } from '~/store/modules/auth'
+
+// Composable
+const routes = useAppRoutes()
+
+// Constants
+const NEW_STYLE_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.NEW] as string
+const _getStylePath = (id: string): string =>
+  (
+    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.VIEW] as (params: {
+      id: string
+    }) => string
+  )({ id })
+const getEditStylePath = (id: string): string =>
+  (
+    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.EDIT] as (params: {
+      id: string
+    }) => string
+  )({ id })
 
 // Set page metadata
 useHead({
