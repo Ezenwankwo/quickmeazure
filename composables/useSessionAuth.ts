@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { useUserSession } from '#imports'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Interface for our user
 interface User {
@@ -120,53 +121,40 @@ export function useSessionAuth() {
     return false
   })
 
-  // Login function
+  // Login function - uses the auth store's login function
   async function login(email: string, password: string, remember: boolean = false) {
-    try {
-      // Call the login API endpoint
-      const response = await $fetch<{ user: User; token: string }>('/api/auth/login', {
-        method: 'POST',
-        body: { email, password, remember },
-      })
+    const authStore = useAuthStore()
+    const result = await authStore.login({ email, password, remember })
 
-      // Store JWT token for backward compatibility
-      jwtToken.value = response.token
+    // If login was successful, update local state for backward compatibility
+    if (result.success) {
+      // Get the token from the auth store
+      jwtToken.value = authStore.token
 
-      // Calculate session expiry based on remember setting
-      const now = Date.now()
-      sessionExpiry.value = remember
-        ? now + 30 * 24 * 60 * 60 * 1000 // 30 days if remember me is checked
-        : now + 8 * 60 * 60 * 1000 // 8 hours for normal session
+      // Update session expiry from auth store
+      sessionExpiry.value = authStore.sessionExpiry
 
       // Save to localStorage for backward compatibility
       if (import.meta.client) {
         localStorage.setItem(
           'auth',
           JSON.stringify({
-            token: response.token,
-            sessionExpiry: sessionExpiry.value,
+            token: authStore.token,
+            sessionExpiry: authStore.sessionExpiry,
           })
         )
-        localStorage.setItem('lastLoginTime', now.toString())
+        localStorage.setItem('lastLoginTime', Date.now().toString())
       }
 
       // Refresh the nuxt-auth-utils session
       await refreshSession()
 
-      // Check if user has a subscription
-      if (response.user.subscriptionPlan === 'free' || !response.user.subscriptionPlan) {
-        navigateTo('/subscription/confirm')
-        return { success: true, redirected: true }
-      }
-
-      return { success: true }
-    } catch (error: any) {
-      console.error('Login failed:', error)
-      return {
-        success: false,
-        error: error.data?.message || error.data?.statusMessage,
-      }
+      // Return the result which may include redirect info
+      return result
     }
+
+    // If login failed, return the error
+    return result
   }
 
   // Register function

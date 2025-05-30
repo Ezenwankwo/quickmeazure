@@ -290,7 +290,7 @@ export const useAuthStore = defineStore(
 
         // Check if user has a subscription
         if (userData.subscriptionPlan === 'free' || !userData.subscriptionPlan) {
-          navigateTo('/subscription/confirm')
+          navigateTo('/auth/confirm')
           return { success: true, redirected: true }
         }
 

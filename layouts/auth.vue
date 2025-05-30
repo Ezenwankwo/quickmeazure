@@ -54,6 +54,6 @@ const route = useRoute()
 
 // Check if current page is subscription confirm page
 const isSubscriptionConfirmPage = computed(() => {
-  return route.path === '/subscription/confirm'
+  return route.path === '/auth/confirm'
 })
 </script>
