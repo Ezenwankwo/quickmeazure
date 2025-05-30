@@ -36,5 +36,8 @@ size="xl"> Learn More </UButton>
 </template>
 
 <script setup>
-const { isLoggedIn } = useSessionAuth()
+import { computed } from 'vue'
+import { useAuthStore } from '~/store/modules/auth'
+const authStore = useAuthStore()
+const isLoggedIn = computed(() => authStore.isLoggedIn)
 </script>

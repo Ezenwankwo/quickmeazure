@@ -11,6 +11,7 @@ export default defineNuxtConfig({
     '@sentry/nuxt/module',
     '@nuxt/eslint',
     '@pinia/nuxt',
+    '@nuxt/test-utils/module',
   ],
   components: [{ path: '~/components', pathPrefix: false }],
   devtools: { enabled: true },

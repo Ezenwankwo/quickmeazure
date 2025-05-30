@@ -1,20 +1,41 @@
-import { defineConfig } from 'vitest/config'
-import vue from '@vitejs/plugin-vue'
+import { defineVitestConfig } from '@nuxt/test-utils/config'
 import { fileURLToPath } from 'node:url'
 
-export default defineConfig({
-  plugins: [vue()],
+export default defineVitestConfig({
   test: {
     globals: true,
-    environment: 'jsdom',
-    deps: {
-      inline: ['vue', 'pinia'],
+    environment: 'nuxt',
+    setupFiles: ['tests/setup.ts'],
+    environmentOptions: {
+      nuxt: {
+        rootDir: fileURLToPath(new URL('./', import.meta.url)),
+        domEnvironment: 'happy-dom',
+        mock: {
+          intersectionObserver: true,
+          indexedDb: true,
+        },
+      },
     },
     coverage: {
+      provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'tests/'],
+      reportsDirectory: './coverage',
+      exclude: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/tests/**',
+        '**/.nuxt/**',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/types/**',
+      ],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+      },
     },
-    setupFiles: ['./tests/setup.ts'],
   },
   resolve: {
     alias: {

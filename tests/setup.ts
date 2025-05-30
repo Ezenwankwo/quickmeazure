@@ -1,80 +1,189 @@
-import { beforeAll, beforeEach, afterEach, vi } from 'vitest'
+// @vitest-environment nuxt
+import { vi, beforeEach, afterAll, beforeAll } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
-// Initialize Pinia globally before any tests run
-beforeAll(() => {
-  // Create a global pinia instance
-  const pinia = createPinia()
-  setActivePinia(pinia)
-})
-
-// Reset Pinia for each test
-beforeEach(() => {
-  // Create a fresh pinia instance and set it as active for each test
-  const pinia = createPinia()
-  setActivePinia(pinia)
-})
-
-// Global teardown for all tests
-afterEach(() => {
-  vi.resetAllMocks()
-})
-
-// Mock Nuxt-specific globals
-vi.mock('#app', () => ({
-  useNuxtApp: vi.fn(() => ({
-    $api: {
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
-      delete: vi.fn(),
-      patch: vi.fn(),
-    },
-    navigateTo: vi.fn(),
-  })),
-  useToast: vi.fn(() => ({
-    add: vi.fn(),
-  })),
-  navigateTo: vi.fn(),
-}))
-
-// Mock vue-router
-vi.mock('vue-router', () => ({
-  useRoute: vi.fn(() => ({ path: '/dashboard' })),
-}))
-
-// Mock global fetch and $fetch
-global.fetch = vi.fn()
-global.$fetch = vi.fn()
-
 // Mock localStorage
-const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+const localStorageMock = (() => {
+  let store: Record<string, string> = {}
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value.toString()
+    },
+    removeItem: (key: string) => {
+      delete store[key]
+    },
+    clear: () => {
+      store = {}
+    },
+  }
+})()
+
+// Mock window object
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'localStorage', {
+    value: localStorageMock,
+    writable: true,
+  })
 }
 
-// Set up global mocks
-vi.stubGlobal('localStorage', localStorageMock)
-
-// Mock document classList
-Object.defineProperty(document.documentElement, 'classList', {
-  value: {
-    add: vi.fn(),
-    remove: vi.fn(),
-    contains: vi.fn(),
-  },
+// Mock matchMedia
+Object.defineProperty(window, 'matchMedia', {
   writable: true,
-})
-
-// Mock window.matchMedia
-window.matchMedia = vi.fn().mockImplementation(query => {
-  return {
-    matches: query === '(prefers-color-scheme: dark)',
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
     media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
-  }
+  })),
+})
+
+// Mock global objects
+globalThis.$fetch = vi.fn()
+globalThis.fetch = vi.fn()
+
+// Mock requestAnimationFrame
+window.requestAnimationFrame = vi.fn(callback => {
+  return window.setTimeout(callback, 0)
+})
+
+window.cancelAnimationFrame = vi.fn(id => {
+  clearTimeout(id)
+})
+
+// Mock ResizeObserver
+class ResizeObserverStub {
+  observe = vi.fn()
+  unobserve = vi.fn()
+  disconnect = vi.fn()
+}
+
+window.ResizeObserver = ResizeObserverStub
+
+// Mock IntersectionObserver
+class IntersectionObserverStub {
+  observe = vi.fn()
+  unobserve = vi.fn()
+  disconnect = vi.fn()
+}
+
+window.IntersectionObserver = IntersectionObserverStub
+
+// Setup test environment
+beforeAll(() => {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+})
+
+// Mock Nuxt composables
+vi.mock('#imports', () => ({
+  defineNuxtComponent: (comp: any) => comp,
+  useNuxtApp: () => ({
+    $pinia: createPinia(),
+    $config: { public: {} },
+  }),
+  useRuntimeConfig: () => ({
+    public: {},
+  }),
+  useRoute: () => ({}),
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+  }),
+}))
+
+// Mock Nuxt config
+vi.mock('#build/config', () => ({
+  sourcemap: {
+    server: false,
+    client: false,
+  },
+  vite: {
+    build: {
+      minify: false,
+      cssCodeSplit: false,
+    },
+    logLevel: 'silent',
+  },
+  publicRuntimeConfig: {
+    siteUrl: 'http://localhost:3000',
+  },
+  hooks: {
+    'vite:extendConfig': vi.fn(),
+    'components:extend': vi.fn(),
+  },
+}))
+
+// Mock Nuxt components
+vi.mock('#build/components', () => ({
+  NuxtLink: {
+    template: '<a :href="to"><slot></slot></a>',
+    props: ['to'],
+  },
+  UButton: {
+    template: '<button :class="$attrs.class"><slot></slot></button>',
+    props: ['to', 'color', 'size', 'variant'],
+  },
+  NuxtImg: {
+    template: '<img :src="src" :alt="alt" data-testid="dashboard-image" />',
+    props: ['src', 'alt', 'placeholder', 'preload'],
+  },
+}))
+
+// Mock the auth store
+vi.mock('~/store/modules/auth', () => ({
+  useAuthStore: vi.fn(() => ({
+    isLoggedIn: false,
+    user: null,
+    login: vi.fn(),
+    logout: vi.fn(),
+    init: vi.fn(),
+    $reset: vi.fn(),
+  })),
+}))
+
+// Mock other modules
+vi.mock('@nuxtjs/sentry', () => ({
+  default: vi.fn(),
+}))
+
+vi.mock('nuxt-og-image', () => ({
+  default: vi.fn(),
+}))
+
+vi.mock('@nuxtjs/device', () => ({
+  default: vi.fn(),
+}))
+
+vi.mock('@pinia/nuxt', () => ({
+  defineNuxtPlugin: vi.fn(),
+  createPinia: vi.fn(),
+}))
+
+// Setup before each test
+beforeEach(() => {
+  vi.clearAllMocks()
+  localStorageMock.clear()
+  window.localStorage = localStorageMock
+
+  // Reset Pinia state
+  const pinia = createPinia()
+  setActivePinia(pinia)
+
+  // Reset fetch mocks
+  globalThis.fetch = vi.fn()
+  globalThis.$fetch = vi.fn()
+})
+
+// Cleanup after all tests
+afterAll(() => {
+  vi.clearAllMocks()
+  vi.resetAllMocks()
+  vi.restoreAllMocks()
 })
