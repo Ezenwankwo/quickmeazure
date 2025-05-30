@@ -147,7 +147,6 @@ class="mt-4"
 import { ref, reactive, onMounted } from 'vue'
 import { format, parseISO } from 'date-fns'
 import { useAuthStore } from '~/store/modules/auth'
-import { useApiStore } from '~/store/modules/api'
 
 // Define types for type safety
 type ActivityItem = {
@@ -176,7 +175,6 @@ useHead({
 
 // Get auth store for API calls
 const authStore = useAuthStore()
-const apiStore = useApiStore()
 
 // Activity data
 const activities = ref<ActivityItem[]>([])

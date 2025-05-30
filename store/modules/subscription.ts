@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useApiStore } from './api'
 import { useAuthStore } from './auth'
 import { getFromStorage, setToStorage, removeFromStorage, STORAGE_KEYS } from '~/utils/storage'
 
@@ -87,8 +86,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   const error = ref<string | null>(null)
   const lastFetched = ref<number>(0)
 
-  // Get stores for making requests and auth
-  const _apiStore = useApiStore() // Prefixed with _ to avoid lint warning
+  // Get stores for auth
   const authStore = useAuthStore()
 
   // Computed properties

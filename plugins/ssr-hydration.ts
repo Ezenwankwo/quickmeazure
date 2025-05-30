@@ -19,12 +19,11 @@ export default defineNuxtPlugin({
         console.log('SSR Hydration: App mounted, initializing stores')
 
         // Import stores dynamically to avoid module-level initialization issues
-        import('~/store').then(({ useAuthStore, useUiStore, useApiStore }) => {
+        import('~/store').then(({ useAuthStore, useUiStore }) => {
           try {
             // Initialize stores safely after Pinia is ready
             const authStore = useAuthStore()
             const uiStore = useUiStore()
-            const _apiStore = useApiStore() // Prefixed with _ to indicate intentionally unused
 
             // Initialize auth state first (most critical)
             authStore.init()

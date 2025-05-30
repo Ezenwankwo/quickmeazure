@@ -446,7 +446,6 @@ size="sm"
 <script setup>
 // Import stores
 import { useAuthStore } from '~/store/modules/auth'
-import { useApiStore } from '~/store/modules/api'
 
 // Set page metadata
 useHead({
@@ -684,7 +683,6 @@ const fetchClients = async () => {
   try {
     // Get auth and API stores
     const authStore = useAuthStore()
-    const apiStore = useApiStore()
 
     // Check authentication
     if (!authStore.isLoggedIn) {
@@ -751,11 +749,6 @@ const fetchClients = async () => {
       response = directResponse
     } catch (directError) {
       console.error('Direct fetch failed:', directError)
-
-      // Fall back to API store
-      console.log('Falling back to API store...')
-      response = await apiStore.get(`/api/clients?${params.toString()}`)
-      console.log('API store response:', response)
     }
 
     // Check if the response is valid
