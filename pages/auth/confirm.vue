@@ -127,217 +127,17 @@
       </div>
     </div>
 
-    <!-- Change Plan Modal (using v-model:open) -->
-    <UModal
-      v-model:open="showChangePlanModal"
+    <!-- Change Plan Modal -->
+    <PlanSelectionModal
+      v-model="showChangePlanModal"
+      v-model:selected-plan="tempSelectedPlan"
       title="Select a Different Plan"
-      aria-labelledby="plan-selection-modal-title"
-      role="dialog"
-    >
-      <template #header>
-        <h2 id="plan-selection-modal-title" class="text-lg font-medium text-gray-900">
-          Select a Different Plan
-        </h2>
-      </template>
-      <template #body>
-        <div class="space-y-6">
-          <!-- Billing Toggle -->
-          <div class="flex flex-col items-center mb-6">
-            <div class="flex justify-center items-center gap-4 mb-2">
-              <span :class="{ 'font-semibold': !isAnnualBilling, 'text-gray-500': isAnnualBilling }"
-                >Monthly</span
-              >
-              <button
-                class="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                :class="{ 'bg-primary-600': isAnnualBilling, 'bg-gray-300': !isAnnualBilling }"
-                role="switch"
-                type="button"
-                :aria-checked="isAnnualBilling"
-                aria-label="Toggle between monthly and annual billing"
-                @click="toggleBilling"
-              >
-                <span
-                  class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                  :class="{ 'translate-x-6': isAnnualBilling, 'translate-x-0': !isAnnualBilling }"
-                />
-              </button>
-              <span :class="{ 'font-semibold': isAnnualBilling, 'text-gray-500': !isAnnualBilling }"
-                >Annual</span
-              >
-              <span
-                v-if="isAnnualBilling"
-                class="text-sm bg-primary-100 text-primary-800 py-1 px-2 rounded-full font-medium"
-                >Save 15%</span
-              >
-            </div>
-            <p class="text-sm text-center text-primary-700 bg-primary-50 py-2 px-4 rounded-full">
-              <span v-if="isAnnualBilling"
-                >Annual billing saves you 15% compared to monthly billing</span
-              >
-              <span v-else>Switch to annual billing to save 15%</span>
-            </p>
-          </div>
-
-          <!-- Plan Options -->
-          <div :key="'plan-options-' + modalRefreshKey" class="space-y-4">
-            <div
-              v-for="plan in displayedPlans"
-              :key="plan.value"
-              class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary-500 transition-colors"
-              :class="{ 'border-primary-500 bg-primary-50': tempSelectedPlan === plan.value }"
-              @click="tempSelectedPlan = plan.value"
-            >
-              <!-- Responsive layout with better stacking on small screens -->
-              <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <h4 class="text-lg font-medium">
-                      {{ plan.label }}
-                    </h4>
-                    <UBadge v-if="plan.value === 'professional'" color="primary" size="xs">
-                      Popular
-                    </UBadge>
-                    <!-- Show savings badge for annual plans -->
-                    <UBadge
-                      v-if="isAnnualBilling && plan.numericPrice > 0"
-                      color="success"
-                      size="xs"
-                      class="ml-auto sm:ml-0"
-                    >
-                      Save 15%
-                    </UBadge>
-                  </div>
-                  <p class="text-base text-gray-600 mt-1">
-                    {{ plan.description }}
-                  </p>
-
-                  <!-- Plan pricing with monthly equivalent for annual plans -->
-                  <div class="mt-2 mb-3 sm:hidden">
-                    <!-- Mobile only pricing -->
-                    <div class="font-bold text-lg">
-                      ₦{{ plan?.numericPrice?.toLocaleString() || '0' }}/{{
-                        isAnnualBilling ? 'year' : 'month'
-                      }}
-                    </div>
-                    <div
-                      v-if="isAnnualBilling && plan.numericPrice > 0"
-                      class="text-sm text-gray-600"
-                    >
-                      (₦{{ Math.round(plan.numericPrice / 12).toLocaleString() }}/month equivalent)
-                    </div>
-                    <div v-if="plan.numericPrice === 0" class="text-sm font-medium text-green-600">
-                      Free forever
-                    </div>
-                  </div>
-
-                  <!-- Feature list with expandable view -->
-                  <div class="relative">
-                    <ul class="mt-2 space-y-1">
-                      <li
-                        v-for="(feature, index) in showAllFeatures[plan.value]
-                          ? plan.features
-                          : plan.features?.slice(0, 3)"
-                        :key="index"
-                        class="text-sm text-gray-700 flex items-center"
-                      >
-                        <UIcon
-                          name="i-heroicons-check-circle"
-                          class="text-green-500 mr-1 flex-shrink-0"
-                          size="sm"
-                        />
-                        <span>{{ feature }}</span>
-                      </li>
-                    </ul>
-
-                    <!-- Show/hide features toggle -->
-                    <button
-                      v-if="plan.features?.length > 3"
-                      class="text-sm text-primary-600 hover:text-primary-800 mt-2 flex items-center font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded-md px-2 py-1"
-                      :aria-expanded="showAllFeatures[plan.value]"
-                      :aria-label="
-                        showAllFeatures[plan.value]
-                          ? 'Show fewer features'
-                          : `Show all ${plan.features.length} features`
-                      "
-                      @click.stop="toggleFeatures(plan.value)"
-                    >
-                      <UIcon
-                        :name="
-                          showAllFeatures[plan.value]
-                            ? 'i-heroicons-minus-circle'
-                            : 'i-heroicons-plus-circle'
-                        "
-                        class="mr-1"
-                        size="sm"
-                        aria-hidden="true"
-                      />
-                      {{
-                        showAllFeatures[plan.value]
-                          ? 'Show less'
-                          : `Show all ${plan.features.length} features`
-                      }}
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Right side with pricing (desktop) and action button -->
-                <div class="text-right sm:min-w-[140px] flex flex-col items-end justify-between">
-                  <div class="hidden sm:block">
-                    <!-- Desktop only pricing -->
-                    <div class="font-bold text-lg">
-                      ₦{{ plan?.numericPrice?.toLocaleString() || '0' }}/{{
-                        isAnnualBilling ? 'year' : 'month'
-                      }}
-                    </div>
-                    <div
-                      v-if="isAnnualBilling && plan.numericPrice > 0"
-                      class="text-sm text-gray-600"
-                    >
-                      (₦{{ Math.round(plan.numericPrice / 12).toLocaleString() }}/month)
-                    </div>
-                    <div v-if="plan.numericPrice === 0" class="text-sm font-medium text-green-600">
-                      Free forever
-                    </div>
-                  </div>
-
-                  <div class="mt-2">
-                    <UButton
-                      v-if="tempSelectedPlan !== plan.value"
-                      size="sm"
-                      color="primary"
-                      variant="ghost"
-                      class="whitespace-nowrap"
-                      @click.stop="tempSelectedPlan = plan.value"
-                    >
-                      Select Plan
-                    </UButton>
-                    <UBadge
-v-else
-color="primary"
-variant="subtle"
-class="whitespace-nowrap">
-                      Selected
-                    </UBadge>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <template #footer>
-        <div class="w-full flex justify-end gap-3" style="display: flex; justify-content: flex-end">
-          <UButton color="neutral" variant="outline" @click="showChangePlanModal = false">
-            Cancel
-          </UButton>
-
-          <UButton color="primary" :disabled="!tempSelectedPlan" @click="changePlan">
-            Confirm Plan
-          </UButton>
-        </div>
-      </template>
-    </UModal>
+      confirm-button-text="Change Plan"
+      :default-billing-period="billingPeriod.value"
+      @confirm="changePlan"
+      @close="onPlanModalClose"
+      @error="handlePlanFetchError"
+    />
   </div>
 </template>
 
@@ -346,6 +146,7 @@ import { ref, computed, watch, nextTick as _nextTick } from 'vue'
 import { monthlyPlans, annualPlans } from '~/data/subscription-plans'
 import { usePaystack } from '~/composables/usePaystack'
 import { useSubscriptionManagement } from '~/composables/useSubscriptionManagement'
+import PlanSelectionModal from '~/components/plans/PlanSelectionModal.vue'
 
 // Add toast composable
 const toast = useToast()
@@ -525,31 +326,12 @@ const toggleChangePlanModal = () => {
   showChangePlanModal.value = !showChangePlanModal.value
 }
 
-const isAnnualBilling = ref(billingPeriod.value === 'annual')
+// Billing period is now handled by the PlanSelectionModal
+const _isAnnualBilling = ref(billingPeriod.value === 'annual')
 
-// Add a modal refresh key
-const modalRefreshKey = ref(0)
-
-// Track expanded features for each plan
-const showAllFeatures = ref({})
-
-// Toggle feature display for a plan
-function toggleFeatures(planId) {
-  if (!showAllFeatures.value[planId]) {
-    showAllFeatures.value[planId] = true
-  } else {
-    showAllFeatures.value[planId] = false
-  }
-}
-
-// Toggle billing period
-function toggleBilling() {
-  isAnnualBilling.value = !isAnnualBilling.value
-  billingPeriod.value = isAnnualBilling.value ? 'annual' : 'monthly'
-  modalRefreshKey.value++ // Force refresh of modal content
-
-  // Reset expanded features when switching billing periods
-  showAllFeatures.value = {}
+// Handle modal close
+const onPlanModalClose = () => {
+  showChangePlanModal.value = false
 }
 
 const changePlan = () => {
@@ -557,7 +339,8 @@ const changePlan = () => {
 
   // Update the plan type and billing period
   planType.value = tempSelectedPlan.value
-  billingPeriod.value = isAnnualBilling.value ? 'annual' : 'monthly'
+  const isAnnual = tempSelectedPlan.value.includes('yearly')
+  billingPeriod.value = isAnnual ? 'annual' : 'monthly'
 
   // Update the URL query parameters without refreshing the page
   const query = {
@@ -591,55 +374,25 @@ const changePlan = () => {
 
 // Get selected temp plan
 const _getSelectedTempPlan = computed(() => {
+  if (!tempSelectedPlan.value) return monthlyPlans[0]
   const planId = tempSelectedPlan.value.includes('-')
-    ? tempSelectedPlan.value.split('-')[0]
-    : tempSelectedPlan.value
-
-  return subscriptionPlans.value.find(plan => plan.value === planId) || subscriptionPlans.value[0]
+  return monthlyPlans.find(p => p.value === planId) || monthlyPlans[0]
 })
 
-// Displayed plans - show all plans including free
-const displayedPlans = computed(() => {
-  // Select the correct set of plans based on the current billing period
-  const plansList = isAnnualBilling.value ? annualPlans : monthlyPlans
+// Handle plan fetch errors
+const handlePlanFetchError = error => {
+  useToast().add({
+    title: 'Error',
+    description: error?.message || 'Failed to load plans. Please try again later.',
+    color: 'red',
+  })
+}
 
-  // Format plans for display
-  return plansList
-    .map(plan => ({
-      id: plan.id,
-      value: plan.name.toLowerCase(),
-      label: plan.name,
-      description: plan.description,
-      price: `₦${plan.price.toLocaleString()}/${isAnnualBilling.value ? 'year' : 'month'}`,
-      numericPrice: plan.price,
-      features: plan.features,
-      maxClients: plan.maxClients,
-      interval: plan.interval,
-    }))
-    .sort((a, b) => (a.numericPrice || 0) - (b.numericPrice || 0))
-})
-
-// Add this line to debug the plans when the modal opens
+// Watch for modal open to initialize the selected plan
 watch(showChangePlanModal, newVal => {
   if (newVal) {
     // Initialize tempSelectedPlan with current plan value when modal opens
     tempSelectedPlan.value = selectedPlan.value?.value || 'growth'
-  }
-})
-
-// Watch for billing toggle changes to update the temp selected plan
-watch(isAnnualBilling, () => {
-  // Extract the base plan name without billing period suffix
-  const currentPlanBase = tempSelectedPlan.value.split('-')[0]
-
-  // Find the equivalent plan in the current plans list (based on the name)
-  const currentPlans = isAnnualBilling.value ? annualPlans : monthlyPlans
-  const matchingPlan = currentPlans.find(
-    p => p.name.toLowerCase() === currentPlanBase.toLowerCase()
-  )
-
-  if (matchingPlan) {
-    tempSelectedPlan.value = matchingPlan.name.toLowerCase()
   }
 })
 </script>

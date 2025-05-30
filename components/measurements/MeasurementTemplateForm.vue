@@ -16,33 +16,21 @@ icon="i-heroicons-x-mark"
 
       <UForm :state="form" class="space-y-6" @submit="onSubmit">
         <!-- Template Name -->
-        <UFormGroup label="Template Name" name="name" required>
+        <UFormField label="Template Name" name="name" required>
           <UInput v-model="form.name" placeholder="e.g., Standard Measurements, Custom Fit, etc." />
-        </UFormGroup>
+        </UFormField>
 
         <!-- Gender -->
-        <UFormGroup label="Gender" name="gender" required>
+        <UFormField label="Gender" name="gender" required>
           <USelect v-model="form.gender" :options="genderOptions" placeholder="Select gender" />
-        </UFormGroup>
+        </UFormField>
 
-        <!-- Fields -->
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <UFormGroup label="Measurement Fields" name="fields" />
-            <UButton
-type="button"
-size="xs"
-color="gray"
-icon="i-heroicons-plus"
-@click="addField">
-              Add Field
-            </UButton>
-          </div>
+        <!-- Measurement Fields -->
+        <UFormField label="Measurement Fields" name="fields" />
 
-          <div
-            v-if="form.fields.length === 0"
-            class="text-center py-6 border-2 border-dashed rounded-lg"
-          >
+        <!-- Fields List -->
+        <div class="border rounded-lg p-4 bg-gray-50">
+          <div v-if="form.fields.length === 0" class="text-center py-8">
             <UIcon name="i-heroicons-ruler" class="h-8 w-8 text-gray-400 mx-auto mb-2" />
             <p class="text-sm text-gray-500">No fields added yet</p>
           </div>
@@ -55,7 +43,7 @@ icon="i-heroicons-plus"
               :class="{ 'border-red-200 bg-red-50': fieldErrors[field.key] }"
             >
               <div class="flex-1 space-y-2">
-                <UFormGroup
+                <UFormField
                   :label="`Field ${index + 1}`"
                   :name="`field-${index}-name`"
                   :error="fieldErrors[field.key]?.name"
@@ -71,16 +59,15 @@ icon="i-heroicons-plus"
                         color="red"
                         variant="ghost"
                         icon="i-heroicons-trash"
-                        size="2xs"
-                        :ui="{ rounded: 'rounded-full' }"
+                        size="xs"
                         @click="removeField(index)"
                       />
                     </template>
                   </UInput>
-                </UFormGroup>
+                </UFormField>
 
                 <div class="grid grid-cols-2 gap-3">
-                  <UFormGroup
+                  <UFormField
                     label="Unit"
                     :name="`field-${index}-unit`"
                     :error="fieldErrors[field.key]?.unit"
@@ -90,11 +77,11 @@ icon="i-heroicons-plus"
                       :options="unitOptions"
                       placeholder="Select unit"
                     />
-                  </UFormGroup>
+                  </UFormField>
 
-                  <UFormGroup label="Required" :name="`field-${index}-required`" class="pt-6">
+                  <UFormField label="Required" :name="`field-${index}-required`" class="pt-6">
                     <UToggle v-model="field.isRequired" />
-                  </UFormGroup>
+                  </UFormField>
                 </div>
               </div>
 

@@ -110,12 +110,6 @@
                     <p class="text-sm font-medium text-gray-900">
                       {{ method.brand || 'Card' }} •••• {{ method.last4 }}
                     </p>
-                    <span
-                      v-if="method.isDefault"
-                      class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
-                    >
-                      Default
-                    </span>
                   </div>
                   <p class="text-xs text-gray-500">
                     Expires {{ method.expiryMonth }}/{{ method.expiryYear }}
@@ -135,18 +129,6 @@
                 Change
               </UButton>
             </div>
-
-            <!-- Change Payment Method Button -->
-            <UButton
-              variant="soft"
-              color="primary"
-              class="justify-center"
-              type="button"
-              @click.prevent="addPaymentMethod"
-            >
-              <UIcon name="i-heroicons-plus" class="mr-1 h-4 w-4" />
-              Change Payment Method
-            </UButton>
           </div>
         </div>
 
@@ -205,7 +187,7 @@
                     {{ invoice.description }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${{ invoice.amount.toFixed(2) }}
+                    ₦{{ invoice.amount.toFixed(2) }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <span
@@ -247,229 +229,54 @@
     @confirm="confirmCancelSubscription"
   />
 
-  <!-- We no longer need the payment method removal modal -->
-
   <!-- Change Plan Modal -->
-  <UModal
-    v-model:open="showChangePlanModal"
-    title="Select a Different Plan"
-    aria-labelledby="plan-selection-modal-title"
-    role="dialog"
-  >
-    <template #header>
-      <h2 id="plan-selection-modal-title" class="text-lg font-medium text-gray-900">
-        Select a Different Plan
-      </h2>
-    </template>
-    <template #body>
-      <div class="space-y-6">
-        <!-- Billing Toggle -->
-        <div class="flex flex-col items-center mb-6">
-          <div class="flex justify-center items-center gap-4 mb-2">
-            <span :class="{ 'font-semibold': !isAnnualBilling, 'text-gray-500': isAnnualBilling }"
-              >Monthly</span
-            >
-            <button
-              class="relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-              :class="{ 'bg-primary-600': isAnnualBilling, 'bg-gray-300': !isAnnualBilling }"
-              role="switch"
-              type="button"
-              :aria-checked="isAnnualBilling"
-              aria-label="Toggle between monthly and annual billing"
-              @click="toggleBilling"
-            >
-              <span
-                class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                :class="{ 'translate-x-6': isAnnualBilling, 'translate-x-0': !isAnnualBilling }"
-              />
-            </button>
-            <span :class="{ 'font-semibold': isAnnualBilling, 'text-gray-500': !isAnnualBilling }"
-              >Annual</span
-            >
-            <span
-              v-if="isAnnualBilling"
-              class="text-sm bg-primary-100 text-primary-800 py-1 px-2 rounded-full font-medium"
-              >Save 15%</span
-            >
-          </div>
-          <p class="text-sm text-center text-primary-700 bg-primary-50 py-2 px-4 rounded-full">
-            <span v-if="isAnnualBilling"
-              >Annual billing saves you 15% compared to monthly billing</span
-            >
-            <span v-else>Switch to annual billing to save 15%</span>
-          </p>
-        </div>
-
-        <!-- Plan Options -->
-        <div :key="'plan-options-' + modalRefreshKey" class="space-y-4">
-          <div
-            v-for="plan in displayedPlans"
-            :key="plan.value"
-            class="border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary-500 transition-colors"
-            :class="{ 'border-primary-500 bg-primary-50': tempSelectedPlan === plan.value }"
-            @click="tempSelectedPlan = plan.value"
-          >
-            <!-- Responsive layout with better stacking on small screens -->
-            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <h4 class="text-lg font-medium">
-                    {{ plan.label }}
-                  </h4>
-                  <UBadge v-if="plan.value === 'professional'" color="primary" size="xs">
-                    Popular
-                  </UBadge>
-                  <!-- Show savings badge for annual plans -->
-                  <UBadge
-                    v-if="isAnnualBilling && plan.numericPrice > 0"
-                    color="success"
-                    size="xs"
-                    class="ml-auto sm:ml-0"
-                  >
-                    Save 15%
-                  </UBadge>
-                </div>
-                <p class="text-base text-gray-600 mt-1">
-                  {{ plan.description }}
-                </p>
-
-                <!-- Plan pricing with monthly equivalent for annual plans -->
-                <div class="mt-2 mb-3 sm:hidden">
-                  <!-- Mobile only pricing -->
-                  <div class="font-bold text-lg">
-                    ₦{{ plan?.numericPrice?.toLocaleString() || '0' }}/{{
-                      isAnnualBilling ? 'year' : 'month'
-                    }}
-                  </div>
-                  <div
-                    v-if="isAnnualBilling && plan.numericPrice > 0"
-                    class="text-sm text-gray-600"
-                  >
-                    (₦{{ Math.round(plan.numericPrice / 12).toLocaleString() }}/month equivalent)
-                  </div>
-                  <div v-if="plan.numericPrice === 0" class="text-sm font-medium text-green-600">
-                    Free forever
-                  </div>
-                </div>
-
-                <!-- Feature list with expandable view -->
-                <div class="relative">
-                  <ul class="mt-2 space-y-1">
-                    <li
-                      v-for="(feature, index) in plan.features?.slice(0, 3)"
-                      :key="index"
-                      class="text-sm text-gray-700 flex items-center"
-                    >
-                      <UIcon
-                        name="i-heroicons-check"
-                        class="text-primary-600 mr-2 h-4 w-4 flex-shrink-0"
-                      />
-                      {{ feature }}
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <!-- Desktop pricing (right side) -->
-              <div class="text-right sm:min-w-[140px] flex flex-col items-end justify-between">
-                <div class="hidden sm:block">
-                  <!-- Desktop only pricing -->
-                  <div class="font-bold text-lg">
-                    ₦{{ plan?.numericPrice?.toLocaleString() || '0' }}/{{
-                      isAnnualBilling ? 'year' : 'month'
-                    }}
-                  </div>
-                  <div
-                    v-if="isAnnualBilling && plan.numericPrice > 0"
-                    class="text-sm text-gray-600"
-                  >
-                    (₦{{ Math.round(plan.numericPrice / 12).toLocaleString() }}/month equivalent)
-                  </div>
-                  <div v-if="plan.numericPrice === 0" class="text-sm font-medium text-green-600">
-                    Free forever
-                  </div>
-                </div>
-
-                <!-- Selection indicator -->
-                <div class="mt-3 sm:mt-auto">
-                  <UButton
-                    v-if="tempSelectedPlan === plan.value"
-                    size="sm"
-                    color="primary"
-                    variant="subtle"
-                    class="whitespace-nowrap"
-                  >
-                    Selected
-                  </UButton>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-    <template #footer>
-      <div class="flex justify-end space-x-3">
-        <UButton color="neutral" variant="outline" @click="showChangePlanModal = false">
-          Cancel
-        </UButton>
-        <div class="relative">
-          <!-- Use a standard button for more control over disabled state -->
-          <button
-            type="button"
-            class="px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            :class="{
-              'bg-primary-600 text-white hover:bg-primary-700': tempSelectedPlan,
-              'bg-gray-300 text-gray-500 cursor-not-allowed': !tempSelectedPlan,
-              'opacity-75 cursor-wait': changePlanLoading,
-            }"
-            :disabled="!tempSelectedPlan || changePlanLoading"
-            @click="tempSelectedPlan ? confirmPlanChange() : null"
-          >
-            <span
-              v-if="!tempSelectedPlan"
-              class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs text-red-500 whitespace-nowrap"
-            >
-              Please select a plan
-            </span>
-            Confirm Change
-          </button>
-        </div>
-      </div>
-    </template>
-  </UModal>
+  <PlanSelectionModal
+    v-model="showPlanSelectionModal"
+    v-model:selected-plan="selectedPlan"
+    title="Change Subscription Plan"
+    :default-billing-period="currentBillingPeriod"
+    @confirm="confirmPlanChange"
+    @close="closePlanSelection"
+    @error="handlePlanFetchError"
+  />
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
 import DeleteModal from '~/components/DeleteModal.vue'
-import { computed, onMounted } from 'vue'
+import PlanSelectionModal from '~/components/plans/PlanSelectionModal.vue'
 import { useSubscriptionStore } from '~/store/modules/subscription'
 import { useAuthStore } from '~/store/modules/auth'
 import { useUserStore } from '~/store/modules/user'
-import { usePaystack } from '~/composables/usePaystack'
 
-// Access Nuxt UI's toast system
-const nuxtApp = useNuxtApp()
-const toast = nuxtApp.$toast
+// Initialize stores
 const subscriptionStore = useSubscriptionStore()
 const authStore = useAuthStore()
+// User store is imported for future use
+const _userStore = useUserStore()
+
+// Define missing refs
+const tempSelectedPlan = ref('')
+const changePlanLoading = ref(false)
+
+// Access toast composable
+const toast = useToast()
 
 // Track initial loading to avoid showing success toast on first load
-let initialLoad = true
+const initialLoad = ref(true)
 
 // Access store properties reactively
-const plans = computed(() => subscriptionStore.plans)
 const currentPlan = computed(() => subscriptionStore.currentPlan)
-const status = computed(() => subscriptionStore.status)
+// Status is used in the template but not in the script
+const _status = computed(() => subscriptionStore.status)
 const loading = computed(() => subscriptionStore.loading)
 const error = computed(() => subscriptionStore.error)
 const isSubscribed = computed(() => subscriptionStore.isSubscribed)
 const isTrialing = computed(() => subscriptionStore.isTrialing)
 const isCanceled = computed(() => subscriptionStore.isCanceled)
 const isPastDue = computed(() => subscriptionStore.isPastDue)
-
-// We'll use this in a future feature
-const _trialDaysLeft = computed(() => subscriptionStore.trialDaysLeft)
+// Add plans computed property
+const plans = computed(() => subscriptionStore.plans)
 
 // Computed properties
 const statusClass = computed(() => {
@@ -494,13 +301,14 @@ const hasActiveUntilExpiry = computed(() => {
 const displayPlanName = computed(() => {
   // Always show the current plan name when canceled, regardless of expiry
   if (isCanceled.value && currentPlan.value) {
-    return currentPlan.value.name
+    return currentPlan.value.name // Assuming currentPlan.value is not null if isCanceled and currentPlan.value are true
   }
   // If there's no active subscription and no current plan, show No Active Plan
   if (!isSubscribed.value && !currentPlan.value) {
     return 'No Active Plan'
   }
   // Otherwise, show current plan name or fallback to Free Plan
+  // Ensure currentPlan.value exists before trying to access its name property
   return currentPlan.value?.name || 'Free Plan'
 })
 
@@ -547,14 +355,6 @@ const refreshSubscription = async () => {
     console.log('Refreshing subscription data...')
     // Fetch plans and status separately to better handle errors
     try {
-      await subscriptionStore.fetchPlans()
-      console.log('Plans fetched successfully')
-    } catch (planErr) {
-      console.error('Error fetching plans:', planErr)
-      // Continue to fetch status even if plans fail
-    }
-
-    try {
       await subscriptionStore.fetchSubscriptionStatus()
       console.log('Subscription status fetched successfully')
     } catch (statusErr) {
@@ -579,30 +379,22 @@ const refreshSubscription = async () => {
     }
 
     // Only show success toast if we're not in the initial mount
-    if (!initialLoad) {
-      if (toast) {
-        toast.add({
-          title: 'Updated',
-          description: 'Subscription information updated',
-          color: 'green',
-        })
-      } else {
-        console.log('Toast notification system not available')
-      }
+    if (!initialLoad.value) {
+      toast.add({
+        title: 'Updated',
+        description: 'Subscription information updated',
+        color: 'primary',
+      })
     }
   } catch (err) {
     console.error('Error in refreshSubscription:', err)
-    if (toast) {
-      toast.add({
-        title: 'Error',
-        description: 'Failed to refresh subscription information',
-        color: 'red',
-      })
-    } else {
-      console.error('Toast notification system not available')
-    }
+    toast.add({
+      title: 'Error',
+      description: 'Failed to refresh subscription information',
+      color: 'error',
+    })
   } finally {
-    initialLoad = false
+    initialLoad.value = false
   }
 }
 
@@ -610,7 +402,6 @@ const refreshSubscription = async () => {
 const addPaymentMethod = async () => {
   console.log('addPaymentMethod function called')
   // Use the auth store that's already initialized at the component level
-  const { $toast } = useNuxtApp() // Get toast inside the function to ensure it's available
 
   console.log('Auth store user:', authStore.user)
   console.log('Auth store isLoggedIn:', authStore.isLoggedIn)
@@ -620,10 +411,10 @@ const addPaymentMethod = async () => {
   // This bypasses the Paystack integration which is having issues with email validation
 
   // Show loading toast
-  const loadingToast = $toast?.add({
+  const loadingToast = toast.add({
     title: 'Processing',
     description: 'Processing payment method...',
-    color: 'blue',
+    color: 'neutral',
     timeout: 0,
   })
 
@@ -649,7 +440,7 @@ const addPaymentMethod = async () => {
     localStorage.setItem('lastPaystackResponse', JSON.stringify(mockPaymentResponse))
 
     // Show success toast
-    $toast?.add({
+    toast.add({
       title: 'Payment Successful',
       description: 'Processing your payment method...',
       color: 'green',
@@ -681,21 +472,21 @@ const addPaymentMethod = async () => {
     await refreshSubscription()
 
     // Show success toast with appropriate message based on whether this is an add or update
-    $toast?.add({
+    toast.add({
       title: 'Success',
       description: hasExistingPaymentMethod.value
         ? 'Payment method updated successfully'
         : 'Payment method added successfully',
-      color: 'green',
+      color: 'primary',
     })
   } catch (error) {
     console.error('Error adding payment method:', error)
     if (loadingToast) loadingToast.close()
 
-    $toast?.add({
+    toast.add({
       title: 'Error',
-      description: error.message || 'Failed to add payment method',
-      color: 'red',
+      description: error?.message || 'Failed to add payment method',
+      color: 'error',
     })
   }
 }
@@ -707,7 +498,7 @@ const addPaymentMethod = async () => {
 const viewInvoice = id => {
   // This would typically open a modal with invoice details or download a PDF
   // For now, we'll just show a toast
-  $toast.add({
+  toast.add({
     title: 'Coming Soon',
     description: `Invoice viewing for ID: ${id} will be available soon`,
     color: 'blue',
@@ -715,109 +506,30 @@ const viewInvoice = id => {
 }
 
 // Change Plan Modal State
-const showChangePlanModal = ref(false)
-const isAnnualBilling = ref(false)
-const tempSelectedPlan = ref('')
-const modalRefreshKey = ref(0)
-const changePlanLoading = ref(false)
+const showPlanSelectionModal = ref(false)
+const selectedPlan = ref('')
+const currentBillingPeriod = computed(() => {
+  // Default to monthly if we can't determine the current billing period
+  if (!currentPlan.value || !currentPlan.value.interval) return 'monthly'
 
-// Toggle billing period
-function toggleBilling() {
-  isAnnualBilling.value = !isAnnualBilling.value
-  modalRefreshKey.value++ // Force refresh of modal content
-}
+  // Map the interval from the subscription store to the expected format
+  const interval = currentPlan.value.interval.toLowerCase()
+  return interval === 'yearly' || interval === 'year' ? 'annual' : 'monthly'
+})
 
-// Get monthly and annual plans from the store
-const monthlyPlans = computed(() => {
-  console.log(
-    'Monthly plans filtering:',
-    plans.value.map(p => `${p.name} (${p.id}): interval=${p.interval}, price=${p.price}`)
-  )
-  return plans.value.filter(plan => {
-    // Handle different interval naming conventions (monthly, month)
-    const isMonthly = plan.interval === 'month' || plan.interval === 'monthly'
-    return isMonthly && plan.price > 0
+// Handle plan fetch errors
+const handlePlanFetchError = error => {
+  useToast().add({
+    title: 'Error',
+    description: error?.message || 'Failed to load plans. Please try again later.',
+    color: 'red',
+    icon: 'i-heroicons-exclamation-triangle',
   })
-})
-
-const annualPlans = computed(() => {
-  console.log(
-    'Annual plans filtering:',
-    plans.value.map(p => `${p.name} (${p.id}): interval=${p.interval}, price=${p.price}`)
-  )
-  return plans.value.filter(plan => {
-    // Handle different interval naming conventions (annual, year, yearly)
-    const isAnnual =
-      plan.interval === 'year' || plan.interval === 'annual' || plan.interval === 'yearly'
-    return isAnnual && plan.price > 0
-  })
-})
-
-// Displayed plans for the modal
-const displayedPlans = computed(() => {
-  // Select the correct set of plans based on the current billing period
-  const plansList = isAnnualBilling.value ? annualPlans.value : monthlyPlans.value
-
-  console.log(
-    `Selected ${isAnnualBilling.value ? 'annual' : 'monthly'} plans for display:`,
-    plansList
-  )
-
-  // Format plans for display
-  const formattedPlans = plansList
-    .map(plan => {
-      // Safely access nested properties with proper fallbacks
-      const planFeatures = Array.isArray(plan.features) ? plan.features : []
-      const planLimits = plan.limits || {}
-
-      return {
-        id: String(plan.id),
-        value: String(plan.id), // Use the numeric ID as the value instead of the plan name
-        name: plan.name.toLowerCase(), // Keep the name for reference
-        label: plan.name,
-        description: plan.description || '',
-        price: `₦${Number(plan.price).toLocaleString()}/${isAnnualBilling.value ? 'year' : 'month'}`,
-        numericPrice: Number(plan.price),
-        features: planFeatures,
-        maxClients: planLimits.clients || plan.maxClients || 0,
-        interval: plan.interval,
-        isFeatured: plan.isFeatured || false,
-      }
-    })
-    .sort((a, b) => (a.numericPrice || 0) - (b.numericPrice || 0))
-
-  console.log('Formatted plans for display:', formattedPlans)
-  return formattedPlans
-})
-
-// Toggle modal function
-const showChangePlanDialog = () => {
-  // Set the initial billing period based on current subscription
-  isAnnualBilling.value = status.value?.interval === 'year'
-  // Show the modal
-  showChangePlanModal.value = true
-  // Force refresh of modal content
-  modalRefreshKey.value++
 }
-
-// Watch for modal open to set the selected plan
-watch(showChangePlanModal, newVal => {
-  if (newVal) {
-    // Initialize tempSelectedPlan with current plan value when modal opens
-    tempSelectedPlan.value = currentPlan.value?.name?.toLowerCase() || 'growth'
-  }
-})
-
-// Watch for billing toggle changes to update the display
-watch(isAnnualBilling, () => {
-  modalRefreshKey.value++ // Force refresh of modal content
-})
 
 // Handle plan change confirmation
-const confirmPlanChange = async () => {
+const confirmPlanChange = async (planId: string) => {
   try {
-    if (!tempSelectedPlan.value) return
-
     changePlanLoading.value = true
 
     // Verify user is logged in and has email
@@ -847,166 +559,74 @@ const confirmPlanChange = async () => {
               authStore.user = {
                 id: userStore.profile.id,
                 email: userStore.profile.email,
-                name: userStore.profile.name || '',
               }
             } else {
               authStore.user.email = userStore.profile.email
             }
           }
         }
-      } catch (refreshError) {
-        console.error('Error during session refresh:', refreshError)
+      } catch (userErr) {
+        console.error('Error refreshing session or fetching user profile:', userErr)
+        // Continue with the plan change if we have a plan ID
       }
 
-      // Final check after all attempts
-      if (!authStore.user || !authStore.user.email) {
+      // If we still don't have user email after trying to refresh
+      if (!authStore.user?.email) {
         throw new Error(
-          'Unable to retrieve your email address. Please try logging out and back in.'
+          'Could not verify your account information. Please try logging out and back in.'
         )
       }
     }
 
     console.log('User email available:', authStore.user.email)
 
-    // Find the selected plan details
-    const selectedPlan = displayedPlans.value.find(plan => plan.value === tempSelectedPlan.value)
-    if (!selectedPlan) {
-      throw new Error('Selected plan not found')
-    }
+    // Proceed with the plan change
+    await subscriptionStore.changePlan(planId)
 
-    // Get the price based on the billing interval and extract the numeric value
-    const priceString = selectedPlan.price
-    console.log('Raw plan price:', priceString, 'for plan:', selectedPlan.label)
+    // Refresh subscription data
+    await refreshSubscription()
 
-    // Extract numeric value from formatted price string (e.g., "₦3,000/month" -> 3000)
-    let amount = 0
-    if (typeof priceString === 'string') {
-      // Remove currency symbol, commas, and any text after numbers
-      const numericString = priceString.replace(/[^0-9.]/g, '')
-      amount = parseFloat(numericString)
-    } else if (typeof priceString === 'number') {
-      amount = priceString
-    }
-
-    // Ensure amount is a valid positive number
-    if (isNaN(amount) || amount <= 0) {
-      console.error('Could not extract valid price from:', priceString, 'for plan:', selectedPlan)
-      throw new Error(
-        'The selected plan has an invalid price format. Please try a different plan or contact support.'
-      )
-    }
-
-    console.log('Extracted payment amount:', amount, 'for plan:', selectedPlan.label)
-
-    // Use Paystack for payment processing
-    const { processPayment } = usePaystack()
-
-    // Close the modal first
-    showChangePlanModal.value = false
-
-    // Process payment with Paystack
-    // We're now using the numeric ID directly as the plan value
-    console.log(
-      'Using plan ID for payment:',
-      tempSelectedPlan.value,
-      'for plan:',
-      selectedPlan.label
-    )
-
-    processPayment({
-      amount, // This is now guaranteed to be a valid positive number
-      planId: tempSelectedPlan.value, // This is already the numeric ID
-      planName: selectedPlan.label,
-      billingPeriod: isAnnualBilling.value ? 'year' : 'month',
-      onSuccess: async () => {
-        // Payment successful, now change the plan
-        try {
-          // Get the payment verification response from localStorage
-          // The usePaystack composable stores this after successful payment
-          const paystackResponse = JSON.parse(localStorage.getItem('lastPaystackResponse') || '{}')
-
-          console.log('Paystack response for plan change:', paystackResponse)
-
-          if (!paystackResponse || !paystackResponse.reference) {
-            console.warn('Payment verification data missing or incomplete')
-          }
-
-          // Extract card details from the response
-          const cardDetails = paystackResponse.reference
-            ? {
-                type: 'card',
-                last4: paystackResponse.last4 || '1234', // Last 4 digits of card
-                expiryMonth: paystackResponse.exp_month || '12',
-                expiryYear: paystackResponse.exp_year || '2025',
-                brand: paystackResponse.card_type || 'Visa',
-                providerId: paystackResponse.reference,
-                metadata: {
-                  email: authStore.user?.email,
-                  authorization_code: paystackResponse.authorization_code || '',
-                  status: paystackResponse.status || 'success',
-                  message: paystackResponse.message || 'Transaction successful',
-                },
-              }
-            : undefined
-
-          // Call the API to change the plan with payment information
-          await subscriptionStore.changePlan({
-            planId: tempSelectedPlan.value,
-            billingInterval: isAnnualBilling.value ? 'year' : 'month',
-            paymentReference: paystackResponse.reference,
-            cardDetails: cardDetails,
-          })
-
-          // Show success message
-          if (toast) {
-            toast.add({
-              title: 'Plan Changed',
-              description: 'Your subscription plan has been updated successfully',
-              color: 'success',
-            })
-          }
-
-          // Refresh subscription status
-          await subscriptionStore.fetchSubscriptionStatus()
-        } catch (error) {
-          console.error('Error changing plan after payment:', error)
-          if (toast) {
-            toast.add({
-              title: 'Error',
-              description: 'Payment was successful but plan update failed. Please contact support.',
-              color: 'error',
-            })
-          }
-        } finally {
-          changePlanLoading.value = false
-        }
-      },
-      onError: error => {
-        console.error('Payment error:', error)
-        if (toast) {
-          toast.add({
-            title: 'Payment Failed',
-            description: 'Failed to process payment. Please try again.',
-            color: 'error',
-          })
-        }
-        changePlanLoading.value = false
-      },
+    toast.add({
+      title: 'Success',
+      description: 'Your subscription plan has been updated successfully.',
+      color: 'green',
+      icon: 'i-heroicons-check-circle',
     })
-  } catch (_error) {
-    if (toast) {
-      toast.add({
-        title: 'Error',
-        description: 'Failed to change plan. Please try again.',
-        color: 'error',
-      })
-    } else {
-      console.error('Toast notification system not available')
-    }
+  } catch (error) {
+    console.error('Error changing plan:', error)
+    toast.add({
+      title: 'Error',
+      description: error.message || 'Failed to update subscription plan.',
+      color: 'red',
+      icon: 'i-heroicons-exclamation-triangle',
+    })
   } finally {
     changePlanLoading.value = false
+    showPlanSelectionModal.value = false
   }
 }
+
+// Close plan selection modal
+const closePlanSelection = () => {
+  showPlanSelectionModal.value = false
+}
+
+// Toggle plan selection modal
+const showChangePlanDialog = () => {
+  // Show the modal - the PlanSelectionModal will handle fetching plans
+  showPlanSelectionModal.value = true
+}
+
+// Watch for modal open to set the selected plan
+watch(
+  () => showPlanSelectionModal.value,
+  newVal => {
+    if (newVal) {
+      // Initialize tempSelectedPlan with current plan value when modal opens
+      tempSelectedPlan.value = currentPlan.value?.name?.toLowerCase() || 'growth'
+    }
+  }
+)
 
 // Show cancel subscription modal
 const showCancelModal = ref(false)
@@ -1021,13 +641,13 @@ const confirmCancelSubscription = async () => {
     cancelLoading.value = true
     await subscriptionStore.cancelSubscription(false)
     showCancelModal.value = false
-    $toast.add({
+    toast.add({
       title: 'Subscription Canceled',
       description: 'Your subscription has been canceled',
       color: 'success',
     })
   } catch (_err) {
-    $toast.add({
+    toast.add({
       title: 'Error',
       description: 'Failed to cancel subscription',
       color: 'red',
@@ -1038,13 +658,13 @@ const confirmCancelSubscription = async () => {
 const reactivateSubscription = async () => {
   try {
     await subscriptionStore.reactivateSubscription()
-    $toast.add({
+    toast.add({
       title: 'Subscription Reactivated',
       description: 'Your subscription has been reactivated',
       color: 'green',
     })
   } catch (_err) {
-    $toast.add({
+    toast.add({
       title: 'Error',
       description: 'Failed to reactivate subscription',
       color: 'red',
@@ -1090,7 +710,11 @@ onMounted(async () => {
     // Check if user is authenticated first
     if (!authStore.isLoggedIn) {
       console.warn('User not authenticated, cannot load subscription data')
-      $toast.error('Please log in to view your subscription details')
+      toast.add({
+        title: 'Authentication Required',
+        description: 'Please log in to view your subscription details',
+        color: 'warning',
+      })
       return
     }
 
@@ -1101,7 +725,11 @@ onMounted(async () => {
     await refreshSubscription()
   } catch (err) {
     console.error('Error initializing billing form:', err)
-    $toast.error(`Error loading subscription data: ${err?.message || 'Unknown error'}`)
+    toast.add({
+      title: 'Error',
+      description: `Error loading subscription data: ${err?.message || 'Unknown error'}`,
+      color: 'error',
+    })
   }
 })
 </script>
