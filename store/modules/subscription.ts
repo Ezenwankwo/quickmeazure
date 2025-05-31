@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
 import { getFromStorage, setToStorage, removeFromStorage, STORAGE_KEYS } from '~/utils/storage'
+import { API_ENDPOINTS } from '~/constants/api'
 
 // Define subscription plan types
 export interface SubscriptionPlan {
@@ -113,7 +114,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/plans'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.PLANS
       console.log('Fetching subscription plans...')
 
       const fetchResponse = await fetch(url, {
@@ -159,7 +160,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/current'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.CURRENT
       console.log('Fetching subscription status...')
 
       const fetchResponse = await fetch(url, {
@@ -255,7 +256,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/create'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.CREATE
       console.log('Subscribing to plan:', planId)
 
       // Get plan details to determine if it's a paid plan
@@ -326,7 +327,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/change-plan'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.CHANGE_PLAN
 
       // Validate that we have a valid plan ID
       if (!params.planId) {
@@ -405,7 +406,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/cancel'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.CANCEL
       console.log('Canceling subscription, immediate:', immediate)
 
       // Get auth headers from auth store for consistent token handling
@@ -515,7 +516,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscription/reactivate'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.REACTIVATE
       console.log('Reactivating subscription')
 
       const fetchResponse = await fetch(url, {
@@ -566,7 +567,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/billing-history'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.BILLING_HISTORY
       console.log('Fetching billing history...')
 
       // Get auth headers from auth store
@@ -611,7 +612,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/payment-methods'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.PAYMENT_METHODS
       console.log('Fetching payment methods...')
 
       // Get auth headers from auth store
@@ -658,7 +659,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = '/api/subscriptions/payment-methods'
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.PAYMENT_METHODS
       console.log('Adding payment method with reference:', reference)
 
       const fetchResponse = await fetch(url, {
@@ -704,7 +705,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = null
 
       // Make direct fetch request
-      const url = `/api/subscriptions/payment-methods/${id}`
+      const url = API_ENDPOINTS.SUBSCRIPTIONS.PAYMENT_METHOD_BY_ID(id)
       console.log('Removing payment method with ID:', id)
 
       const fetchResponse = await fetch(url, {

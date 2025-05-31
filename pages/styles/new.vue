@@ -104,7 +104,7 @@ const router = useRouter()
 const STYLES_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.INDEX] as string
 
 useHead({
-  title: 'Add New Style - QuickMeazure',
+  title: 'Add New Style',
 })
 
 // Style data

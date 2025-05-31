@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User, UserPreferences, SubscriptionPlan } from '../types'
 import { useRuntimeConfig } from '#app'
+import { API_ENDPOINTS } from '~/constants/api'
 
 /**
  * User store for managing user profile data, subscription status, and preferences
@@ -139,62 +140,6 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * Get features available for a subscription plan
-   */
-  function getFeaturesByPlan(plan: SubscriptionPlan): string[] {
-    const baseFeatures = ['Client management', 'Basic measurements']
-
-    switch (plan) {
-      case 'free':
-        return baseFeatures
-      case 'trial':
-        return [
-          ...baseFeatures,
-          'Custom measurement templates',
-          'Client history',
-          'Email notifications',
-        ]
-      case 'basic':
-        return [
-          ...baseFeatures,
-          'Custom measurement templates',
-          'Client history',
-          'Email notifications',
-        ]
-      case 'premium':
-        return [
-          ...baseFeatures,
-          'Custom measurement templates',
-          'Client history',
-          'Email notifications',
-          'Advanced analytics',
-          'Priority support',
-          'Custom branding',
-        ]
-      default:
-        return baseFeatures
-    }
-  }
-
-  /**
-   * Get client limit based on subscription plan
-   */
-  function getClientLimitByPlan(plan: SubscriptionPlan): number {
-    switch (plan) {
-      case 'free':
-        return 5
-      case 'trial':
-        return 20
-      case 'basic':
-        return 50
-      case 'premium':
-        return 500
-      default:
-        return 5
-    }
-  }
-
-  /**
    * Update user preferences
    * @param newPreferences Updated preferences
    */
@@ -255,8 +200,11 @@ export const useUserStore = defineStore('user', () => {
       console.log('User store: Fetching profile data...')
 
       // Call the profile API endpoint
-      const response = await $fetch('/api/profile', {
+      const response = await $fetch(API_ENDPOINTS.USERS.ME, {
         method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
 
       if (response) {
@@ -289,9 +237,12 @@ export const useUserStore = defineStore('user', () => {
       console.log('User store: Updating profile data...')
 
       // Call the profile API endpoint
-      const response = await $fetch('/api/profile', {
-        method: 'PUT',
-        body: profileData,
+      const response = await $fetch(API_ENDPOINTS.USERS.PROFILE, {
+        method: 'PATCH',
+        body: JSON.stringify(profileData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
 
       if (response) {
@@ -328,9 +279,10 @@ export const useUserStore = defineStore('user', () => {
       formData.append('avatar', file)
 
       // Call the avatar upload API endpoint
-      const response = await $fetch('/api/user/avatar', {
+      const response = await $fetch(API_ENDPOINTS.USERS.UPDATE_AVATAR, {
         method: 'POST',
         body: formData,
+        // Note: Don't set Content-Type header here, let the browser set it with the correct boundary
       })
 
       if (response?.avatarUrl) {
@@ -363,11 +315,14 @@ export const useUserStore = defineStore('user', () => {
       console.log('User store: Attempting password change...')
 
       // Call the change-password API endpoint
-      const response = await $fetch('/api/user/change-password', {
+      const response = await $fetch(API_ENDPOINTS.USERS.UPDATE_PASSWORD, {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           currentPassword,
           newPassword,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
         },
       })
 

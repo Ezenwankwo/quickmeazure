@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
 import { useSubscriptionStore } from './subscription'
 import { differenceInDays, parseISO } from 'date-fns'
+import { API_ENDPOINTS } from '~/constants/api'
 
 export interface Notification {
   id: string
@@ -60,9 +61,10 @@ export const useNotificationStore = defineStore('notification', () => {
       loading.value = true
       error.value = null
 
-      const response = await fetch('/api/notifications', {
+      const response = await fetch(API_ENDPOINTS.NOTIFICATIONS.BASE, {
         headers: {
           Authorization: `Bearer ${authStore.token}`,
+          'Content-Type': 'application/json',
         },
       })
 
@@ -93,7 +95,7 @@ export const useNotificationStore = defineStore('notification', () => {
       notification.read = true
 
       // Update on server
-      await fetch(`/api/notifications/${notificationId}/read`, {
+      await fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${notificationId}/read`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${authStore.token}`,
@@ -119,7 +121,7 @@ export const useNotificationStore = defineStore('notification', () => {
       })
 
       // Update on server
-      await fetch('/api/notifications/read-all', {
+      await fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/read-all`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${authStore.token}`,
@@ -142,10 +144,11 @@ export const useNotificationStore = defineStore('notification', () => {
       notifications.value = notifications.value.filter(n => n.id !== notificationId)
 
       // Update on server
-      await fetch(`/api/notifications/${notificationId}`, {
+      await fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${notificationId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${authStore.token}`,
+          'Content-Type': 'application/json',
         },
       })
     } catch (err) {

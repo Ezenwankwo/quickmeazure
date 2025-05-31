@@ -65,14 +65,6 @@ export interface ApiState {
   pendingRequests: number
 }
 
-// UI state
-export interface UiState {
-  sidebarCollapsed: boolean
-  theme: 'light' | 'dark' | 'system'
-  isMobileMenuOpen: boolean
-  lastViewedPage: string | null
-}
-
 // Login credentials
 export interface LoginCredentials {
   email: string

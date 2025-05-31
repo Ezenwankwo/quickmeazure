@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { User, LoginCredentials, RegistrationData, AuthHeaders, ApiResponse } from '../types'
+import type { User, LoginCredentials, RegistrationData, AuthHeaders } from '../types'
 import { useRuntimeConfig, navigateTo } from '#app'
 import { useUserStore } from './user'
 import { getFromStorage, setToStorage, removeFromStorage, STORAGE_KEYS } from '~/utils/storage'
+import { API_ENDPOINTS, type ApiResponse } from '~/constants/api'
 
 /**
  * Auth store for managing authentication state
@@ -233,10 +234,17 @@ export const useAuthStore = defineStore(
 
         // Call the login API endpoint
         const response = await $fetch<
-          ApiResponse<{ user: User; token: string; refreshToken?: string }>
-        >('/api/auth/login', {
+          ApiResponse<{
+            user: User
+            token: string
+            refreshToken?: string
+          }>
+        >(API_ENDPOINTS.AUTH.LOGIN, {
           method: 'POST',
-          body: { email, password, remember },
+          body: JSON.stringify({ email, password, remember }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
         })
 
         console.log('Auth store: Login response received:', {
@@ -323,10 +331,13 @@ export const useAuthStore = defineStore(
       try {
         // Call the register API endpoint
         const response = await $fetch<ApiResponse<{ user: User; token: string }>>(
-          '/api/auth/register',
+          API_ENDPOINTS.AUTH.REGISTER,
           {
             method: 'POST',
-            body: { name, email, password, subscriptionPlan: plan },
+            body: JSON.stringify({ name, email, password, subscriptionPlan: plan }),
+            headers: {
+              'Content-Type': 'application/json',
+            },
           }
         )
 
@@ -400,11 +411,12 @@ export const useAuthStore = defineStore(
         if (token.value) {
           try {
             console.log('Calling server logout API endpoint')
-            await $fetch('/api/auth/logout', {
+            await $fetch(API_ENDPOINTS.AUTH.LOGOUT, {
               method: 'POST',
               headers: {
                 Authorization: `Bearer ${token.value}`,
                 'X-Refresh-Token': refreshToken.value || '',
+                'Content-Type': 'application/json',
               },
             })
             console.log('Server logout completed')
@@ -463,11 +475,12 @@ export const useAuthStore = defineStore(
         // Call the refresh token API endpoint
         const response = await $fetch<
           ApiResponse<{ token: string; refreshToken?: string; user?: User }>
-        >('/api/auth/refresh', {
+        >(API_ENDPOINTS.AUTH.REFRESH, {
           method: 'POST',
           headers: {
             Authorization: token.value ? `Bearer ${token.value}` : '',
             'X-Refresh-Token': refreshToken.value || '',
+            'Content-Type': 'application/json',
           },
         })
 

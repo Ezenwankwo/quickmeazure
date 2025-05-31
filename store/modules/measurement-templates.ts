@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import type { MeasurementTemplate } from '~/types'
+import { API_ENDPOINTS } from '~/constants/api'
 
 // Define types for pending operations
 interface PendingOperation {
@@ -42,15 +43,24 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
       loading.value = true
       error.value = null
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+
+      if (authStore.token) {
+        headers['Authorization'] = `Bearer ${authStore.token}`
+      }
+
       const { data } = await useAsyncData<MeasurementTemplate[]>(
         `measurement-templates-${includeArchived ? 'all' : 'active'}`,
         () => {
-          return $fetch(`/measurement-templates${includeArchived ? '?includeArchived=true' : ''}`, {
+          const url = includeArchived
+            ? `${API_ENDPOINTS.MEASUREMENTS.TEMPLATES}?includeArchived=true`
+            : API_ENDPOINTS.MEASUREMENTS.TEMPLATES
+
+          return $fetch(url, {
             baseURL,
-            headers: {
-              'Content-Type': 'application/json',
-              ...(authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {}),
-            },
+            headers,
           })
         },
         {
@@ -101,14 +111,19 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
     }
 
     try {
-      const response = await $fetch('/measurement-templates', {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+
+      if (authStore.token) {
+        headers['Authorization'] = `Bearer ${authStore.token}`
+      }
+
+      const response = await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, {
         method: 'POST',
-        body: templateData,
+        body: JSON.stringify(templateData),
         baseURL,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {}),
-        },
+        headers,
       })
 
       if (optimistic) {
@@ -156,14 +171,19 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
     }
 
     try {
-      const response = await $fetch(`/measurement-templates/${templateId}`, {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+
+      if (authStore.token) {
+        headers['Authorization'] = `Bearer ${authStore.token}`
+      }
+
+      const response = await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATE_BY_ID(templateId), {
         method: 'PUT',
-        body: updates,
+        body: JSON.stringify(updates),
         baseURL,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {}),
-        },
+        headers,
       })
 
       if (optimistic) {
@@ -206,13 +226,18 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
     }
 
     try {
-      await $fetch(`/measurement-templates/${templateId}`, {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
+
+      if (authStore.token) {
+        headers['Authorization'] = `Bearer ${authStore.token}`
+      }
+
+      await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATE_BY_ID(templateId), {
         method: 'DELETE',
         baseURL,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authStore.token ? { Authorization: `Bearer ${authStore.token}` } : {}),
-        },
+        headers,
       })
 
       if (optimistic) {
