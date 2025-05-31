@@ -7,6 +7,9 @@ import type {
   SubscriptionStatus,
 } from '~/types/subscription'
 
+// Stores
+import { useAuthStore } from './auth'
+
 // Constants
 import { API_ENDPOINTS } from '~/constants/api'
 

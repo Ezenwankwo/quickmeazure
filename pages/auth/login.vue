@@ -78,7 +78,7 @@ icon
                   <label for="remember" class="ml-2 text-sm text-gray-600">Remember me</label>
                 </div>
                 <NuxtLink
-                  :to="REGISTER_PATH"
+                  :to="AUTH.FORGOT_PASSWORD"
                   class="text-sm font-medium text-primary hover:text-primary"
                 >
                   Forgot your password?
@@ -103,7 +103,7 @@ icon
             <p class="mt-4 text-center text-sm text-gray-600">
               Don't have an account?
               <NuxtLink
-                :to="REGISTER_PATH"
+                :to="AUTH.REGISTER"
                 class="font-medium text-primary-600 hover:text-primary-500"
               >
                 Sign up
@@ -118,21 +118,17 @@ icon
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAppRoutes } from '~/composables/useRoutes'
-import { useAuthStore } from '~/stores/auth-store'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '~/store/modules/auth'
 import type { LoginCredentials as _LoginCredentials } from '~/types/auth'
-import { useToast } from '~~/composables/useToast'
+import { ROUTE_NAMES } from '~/constants/routes'
 
 // Composable
-const routes = useAppRoutes()
-const _router = useRouter()
+const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
 
-// Constants
-const _FORGOT_PASSWORD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.FORGOT_PASSWORD] as string
-const REGISTER_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.REGISTER] as string
-const DASHBOARD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX] as string
+const { AUTH, DASHBOARD } = ROUTE_NAMES
 
 // Set layout for this page
 definePageMeta({
@@ -152,14 +148,11 @@ const isSubmitting = ref(false)
 const loading = ref(false)
 const error = ref('')
 
-// Use Auth store
-const authStore = useAuthStore()
-
 // Form submission handler
 // Make sure the login handler only runs on the client side
 const handleLogin = async () => {
-  // Skip execution during SSR
-  if (import.meta.server) return
+  // // Skip execution during SSR
+  // if (import.meta.server) return
 
   isSubmitting.value = true
   error.value = '' // Reset error display
@@ -183,7 +176,7 @@ const handleLogin = async () => {
 
     if (result.success) {
       // Show success notification
-      useToast().add({
+      toast.add({
         title: 'Welcome back!',
         description: 'You have been logged in successfully.',
         color: 'primary',
@@ -194,7 +187,7 @@ const handleLogin = async () => {
       // The auth service redirects users without a subscription to the confirm page
       if (!result.redirected) {
         // Redirect to dashboard after successful login
-        await navigateTo(DASHBOARD_PATH)
+        await router.push(DASHBOARD.INDEX)
       }
     } else {
       // Set error message for display in the UI
@@ -236,6 +229,9 @@ async function handleGoogleLogin() {
       color: 'warning',
       icon: 'i-heroicons-information-circle',
     })
+
+    // Redirect to registration page
+    await router.push(AUTH.REGISTER)
   } catch (e) {
     const errorMessage = 'Google login failed'
     error.value = errorMessage

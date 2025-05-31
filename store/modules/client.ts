@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Client, ClientFilterOptions, ClientStats } from '~/types/client'
 import { API_ENDPOINTS } from '~/constants/api'
+import { useAuthStore } from './auth'
 
 export const useClientStore = defineStore('client', () => {
   const clients = ref<Client[]>([])
@@ -22,27 +23,21 @@ export const useClientStore = defineStore('client', () => {
       isLoading.value = true
       error.value = null
 
-      const { data } = await useAsyncData<{ data: Client[]; total: number }>(
-        'clients',
-        () =>
-          $fetch(API_ENDPOINTS.CLIENTS.BASE, {
-            params: filters,
-            headers: {
-              'Content-Type': 'application/json',
-              ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
-            },
-            credentials: 'include',
-          }),
-        {
-          server: true,
-          lazy: true,
-          default: () => ({ data: [], total: 0 }),
-        }
-      )
+      const response = await $fetch<{ data: Client[]; total: number }>(API_ENDPOINTS.CLIENTS.BASE, {
+        params: filters,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+        },
+        credentials: 'include',
+      })
 
-      clients.value = data.value?.data || []
-      totalCount.value = data.value?.total || 0
-      return clients.value
+      // Update store state
+      clients.value = response?.data || []
+      totalCount.value = response?.total || 0
+
+      // Return the data in the format expected by useAsyncData
+      return response || { data: [], total: 0 }
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch clients'
       console.error('Error fetching clients:', error.value)
@@ -60,23 +55,15 @@ export const useClientStore = defineStore('client', () => {
       isLoading.value = true
       error.value = null
 
-      const { data } = await useAsyncData<Client>(
-        `client-${id}`,
-        () =>
-          $fetch(API_ENDPOINTS.CLIENTS.BY_ID(String(id)), {
-            headers: {
-              'Content-Type': 'application/json',
-              ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
-            },
-            credentials: 'include',
-          }),
-        {
-          server: true,
-          lazy: true,
-        }
-      )
+      const response = await $fetch<Client>(API_ENDPOINTS.CLIENTS.BY_ID(String(id)), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+        },
+        credentials: 'include',
+      })
 
-      currentClient.value = data.value || null
+      currentClient.value = response || null
       return currentClient.value
     } catch (err: any) {
       error.value = err.message || `Failed to fetch client with ID ${id}`

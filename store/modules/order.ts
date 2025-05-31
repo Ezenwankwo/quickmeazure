@@ -43,37 +43,72 @@ export const useOrderStore = defineStore('order', () => {
       isLoading.value = true
       error.value = null
 
+      // Ensure we have a valid token
+      if (!authStore.token) {
+        await authStore.refreshSession()
+        if (!authStore.token) {
+          throw new Error('Authentication required. Please log in again.')
+        }
+      }
+
       // Merge default filters with custom filters
       const queryParams = {
         ...filters.value,
         ...customFilters,
       }
 
-      const { data, error: fetchError } = await useAsyncData<{ data: Order[]; total: number }>(
-        `orders-${JSON.stringify(queryParams)}`,
-        () =>
-          $fetch(API_ENDPOINTS.ORDERS.BASE, {
-            query: queryParams,
-            headers: {
-              'Content-Type': 'application/json',
-              ...authStore.getAuthHeaders(),
-            },
-          })
-      )
-
-      if (fetchError.value) {
-        throw new Error(fetchError.value.message || 'Failed to fetch orders')
+      // Get auth headers
+      const headers = {
+        'Content-Type': 'application/json',
+        ...authStore.getAuthHeaders(),
       }
 
-      if (data.value) {
-        orders.value = data.value.data
-        totalCount.value = data.value.total
+      // Make the API request
+      const response = await $fetch(API_ENDPOINTS.ORDERS.BASE, {
+        query: queryParams,
+        headers,
+      })
+
+      if (!response) {
+        throw new Error('No data received from server')
+      }
+
+      // Handle different response formats
+      if (response.data && typeof response.total !== 'undefined') {
+        // Expected format: { data: Order[], total: number }
+        orders.value = response.data
+        totalCount.value = response.total
+      } else if (Array.isArray(response)) {
+        // Fallback: if the API returns just an array
+        orders.value = response
+        totalCount.value = response.length
+      } else {
+        // Handle other response formats
+        orders.value = []
+        totalCount.value = 0
       }
 
       return orders.value
     } catch (err: any) {
       error.value = err.message || 'Failed to fetch orders'
       console.error('Error fetching orders:', err)
+
+      // Handle 401 Unauthorized
+      if (err.statusCode === 401 || err.response?.status === 401) {
+        console.log('Authentication error, attempting to refresh token...')
+        try {
+          await authStore.refreshSession()
+          // Retry the request after token refresh
+          if (authStore.token) {
+            return await fetchOrders(customFilters)
+          }
+        } catch (refreshError) {
+          console.error('Failed to refresh token:', refreshError)
+          authStore.logout()
+          navigateTo('/auth/login')
+        }
+      }
+
       return []
     } finally {
       isLoading.value = false

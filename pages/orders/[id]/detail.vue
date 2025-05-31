@@ -301,7 +301,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // Get the order ID from the route
 import { useOrderStore } from '~/store/modules/order'
 import { storeToRefs } from 'pinia'

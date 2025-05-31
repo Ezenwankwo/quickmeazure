@@ -1,11 +1,6 @@
 <template>
   <div class="confirm-page-wrapper">
     <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 space-y-6">
-      <!-- Signup Steps - First Item -->
-      <div class="max-w-3xl w-full mb-6">
-        <SignupSteps :current-step="2" />
-      </div>
-
       <!-- Title and Subtitle - Outside Card -->
       <div class="text-center mb-6 w-full max-w-3xl">
         <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Confirm Your Plan</h2>
@@ -158,8 +153,6 @@ const router = useRouter()
 // Constants
 const DASHBOARD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX] as string
 
-// Add toast composable
-const toast = useToast()
 // Add paystack composable
 const { processPayment } = usePaystack()
 // Add subscription management
@@ -259,7 +252,7 @@ const skipPayment = async () => {
 }
 
 // Handle successful payment
-function onPaymentSuccess(response) {
+async function onPaymentSuccess(response) {
   console.log('Payment successful', response)
   toast.success('Payment successful! Redirecting to next step...')
   // Redirect to dashboard after successful confirmation

@@ -1,5 +1,8 @@
 // Types
 import type { User, LoginCredentials, RegistrationData } from '~/types/auth'
+
+// Stores
+import { useUserStore } from './user'
 import type { AuthHeaders } from '~/types/api'
 
 // Constants
@@ -617,10 +620,16 @@ export const useAuthStore = defineStore(
      * Get authorization headers for API calls
      */
     function getAuthHeaders(): AuthHeaders {
-      if (!token.value) return {}
+      // Ensure we have a token
+      const currentToken = token.value
+      if (!currentToken) {
+        console.warn('No authentication token available')
+        return {}
+      }
 
       return {
-        Authorization: `Bearer ${token.value}`,
+        Authorization: `Bearer ${currentToken}`,
+        'Content-Type': 'application/json',
       }
     }
 

@@ -1,6 +1,10 @@
 // Types
 import type { Notification } from '~/types/notification'
 
+// Stores
+import { useAuthStore } from './auth'
+import { useSubscriptionStore } from './subscription'
+
 // Utils
 import { differenceInDays, parseISO } from 'date-fns'
 

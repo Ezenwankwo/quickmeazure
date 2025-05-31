@@ -29,7 +29,7 @@ export default defineEventHandler(async event => {
     const user = users[0]
     if (!user) {
       throw createError({
-        statusCode: 401,
+        statusCode: 400,
         message: 'Invalid credentials',
       })
     }
@@ -38,7 +38,7 @@ export default defineEventHandler(async event => {
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
       throw createError({
-        statusCode: 401,
+        statusCode: 400,
         message: 'Invalid credentials',
       })
     }

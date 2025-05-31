@@ -91,13 +91,20 @@ const demoData = {
 // Choose data source based on props without side effects
 const chartData = computed(() => {
   // Choose data source based on whether we have real data
-  const dataSource = props.hasRealData ? props.realData : demoData[props.period]
+  const dataSource = props.hasRealData
+    ? props.realData
+    : demoData[props.period] || demoData['30days'] // Fallback to 30 days if period is invalid
+
+  // Ensure we have valid data structure
+  const labels = dataSource?.labels || []
+  const data = dataSource?.data || []
 
   return {
-    labels: dataSource.labels,
+    labels,
     datasets: [
       {
         label: 'New Clients',
+        data, // Use the extracted data array
         backgroundColor: props.hasRealData
           ? 'rgba(79, 70, 229, 0.7)' // Primary color for bars
           : 'rgba(156, 163, 175, 0.7)', // Gray for demo data bars

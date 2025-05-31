@@ -365,6 +365,51 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  /**
+   * Get features available for a specific subscription plan
+   * @param plan The subscription plan
+   * @returns Array of feature names
+   */
+  function getFeaturesByPlan(plan: SubscriptionPlan | string): string[] {
+    const features: Record<string, string[]> = {
+      free: ['Basic client management', 'Up to 5 clients', 'Basic measurements', 'Email support'],
+      basic: [
+        'Everything in Free',
+        'Up to 50 clients',
+        'Advanced measurements',
+        'Priority email support',
+        'Basic reporting',
+      ],
+      pro: [
+        'Everything in Basic',
+        'Unlimited clients',
+        'Premium measurements',
+        '24/7 priority support',
+        'Advanced reporting',
+        'API access',
+      ],
+      trial: ['Full access to all Pro features', 'Limited time trial', 'Upgrade anytime'],
+    }
+
+    return features[plan] || features.free
+  }
+
+  /**
+   * Get client limit for a specific subscription plan
+   * @param plan The subscription plan
+   * @returns Maximum number of clients allowed
+   */
+  function getClientLimitByPlan(plan: SubscriptionPlan | string): number {
+    const limits: Record<string, number> = {
+      free: 5,
+      basic: 50,
+      pro: Number.POSITIVE_INFINITY, // Unlimited
+      trial: 100, // Higher limit for trial
+    }
+
+    return limits[plan] || limits.free
+  }
+
   // Return public store interface
   return {
     // State

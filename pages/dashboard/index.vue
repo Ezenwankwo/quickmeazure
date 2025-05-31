@@ -272,220 +272,189 @@ size="xs"> View all </UButton>
         </template>
       </UCard>
     </template>
-
-    <script setup lang="ts">
-      // Import composables
-      import { onMounted, computed, watch } from 'vue'
-      import { storeToRefs } from 'pinia'
-      import { useDashboardStore } from '~/store/modules/dashboard'
-      import { useAppRoutes } from '~/composables/useRoutes'
-      import type { ChartPeriod } from '~/types/dashboard'
-
-      // Initialize stores
-      const dashboardStore = useDashboardStore()
-      const { stats, recentActivity, dueOrders, clientGrowth, isLoading, error, chartPeriod } =
-        storeToRefs(dashboardStore)
-
-      // Routes
-      const routes = useAppRoutes()
-      const NEW_CLIENT_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW] as string
-      const ORDERS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.INDEX] as string
-
-      // Set page metadata
-      useHead({
-        title: 'Dashboard',
-      })
-
-      // Data for dashboard
-      const stats = ref({
-        totalClients: 0,
-        newClientsThisMonth: 0,
-        activeOrders: 0,
-        completedOrdersThisMonth: 0,
-        totalRevenue: 0,
-        revenueGrowth: 0,
-        subscriptionPlan: 'Growth',
-        clientsRemaining: 0,
-      })
-
-      // Recent activity
-      const recentActivity = ref([])
-
-      // Due orders
-      const dueOrders = ref([])
-
-      // Safe version of orders with validation to prevent rendering errors
-      const safeOrders = computed(() => {
-        if (!dueOrders.value || !Array.isArray(dueOrders.value)) {
-          return []
-        }
-
-        return dueOrders.value.map(order => ({
-          id: order?.id || 0,
-          client: order?.client || 'Unknown Client',
-          dueDate: order?.dueDate || null,
-          amount: order?.amount || 0,
-          status: order?.status || 'Unknown',
-        }))
-      })
-
-      // Chart period options and data
-      const chartPeriodOptions = [
-        { label: 'Last 7 days', value: '7days' },
-        { label: 'Last 30 days', value: '30days' },
-        { label: 'Last 90 days', value: '90days' },
-        { label: 'Last year', value: 'year' },
-      ]
-      const chartPeriod = ref('30days')
-      const clientGrowth = ref({
-        labels: [],
-        data: [],
-        totalGrowth: 0,
-        percentGrowth: 0,
-      })
-
-      // Helper computed property to check if we have chart data to display
-      const hasChartData = computed(() => {
-        return (
-          clientGrowth.value?.labels?.length > 0 &&
-          clientGrowth.value?.data?.length > 0 &&
-          clientGrowth.value.data.some(value => value > 0)
-        )
-      })
-
-      // Loading state
-      const isLoading = ref(false)
-
-      // Helper function to update chart data when period changes
-      const updateChartData = async () => {
-        try {
-          await dashboardStore.fetchClientGrowth(chartPeriod.value)
-        } catch (error) {
-          console.error('Error updating chart data:', error)
-        }
-      }
-
-      // Helper functions
-      const formatNumber = (number: number) => {
-        if (number === null || number === undefined) return '0'
-        return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-      }
-
-      const formatDueDate = (date: string) => {
-        if (!date) return 'No date set'
-
-        try {
-          const now = new Date()
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          const dueDate = new Date(date)
-          const dueDateNoTime = new Date(
-            dueDate.getFullYear(),
-            dueDate.getMonth(),
-            dueDate.getDate()
-          )
-
-          const diffTime = dueDateNoTime - today
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-          if (diffDays < 0) {
-            return `${Math.abs(diffDays)} days overdue`
-          } else if (diffDays === 0) {
-            return 'Due today'
-          } else if (diffDays === 1) {
-            return 'Due tomorrow'
-          } else {
-            return `Due in ${diffDays} days`
-          }
-        } catch (error) {
-          console.error('Error formatting due date:', error)
-          return 'Invalid date'
-        }
-      }
-
-      // Get color for due date badge
-      const getDueDateColor = (date: string) => {
-        if (!date) return 'neutral'
-
-        try {
-          const now = new Date()
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          const dueDate = new Date(date)
-          const dueDateNoTime = new Date(
-            dueDate.getFullYear(),
-            dueDate.getMonth(),
-            dueDate.getDate()
-          )
-
-          const diffTime = dueDateNoTime - today
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-          if (diffDays < 0) {
-            return 'error'
-          } else if (diffDays === 0) {
-            return 'warning'
-          } else if (diffDays <= 2) {
-            return 'warning'
-          } else {
-            return 'success'
-          }
-        } catch (error) {
-          console.error('Error getting due date color:', error)
-          return 'neutral'
-        }
-      }
-
-      // Get color for status badge
-      const getStatusColor = (status: string) => {
-        if (!status) return 'neutral'
-
-        switch (status.toLowerCase()) {
-          case 'completed':
-            return 'success'
-          case 'in progress':
-            return 'primary'
-          case 'pending payment':
-            return 'warning'
-          case 'overdue':
-            return 'error'
-          default:
-            return 'neutral'
-        }
-      }
-
-      // Watch for chart period changes
-      watch(chartPeriod, (newPeriod: ChartPeriod) => {
-        dashboardStore.fetchClientGrowth(newPeriod)
-      })
-
-      // Fetch all dashboard data
-      const fetchDashboardData = async () => {
-        try {
-          await Promise.all([
-            dashboardStore.fetchStats(),
-            dashboardStore.fetchRecentActivity(),
-            dashboardStore.fetchDueOrders(),
-            dashboardStore.fetchClientGrowth(chartPeriod.value),
-          ])
-        } catch (error) {
-          console.error('Error fetching dashboard data:', error)
-        }
-      }
-
-      // Fetch data on mount
-      onMounted(() => {
-        fetchDashboardData()
-      })
-
-      // Add layout for dashboard pages
-      definePageMeta({
-        layout: 'dashboard',
-      })
-
-      // Chart stats computed property
-      const chartStats = computed(() => ({
-        totalGrowth: hasChartData.value ? (clientGrowth.value?.totalGrowth ?? 0) : 0,
-        percentGrowth: hasChartData.value ? (clientGrowth.value?.percentGrowth ?? 0) : 0,
-      }))
-    </script>
   </div>
 </template>
+
+<script setup lang="ts">
+// Import composables
+import { onMounted, computed, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useDashboardStore } from '~/store/modules/dashboard'
+import { useAppRoutes } from '~/composables/useRoutes'
+import type { ChartPeriod } from '~/types/dashboard'
+
+// Initialize stores
+const dashboardStore = useDashboardStore()
+const { stats, recentActivity, dueOrders, clientGrowth, isLoading, error, chartPeriod } =
+  storeToRefs(dashboardStore)
+
+// Routes
+const routes = useAppRoutes()
+const NEW_CLIENT_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW] as string
+const ORDERS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.INDEX] as string
+
+// Set page metadata
+useHead({
+  title: 'Dashboard',
+})
+
+// Safe version of orders with validation to prevent rendering errors
+const safeOrders = computed(() => {
+  if (!dueOrders.value || !Array.isArray(dueOrders.value)) {
+    return []
+  }
+
+  return dueOrders.value.map(order => ({
+    id: order?.id || 0,
+    client: order?.client || 'Unknown Client',
+    dueDate: order?.dueDate || null,
+    amount: order?.amount || 0,
+    status: order?.status || 'Unknown',
+  }))
+})
+
+// Chart period options
+const chartPeriodOptions = [
+  { label: 'Last 7 days', value: '7days' },
+  { label: 'Last 30 days', value: '30days' },
+  { label: 'Last 90 days', value: '90days' },
+  { label: 'Last year', value: 'year' },
+]
+
+// Helper computed property to check if we have chart data to display
+const hasChartData = computed(() => {
+  return (
+    clientGrowth.value?.labels?.length > 0 &&
+    clientGrowth.value?.data?.length > 0 &&
+    clientGrowth.value.data.some(value => value > 0)
+  )
+})
+
+// Helper function to update chart data when period changes
+const updateChartData = async () => {
+  try {
+    await dashboardStore.fetchClientGrowth(chartPeriod.value)
+  } catch (error) {
+    console.error('Error updating chart data:', error)
+  }
+}
+
+// Helper functions
+const formatNumber = (number: number) => {
+  if (number === null || number === undefined) return '0'
+  return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+const formatDueDate = (date: string) => {
+  if (!date) return 'No date set'
+
+  try {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const dueDate = new Date(date)
+    const dueDateNoTime = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
+
+    const diffTime = dueDateNoTime - today
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 0) {
+      return `${Math.abs(diffDays)} days overdue`
+    } else if (diffDays === 0) {
+      return 'Due today'
+    } else if (diffDays === 1) {
+      return 'Due tomorrow'
+    } else {
+      return `Due in ${diffDays} days`
+    }
+  } catch (error) {
+    console.error('Error formatting due date:', error)
+    return 'Invalid date'
+  }
+}
+
+// Get color for due date badge
+const getDueDateColor = (date: string) => {
+  if (!date) return 'neutral'
+
+  try {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const dueDate = new Date(date)
+    const dueDateNoTime = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
+
+    const diffTime = dueDateNoTime - today
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays < 0) {
+      return 'error'
+    } else if (diffDays === 0) {
+      return 'warning'
+    } else if (diffDays <= 2) {
+      return 'warning'
+    } else {
+      return 'success'
+    }
+  } catch (error) {
+    console.error('Error getting due date color:', error)
+    return 'neutral'
+  }
+}
+
+// Get color for status badge
+const getStatusColor = (status: string) => {
+  if (!status) return 'neutral'
+
+  switch (status.toLowerCase()) {
+    case 'completed':
+      return 'success'
+    case 'in progress':
+      return 'primary'
+    case 'pending payment':
+      return 'warning'
+    case 'overdue':
+      return 'error'
+    default:
+      return 'neutral'
+  }
+}
+
+// Watch for chart period changes
+watch(chartPeriod, (newPeriod: ChartPeriod) => {
+  dashboardStore.fetchClientGrowth(newPeriod)
+})
+
+// Fetch dashboard data
+const fetchDashboardData = async () => {
+  try {
+    await Promise.all([
+      dashboardStore.fetchStats(),
+      dashboardStore.fetchRecentActivity(),
+      dashboardStore.fetchDueOrders(),
+      dashboardStore.fetchClientGrowth(chartPeriod.value),
+    ])
+  } catch (err) {
+    console.error('Error fetching dashboard data:', err)
+  }
+}
+
+// Fetch data on mount
+onMounted(() => {
+  fetchDashboardData()
+})
+
+// Add layout for dashboard pages
+definePageMeta({
+  layout: 'dashboard',
+})
+
+// Chart stats computed property
+const chartStats = computed(() => ({
+  totalGrowth: hasChartData.value ? (clientGrowth.value?.totalGrowth ?? 0) : 0,
+  percentGrowth: hasChartData.value ? (clientGrowth.value?.percentGrowth ?? 0) : 0,
+}))
+
+// Add layout for dashboard pages
+definePageMeta({
+  layout: 'dashboard',
+})
+</script>

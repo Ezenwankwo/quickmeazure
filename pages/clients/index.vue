@@ -453,6 +453,8 @@ size="sm"
 
 <script setup lang="ts">
 // Import stores and utilities
+import { useClientStore } from '~/store/modules/client'
+import { onMounted, onUnmounted } from 'vue'
 
 // Composable
 const routes = useAppRoutes()
@@ -471,26 +473,22 @@ const getViewClientPath = (id: string): string =>
   (routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.VIEW] as RouteFunction)({ id })
 
 // Types
-interface Client {
+type Client = {
   id: string
   name: string
-  email?: string
-  phone?: string
-  address?: string
-  notes?: string
+  email: string
+  phone: string
+  measurements: any[]
+  orders: any[]
   createdAt: string
   updatedAt: string
 }
 
-interface Filters {
-  dateAdded: string
-  hasOrders: string
-}
-
 // State
 const search = ref('')
-const sortBy = ref('name-asc')
 const currentPage = ref(1)
+const searchTimeout = ref<NodeJS.Timeout | null>(null)
+const isMounted = ref(false)
 
 // Use client store
 const clientStore = useClientStore()
@@ -501,10 +499,6 @@ const _itemsPerPage = ref(10) // Prefix with underscore to indicate it's intenti
 const isFilterOpen = ref(false)
 const isDeleteModalOpen = ref(false)
 const clientToDelete = ref<Client | null>(null)
-const filters = ref<Filters>({
-  dateAdded: '',
-  hasOrders: '',
-})
 
 // Data
 const filteredClients = ref<Client[]>([])
@@ -543,8 +537,6 @@ const columns = [
 ]
 
 // State management
-const isDeleteModalOpen = ref(false)
-const clientToDelete = ref(null)
 const isDeleting = ref(false)
 const totalItems = ref(0)
 const totalPages = ref(0)
@@ -581,18 +573,18 @@ const ITEMS_PER_PAGE = 10
 
 // For debouncing search
 const debouncedSearch = ref('')
-const searchTimeout = ref(null)
 
 // Handle debounced search
-const handleSearchInput = _e => {
-  // Clear any existing timeout
-  if (searchTimeout.value) clearTimeout(searchTimeout.value)
+const handleSearchInput = () => {
+  if (!isMounted.value) return
 
-  // Set a new timeout
+  if (searchTimeout.value) clearTimeout(searchTimeout.value)
   searchTimeout.value = setTimeout(() => {
-    debouncedSearch.value = search.value
-    filterClients()
-  }, 300) // 300ms debounce
+    if (isMounted.value) {
+      debouncedSearch.value = search.value
+      filterClients()
+    }
+  }, 300)
 }
 
 // Computed properties
@@ -697,6 +689,22 @@ const deleteClient = async () => {
   }
 }
 
+// Component lifecycle hooks
+onMounted(() => {
+  isMounted.value = true
+  // Initial data fetch
+  fetchClients()
+})
+
+onUnmounted(() => {
+  isMounted.value = false
+  // Clear any pending timeouts
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+    searchTimeout.value = null
+  }
+})
+
 // No mock data - we'll use the real API
 
 // Function to fetch clients from the API
@@ -704,7 +712,7 @@ const fetchClients = async () => {
   try {
     const [sortField, sortOrder] = sortBy.value.split('-')
 
-    const filters = {
+    const filterParams = {
       search: search.value,
       sortField,
       sortOrder,
@@ -714,7 +722,7 @@ const fetchClients = async () => {
       hasOrders: filters.value.hasOrders,
     }
 
-    await clientStore.fetchClients(filters)
+    await clientStore.fetchClients(filterParams)
 
     // Update local pagination state based on store
     totalItems.value = clientStore.totalCount
@@ -734,11 +742,6 @@ const fetchClients = async () => {
     filteredClients.value = []
   }
 }
-
-// Initial fetch on component mount
-onMounted(() => {
-  fetchClients()
-})
 
 const formatDate = timestamp => {
   const date = new Date(timestamp)

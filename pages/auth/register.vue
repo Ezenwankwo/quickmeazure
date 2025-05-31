@@ -1,18 +1,9 @@
 <template>
   <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 space-y-6">
-    <!-- Signup Steps - First Item -->
-    <div class="max-w-3xl w-full mb-6">
-      <SignupSteps :current-step="1" />
-    </div>
-
     <!-- Title and Subtitle - Outside Card -->
     <div class="text-center mb-6 w-full max-w-md">
-      <p class="mt-4 text-center text-sm text-gray-600">
-        Already have an account?
-        <NuxtLink :to="LOGIN_PATH" class="font-medium text-primary-600 hover:text-primary-500">
-          Sign in
-        </NuxtLink>
-      </p>
+      <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Create your account</h2>
+      <p class="mt-2 text-gray-600">Start managing your tailor business.</p>
     </div>
 
     <div class="max-w-md w-full space-y-6 bg-white p-4 sm:p-8 rounded-xl shadow">

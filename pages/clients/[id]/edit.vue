@@ -786,7 +786,6 @@ const deleteClient = async () => {
 }
 
 // Confirm delete
-// Keeping this function for future use but prefixing with _ to indicate it's currently unused
 const _confirmDelete = () => {
   useConfirm({
     title: 'Delete Client',
@@ -796,57 +795,6 @@ const _confirmDelete = () => {
     confirmColor: 'red',
     onConfirm: deleteClient,
   })
-}
-
-// Delete client
-const deleteClient = async () => {
-  isSubmitting.value = true
-
-  try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to delete this client',
-        color: 'warning',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
-    // Delete client
-    await clientStore.deleteClient(clientId)
-
-    // Show success message
-    useToast().add({
-      title: 'Client deleted',
-      description: 'Client has been deleted successfully',
-      color: 'primary',
-    })
-
-    // Redirect to clients list
-    navigateTo('/clients')
-  } catch (error) {
-    console.error('Error deleting client:', error)
-    let errorMessage = 'Failed to delete client'
-
-    // Handle specific error cases
-    if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      navigateTo('/auth/login')
-    }
-
-    useToast().add({
-      title: 'Error',
-      description: errorMessage,
-      color: 'error',
-    })
-  } finally {
-    isSubmitting.value = false
-  }
 }
 
 // Fetch client data and templates on mount

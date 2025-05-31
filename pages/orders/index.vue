@@ -579,6 +579,9 @@ import { storeToRefs } from 'pinia'
 import type { Order } from '~/types/order'
 import { useAuthStore } from '~/store/modules/auth'
 
+// Stores
+import { useOrderStore } from '~/store/modules/order'
+
 // Composable
 const routes = useAppRoutes()
 
@@ -620,8 +623,92 @@ const itemsPerPage = 10
 const totalItems = computed(() => orderStore.totalCount)
 const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
 
+// Check if any filters are applied
+const isFilterApplied = computed(() => {
+  return (
+    search.value !== '' ||
+    filters.value.status !== 'all' ||
+    filters.value.dueDate !== 'all' ||
+    filters.value.paymentStatus !== 'any'
+  )
+})
+
 // Orders from store
 const { orders, isLoading } = storeToRefs(orderStore)
+
+// Filtered and sorted orders
+// Filtered and sorted orders
+const filteredOrders = computed(() => {
+  if (!orders.value) return []
+
+  let result = [...orders.value]
+
+  // Apply search filter
+  if (search.value) {
+    const searchTerm = search.value.toLowerCase()
+    result = result.filter(
+      order =>
+        order.client?.name?.toLowerCase().includes(searchTerm) ||
+        order.client?.email?.toLowerCase().includes(searchTerm) ||
+        order.referenceNumber?.toLowerCase().includes(searchTerm)
+    )
+  }
+
+  // Apply status filter
+  if (filters.value.status !== 'all') {
+    result = result.filter(order => order.status === filters.value.status)
+  }
+
+  // Apply payment status filter
+  if (filters.value.paymentStatus !== 'any') {
+    result = result.filter(order => order.paymentStatus === filters.value.paymentStatus)
+  }
+
+  // Apply due date filter
+  if (filters.value.dueDate !== 'all') {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    result = result.filter(order => {
+      if (!order.dueDate) return false
+
+      const dueDate = new Date(order.dueDate)
+      dueDate.setHours(0, 0, 0, 0)
+
+      switch (filters.value.dueDate) {
+        case 'today':
+          return dueDate.getTime() === today.getTime()
+        case 'upcoming':
+          return dueDate > today
+        case 'overdue':
+          return dueDate < today && order.status !== 'delivered'
+        default:
+          return true
+      }
+    })
+  }
+
+  // Apply sorting
+  const [field, direction] = sortBy.value.split('-')
+  return result.sort((a, b) => {
+    let comparison = 0
+
+    if (field === 'dueDate') {
+      const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 0
+      const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 0
+      comparison = dateA - dateB
+    } else if (field === 'totalAmount') {
+      comparison = (a.totalAmount || 0) - (b.totalAmount || 0)
+    } else if (field === 'status') {
+      comparison = (a.status || '').localeCompare(b.status || '')
+    } else {
+      // Default sort by client name
+      comparison = (a.client?.name || '').localeCompare(b.client?.name || '')
+    }
+
+    return direction === 'asc' ? comparison : -comparison
+  })
+})
 
 // Filters
 const filters = ref({
@@ -744,7 +831,11 @@ const pageCount = computed(() => {
 })
 
 const paginatedOrders = computed(() => {
-  return filteredOrders.value
+  if (!filteredOrders.value) return []
+
+  const start = (currentPage.value - 1) * ITEMS_PER_PAGE
+  const end = start + ITEMS_PER_PAGE
+  return filteredOrders.value.slice(start, end)
 })
 
 const showPagination = computed(() => {

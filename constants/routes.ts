@@ -3,50 +3,44 @@ export const ROUTE_NAMES = {
   // Public routes
   HOME: '/',
 
-  // Legal routes
-  LEGAL: {
-    TERMS: 'legal/terms',
-    PRIVACY: 'legal/privacy',
-  },
-
   // Auth routes
   AUTH: {
-    LOGIN: 'auth/login',
-    REGISTER: 'auth/register',
-    FORGOT_PASSWORD: 'auth/forgot-password',
-    RESET_PASSWORD: 'auth/reset-password',
-    CONFIRM: 'auth/confirm',
-    SETUP_MEASUREMENT: 'auth/setup-measurement',
+    LOGIN: '/auth/login',
+    REGISTER: '/auth/register',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
+    CONFIRM: '/auth/confirm',
+    SETUP_MEASUREMENT: '/auth/setup-measurement',
   },
 
   // Dashboard routes
   DASHBOARD: {
-    INDEX: 'dashboard',
+    INDEX: '/dashboard',
     CLIENTS: {
-      INDEX: 'dashboard/clients',
-      NEW: 'dashboard/clients/new',
-      EDIT: 'dashboard/clients/:id/edit',
-      VIEW: 'dashboard/clients/:id',
+      INDEX: '/clients',
+      NEW: '/clients/new',
+      EDIT: '/clients/:id/edit',
+      VIEW: '/clients/:id',
     },
     ORDERS: {
-      INDEX: 'dashboard/orders',
-      NEW: 'dashboard/orders/new',
-      EDIT: 'dashboard/orders/:id/edit',
-      VIEW: 'dashboard/orders/:id',
+      INDEX: '/orders',
+      NEW: '/orders/new',
+      EDIT: '/orders/:id/edit',
+      VIEW: '/orders/:id',
     },
     STYLES: {
-      INDEX: 'dashboard/styles',
-      NEW: 'dashboard/styles/new',
-      EDIT: 'dashboard/styles/:id/edit',
-      VIEW: 'dashboard/styles/:id',
+      INDEX: '/styles',
+      NEW: '/styles/new',
+      EDIT: '/styles/:id/edit',
+      VIEW: '/styles/:id',
     },
-    SETTINGS: 'dashboard/settings',
+    SETTINGS: '/settings',
   },
 
   // Legal routes
   LEGAL: {
-    TERMS: 'legal/terms',
-    PRIVACY: 'legal/privacy',
+    TERMS: '/legal/terms',
+    PRIVACY: '/legal/privacy',
   },
 } as const
 
@@ -95,29 +89,25 @@ export const ROUTE_PATHS: { [K in RouteName]: RoutePath<K> } = {
 
   // Dashboard routes
   [ROUTE_NAMES.DASHBOARD.INDEX]: '/dashboard',
-  [ROUTE_NAMES.DASHBOARD.SETTINGS]: '/dashboard/settings',
+  [ROUTE_NAMES.DASHBOARD.SETTINGS]: '/settings',
 
   // Client routes
-  [ROUTE_NAMES.DASHBOARD.CLIENTS.INDEX]: '/dashboard/clients',
-  [ROUTE_NAMES.DASHBOARD.CLIENTS.NEW]: '/dashboard/clients/new',
-  [ROUTE_NAMES.DASHBOARD.CLIENTS.EDIT]: (params: { id: string }) =>
-    `/dashboard/clients/${params.id}/edit`,
-  [ROUTE_NAMES.DASHBOARD.CLIENTS.VIEW]: (params: { id: string }) =>
-    `/dashboard/clients/${params.id}`,
+  [ROUTE_NAMES.DASHBOARD.CLIENTS.INDEX]: '/clients',
+  [ROUTE_NAMES.DASHBOARD.CLIENTS.NEW]: '/clients/new',
+  [ROUTE_NAMES.DASHBOARD.CLIENTS.EDIT]: (params: { id: string }) => `/clients/${params.id}/edit`,
+  [ROUTE_NAMES.DASHBOARD.CLIENTS.VIEW]: (params: { id: string }) => `/clients/${params.id}`,
 
   // Order routes
-  [ROUTE_NAMES.DASHBOARD.ORDERS.INDEX]: '/dashboard/orders',
-  [ROUTE_NAMES.DASHBOARD.ORDERS.NEW]: '/dashboard/orders/new',
-  [ROUTE_NAMES.DASHBOARD.ORDERS.EDIT]: (params: { id: string }) =>
-    `/dashboard/orders/${params.id}/edit`,
-  [ROUTE_NAMES.DASHBOARD.ORDERS.VIEW]: (params: { id: string }) => `/dashboard/orders/${params.id}`,
+  [ROUTE_NAMES.DASHBOARD.ORDERS.INDEX]: '/orders',
+  [ROUTE_NAMES.DASHBOARD.ORDERS.NEW]: '/orders/new',
+  [ROUTE_NAMES.DASHBOARD.ORDERS.EDIT]: (params: { id: string }) => `/orders/${params.id}/edit`,
+  [ROUTE_NAMES.DASHBOARD.ORDERS.VIEW]: (params: { id: string }) => `/orders/${params.id}`,
 
   // Style routes
-  [ROUTE_NAMES.DASHBOARD.STYLES.INDEX]: '/dashboard/styles',
-  [ROUTE_NAMES.DASHBOARD.STYLES.NEW]: '/dashboard/styles/new',
-  [ROUTE_NAMES.DASHBOARD.STYLES.EDIT]: (params: { id: string }) =>
-    `/dashboard/styles/${params.id}/edit`,
-  [ROUTE_NAMES.DASHBOARD.STYLES.VIEW]: (params: { id: string }) => `/dashboard/styles/${params.id}`,
+  [ROUTE_NAMES.DASHBOARD.STYLES.INDEX]: '/styles',
+  [ROUTE_NAMES.DASHBOARD.STYLES.NEW]: '/styles/new',
+  [ROUTE_NAMES.DASHBOARD.STYLES.EDIT]: (params: { id: string }) => `/styles/${params.id}/edit`,
+  [ROUTE_NAMES.DASHBOARD.STYLES.VIEW]: (params: { id: string }) => `/styles/${params.id}`,
 
   // Legal routes
   [ROUTE_NAMES.LEGAL.TERMS]: '/legal/terms',

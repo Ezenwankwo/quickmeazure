@@ -10,6 +10,7 @@
 
 <script setup>
 import { storeToRefs } from 'pinia'
+import { useAuthStore } from '~/store/modules/auth'
 
 definePageMeta({
   layout: 'default',

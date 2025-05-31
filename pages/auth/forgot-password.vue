@@ -1,16 +1,5 @@
 <template>
   <div class="flex min-h-screen flex-col items-center justify-center bg-gray-50 space-y-6">
-    <!-- Back to login link -->
-    <div class="w-full max-w-md text-left">
-      <ULink
-        :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.LOGIN]"
-        class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
-      >
-        <UIcon name="i-heroicons-arrow-left" class="mr-1 h-4 w-4" />
-        Back to login
-      </ULink>
-    </div>
-
     <!-- Title and Subtitle - Outside Card -->
     <div class="text-center mb-6 w-full max-w-md">
       <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Forgot your password?</h2>

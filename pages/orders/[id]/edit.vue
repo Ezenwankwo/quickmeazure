@@ -251,7 +251,7 @@ required>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // Get the order ID from the route
 // Import stores and utilities
 import { ref, computed, onMounted, watch } from 'vue'
@@ -327,11 +327,6 @@ const statusOptions = [
   { label: 'Completed', value: 'Completed', icon: 'i-heroicons-check-circle' },
   { label: 'Cancelled', value: 'Cancelled', icon: 'i-heroicons-x-circle' },
 ]
-
-// Computed for balance amount
-const balanceAmount = computed(() => {
-  return (form.value.totalAmount || 0) - (form.value.depositAmount || 0)
-})
 
 // Calculate balance when total or deposit changes
 const calculateBalance = () => {

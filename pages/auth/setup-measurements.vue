@@ -1,11 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 space-y-6">
     <div class="max-w-4xl mx-auto">
-      <!-- Signup Steps - First Item -->
-      <div class="max-w-3xl mx-auto mb-8">
-        <SignupSteps :current-step="3" />
-      </div>
-
       <div class="text-center mb-6 sm:mb-8">
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
           Set Up Your Measurement Templates
