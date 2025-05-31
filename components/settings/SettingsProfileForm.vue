@@ -354,13 +354,6 @@ const updateFormFromProfile = (profileData: any) => {
   }
 }
 
-// Reset form to original values
-const _resetForm = () => {
-  if (originalProfile.value) {
-    updateFormFromProfile(originalProfile.value)
-  }
-}
-
 // Save profile
 const saveProfile = async () => {
   isSaving.value = true
