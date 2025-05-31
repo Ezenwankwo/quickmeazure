@@ -92,15 +92,15 @@ variant="outline"
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useAppRoutes } from '~/composables/useRoutes'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useStyleStore } from '~/store/modules/style'
 
-// Composable
+// Composable and stores
 const routes = useAppRoutes()
 const router = useRouter()
-
-// Constants
+const styleStore = useStyleStore()
+const toast = useToast()
 const STYLES_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.INDEX] as string
 
 useHead({
@@ -108,7 +108,13 @@ useHead({
 })
 
 // Style data
-const style = ref({
+interface StyleFormData {
+  name: string
+  description: string
+  imageFile: File | null
+}
+
+const style = ref<StyleFormData>({
   name: '',
   description: '',
   imageFile: null,
@@ -116,8 +122,8 @@ const style = ref({
 
 // UI state
 const isSaving = ref(false)
-const imagePreview = ref(null)
-const fileInput = ref(null)
+const imagePreview = ref<string | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 // Computed property to check if form is valid
 const isFormValid = computed(() => {
@@ -126,17 +132,42 @@ const isFormValid = computed(() => {
 
 // Trigger file input click
 const triggerFileInput = () => {
-  fileInput.value.click()
+  if (fileInput.value) {
+    fileInput.value.click()
+  } else {
+    console.error('File input element not found')
+    toast.add({
+      title: 'Error',
+      description: 'Failed to access file input',
+      color: 'error',
+    })
+  }
 }
 
 // Handle image upload
-const handleImageUpload = event => {
-  const file = event.target.files[0]
+const handleImageUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+
   if (!file) return
 
   // Check file size (5MB limit)
   if (file.size > 5 * 1024 * 1024) {
-    alert('File is too large. Maximum size is 5MB.')
+    toast.add({
+      title: 'File too large',
+      description: 'Maximum file size is 5MB',
+      color: 'error',
+    })
+    return
+  }
+
+  // Check file type
+  if (!file.type.startsWith('image/')) {
+    toast.add({
+      title: 'Invalid file type',
+      description: 'Please upload an image file',
+      color: 'error',
+    })
     return
   }
 
@@ -144,8 +175,18 @@ const handleImageUpload = event => {
 
   // Create preview
   const reader = new FileReader()
-  reader.onload = e => {
-    imagePreview.value = e.target.result
+  reader.onload = (e: ProgressEvent<FileReader>) => {
+    if (e.target?.result) {
+      imagePreview.value = e.target.result as string
+    }
+  }
+  reader.onerror = () => {
+    console.error('Error reading file')
+    toast.add({
+      title: 'Error',
+      description: 'Failed to read the image file',
+      color: 'error',
+    })
   }
   reader.readAsDataURL(file)
 }
@@ -154,19 +195,19 @@ const handleImageUpload = event => {
 const saveStyle = async () => {
   // Validate form inputs
   if (!style.value.name) {
-    useToast().add({
+    toast.add({
       title: 'Validation Error',
       description: 'Style name is required',
-      color: 'red',
+      color: 'error',
     })
     return
   }
 
   if (!style.value.imageFile) {
-    useToast().add({
+    toast.add({
       title: 'Validation Error',
       description: 'Image is required',
-      color: 'red',
+      color: 'error',
     })
     return
   }
@@ -174,9 +215,7 @@ const saveStyle = async () => {
   isSaving.value = true
 
   try {
-    const { authFetch } = useApiAuth()
-
-    // Handle image upload via FormData
+    // Create form data
     const formData = new FormData()
     formData.append('name', style.value.name)
 
@@ -184,46 +223,24 @@ const saveStyle = async () => {
       formData.append('description', style.value.description)
     }
 
-    // Add the file with both possible field names to ensure compatibility
-    formData.append('file', style.value.imageFile)
+    // Add the image file
     formData.append('image', style.value.imageFile)
 
-    console.log('Submitting form with FormData:', {
-      name: style.value.name,
-      description: style.value.description,
-      hasImage: !!style.value.imageFile,
-      imageFileName: style.value.imageFile?.name,
-      imageSize: style.value.imageFile?.size,
-    })
-
-    // Send form data to the server for processing
-    const { data: newStyle } = await authFetch('/api/styles', {
-      method: 'POST',
-      body: formData,
-    })
-
-    console.log('Style created successfully:', newStyle.value)
+    // Create the style using the store
+    const newStyle = await styleStore.createStyle(formData)
 
     // Show success notification
-    useToast().add({
+    toast.add({
       title: 'Style Created',
       description: 'Your style has been created successfully',
-      color: 'green',
+      color: 'primary',
     })
 
-    // Redirect to styles list on success
-    await router.push(`${STYLES_PATH}/${newStyle.value.id}/detail`)
-  } catch (error) {
+    // Redirect to the new style's detail page
+    await router.push(`${STYLES_PATH}/${newStyle.id}/detail`)
+  } catch (error: any) {
     console.error('Error creating style:', error)
-    if (error.data) {
-      console.error('Server error details:', error.data)
-    }
-    if (error.response) {
-      console.error('Response status:', error.response.status)
-      console.error('Response headers:', error.response.headers)
-    }
 
-    // Enhanced error handling
     let errorMessage = 'Failed to create style. Please try again.'
 
     if (error.response) {
@@ -232,21 +249,23 @@ const saveStyle = async () => {
         errorMessage = 'The image file is too large. Please use a smaller image.'
       } else if (status === 415) {
         errorMessage = 'The file format is not supported.'
-      } else if (error.data?.statusMessage) {
-        errorMessage = error.data.statusMessage
+      } else if (error.data?.message) {
+        errorMessage = error.data.message
       }
     }
 
-    // Error notification (auth errors are handled by authFetch)
-    if (!error.message?.includes('No authentication token')) {
-      useToast().add({
-        title: 'Error',
-        description: errorMessage,
-        color: 'red',
-      })
-    }
+    toast.add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'error',
+    })
   } finally {
     isSaving.value = false
   }
 }
+
+// Clean up the style store when the component is unmounted
+onUnmounted(() => {
+  styleStore.$reset()
+})
 </script>

@@ -8,15 +8,25 @@ export interface Style {
   name: string
   description?: string
   imageUrl?: string
-  details?: Record<string, any>
   category?: string
+  measurements: Record<string, StyleMeasurement>
+  templateId?: number
+  template?: StyleTemplate
+  notes?: string
+  clientId?: number
+  client?: {
+    id: number
+    name: string
+  }
   createdAt: string
-  updatedAt?: string
+  updatedAt: string
 }
 
 export interface StyleFilterOptions {
   search?: string
   category?: string
+  clientId?: number
+  templateId?: number
   sortBy?: 'name' | 'createdAt' | 'updatedAt'
   sortOrder?: 'asc' | 'desc'
   limit?: number

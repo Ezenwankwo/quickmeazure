@@ -202,14 +202,25 @@ size="sm">
 </template>
 
 <script setup lang="ts">
-import { useRoute, useRouter } from 'vue-router'
-import { useAppRoutes } from '~/composables/useRoutes'
-import DeleteModal from '~/components/DeleteModal.vue'
-import { useAuthStore } from '~/store/modules/auth'
+// Router and utilities
+import { useRouter, useRoute } from 'vue-router'
 
-// Composable
+// Stores
+import { useAuthStore } from '~/store/modules/auth'
+import { useStyleStore } from '~/store/modules/style'
+
+// Types
+import type { Style } from '~/types/style'
+
+// Router and route
+const router = useRouter()
+const route = useRoute()
+
+// Composable and stores
 const routes = useAppRoutes()
 const authStore = useAuthStore()
+const styleStore = useStyleStore()
+const toast = useToast()
 
 // Constants
 const STYLES_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.INDEX] as string
@@ -222,26 +233,30 @@ const getEditStylePath = (id: string): string =>
 
 // Set page metadata
 useHead({
-  title: 'Style Details - QuickMeazure',
-  meta: [{ name: 'description', content: 'View detailed information about a clothing style' }],
+  title: 'Style Details',
 })
 
-const route = useRoute()
-const router = useRouter()
-const toast = useToast()
+// Types
+interface Order {
+  id: string
+  clientName: string
+  status: string
+  createdAt: string
+  // Add other order properties as needed
+}
 
 // State
-const style = ref(null)
-const relatedOrders = ref([])
+const style = ref<Style | null>(null)
+const relatedOrders = ref<Order[]>([])
 const isLoading = ref(true)
 const isDeleting = ref(false)
-const error = ref(null)
+const error = ref<string | null>(null)
 const confirmDelete = ref(false)
 
 // Fetch style data
 onMounted(async () => {
   try {
-    const styleId = route.params.id
+    const styleId = route.params.id as string
     isLoading.value = true
 
     // Check if user is authenticated
@@ -252,42 +267,31 @@ onMounted(async () => {
       return
     }
 
-    console.log('Fetching style with ID:', styleId)
-
     try {
-      // Fetch style data with auth headers
-      const [styleData, relatedOrdersData] = await Promise.all([
-        $fetch(`/api/styles/${styleId}`, {
-          headers: {
-            ...authStore.getAuthHeaders(),
-            'Content-Type': 'application/json',
-          },
-        }),
-        $fetch(`/api/orders?styleId=${styleId}`, {
-          headers: {
-            ...authStore.getAuthHeaders(),
-            'Content-Type': 'application/json',
-          },
-        }),
-      ])
+      // Fetch style data using the store
+      const styleData = await styleStore.fetchStyleById(styleId)
 
       if (styleData) {
-        console.log('API response data:', styleData)
         style.value = styleData
+        // Fetch related orders (still using direct API call for now)
+        const relatedOrdersData = await $fetch(`/api/orders?styleId=${styleId}`, {
+          headers: {
+            ...authStore.getAuthHeaders(),
+            'Content-Type': 'application/json',
+          },
+        })
         relatedOrders.value = relatedOrdersData || []
       } else {
-        console.error('No data in API response')
-        error.value = 'Failed to load style data. Please try again.'
+        error.value = 'Style not found'
       }
-    } catch (fetchError) {
-      console.error('Fetch error:', fetchError)
-      error.value = `Error: ${fetchError.message || 'Failed to load style'}`
+    } catch (err: any) {
+      console.error('Error fetching style:', err)
+      error.value = err.message || 'Failed to load style details'
     }
-
-    isLoading.value = false
   } catch (err) {
     console.error('Error in style detail page:', err)
-    error.value = 'Failed to load style details. Please try again.'
+    error.value = 'An unexpected error occurred'
+  } finally {
     isLoading.value = false
   }
 })
@@ -328,60 +332,32 @@ const getStatusColor = status => {
 
 // Delete style
 const deleteStyle = async () => {
+  if (!style.value) return
+
   try {
     isDeleting.value = true
 
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      toast.add({
-        title: 'Authentication Required',
-        description: 'Please log in to delete this style.',
-        color: 'orange',
-      })
-      confirmDelete.value = false
-      isDeleting.value = false
-      navigateTo('/auth/login')
-      return
-    }
+    // Delete the style using the store
+    await styleStore.deleteStyle(style.value.id)
 
-    // Delete the style with auth headers
-    const response = await $fetch(`/api/styles/${route.params.id}`, {
-      method: 'DELETE',
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
+    toast.add({
+      title: 'Success',
+      description: 'Style deleted successfully',
+      color: 'green',
     })
 
-    if (response && response.success) {
-      toast.add({
-        title: 'Success',
-        description: 'Style deleted successfully',
-        color: 'green',
-      })
-
-      router.push('/styles')
-    } else {
-      toast.add({
-        title: 'Error',
-        description: 'Failed to delete style. Please try again.',
-        color: 'red',
-      })
-      confirmDelete.value = false
-    }
-
-    isDeleting.value = false
-  } catch (err) {
+    router.push(STYLES_PATH)
+  } catch (err: any) {
     console.error('Error deleting style:', err)
 
     toast.add({
       title: 'Error',
-      description: 'Failed to delete style. Please try again.',
-      color: 'red',
+      description: err.message || 'Failed to delete style. Please try again.',
+      color: 'error',
     })
-
-    confirmDelete.value = false
+  } finally {
     isDeleting.value = false
+    confirmDelete.value = false
   }
 }
 </script>

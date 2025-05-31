@@ -253,11 +253,18 @@ required>
 
 <script setup>
 // Get the order ID from the route
-// Import auth store
+// Import stores and utilities
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useHead } from '#imports'
 import { useAuthStore } from '~/store/modules/auth'
+import { useStyleStore } from '~/store'
 
 const route = useRoute()
 const orderId = route.params.id
+
+// Initialize stores
+const styleStore = useStyleStore()
+const authStore = useAuthStore()
 
 // Set page metadata
 useHead({
@@ -280,7 +287,7 @@ const toggleSection = sectionValue => {
 // Form state
 const form = ref({
   clientId: '',
-  styleId: '',
+  styleId: null,
   status: '',
   dueDate: '',
   totalAmount: 0,
@@ -297,7 +304,15 @@ const clientName = ref('')
 // State variables
 const isLoading = ref(true)
 const isSubmitting = ref(false)
-const styles = ref([])
+
+// Computed for style dropdown options
+const styleOptions = computed(() => {
+  return styleStore.styles.map(style => ({
+    label: style.name || 'Unnamed Style',
+    value: style.id,
+    icon: 'i-heroicons-swatch',
+  }))
+})
 
 // Computed for balance amount
 const balanceAmount = computed(() => {
@@ -313,12 +328,9 @@ const statusOptions = [
   { label: 'Cancelled', value: 'Cancelled', icon: 'i-heroicons-x-circle' },
 ]
 
-const styleOptions = computed(() => {
-  return styles.value.map(style => ({
-    label: style.name || 'Unnamed Style',
-    value: style.id,
-    icon: style.icon || 'i-heroicons-swatch',
-  }))
+// Computed for balance amount
+const balanceAmount = computed(() => {
+  return (form.value.totalAmount || 0) - (form.value.depositAmount || 0)
 })
 
 // Calculate balance when total or deposit changes
@@ -458,7 +470,7 @@ const saveOrder = async () => {
     useToast().add({
       title: 'Error',
       description: errorMessage,
-      color: 'red',
+      color: 'error',
     })
   } finally {
     isSubmitting.value = false
@@ -470,45 +482,19 @@ const fetchData = async () => {
   isLoading.value = true
 
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
     // Check if user is authenticated
     if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to edit an order',
-        color: 'orange',
+        color: 'warning',
       })
       navigateTo('/auth/login')
       return
     }
 
     // Fetch styles first, so we have style data available when processing the order
-    let stylesData
-    try {
-      stylesData = await $fetch('/api/styles', {
-        headers: {
-          ...authStore.getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
-      })
-
-      console.log('Retrieved styles data:', stylesData)
-
-      // Process the styles data
-      if (Array.isArray(stylesData)) {
-        styles.value = stylesData
-      } else if (stylesData && stylesData.data && Array.isArray(stylesData.data)) {
-        styles.value = stylesData.data
-      } else {
-        console.warn('Unexpected styles data format:', stylesData)
-        styles.value = []
-      }
-    } catch (stylesError) {
-      console.error('Error fetching styles:', stylesError)
-      styles.value = []
-    }
+    await styleStore.fetchStyles()
 
     // Then fetch the order data
     console.log(`Fetching order with ID: ${orderId}`)
@@ -530,7 +516,7 @@ const fetchData = async () => {
         useToast().add({
           title: 'Error',
           description: 'Order not found. It may have been deleted.',
-          color: 'red',
+          color: 'error',
         })
 
         setTimeout(() => {
@@ -549,7 +535,7 @@ const fetchData = async () => {
     // Now populate the form with existing data
     form.value = {
       clientId: orderData.clientId || '',
-      styleId: orderData.styleId || '',
+      styleId: orderData.styleId || null, // Use null instead of empty string for consistency
       status: orderData.status || 'Pending',
       dueDate: orderData.dueDate ? formatDateForInput(orderData.dueDate) : '',
       totalAmount: Number(orderData.totalAmount || 0),
@@ -585,7 +571,7 @@ const fetchData = async () => {
     useToast().add({
       title: 'Error',
       description: errorMessage,
-      color: 'red',
+      color: 'error',
     })
   } finally {
     isLoading.value = false
@@ -596,4 +582,18 @@ const fetchData = async () => {
 onMounted(() => {
   fetchData()
 })
+
+// Watch for style loading state
+watch(
+  () => styleStore.isLoading,
+  loading => {
+    if (!loading && styleStore.error) {
+      useToast().add({
+        title: 'Error',
+        description: styleStore.error,
+        color: 'error',
+      })
+    }
+  }
+)
 </script>

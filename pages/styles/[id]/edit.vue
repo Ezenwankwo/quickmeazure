@@ -128,9 +128,20 @@ color="primary"
 </template>
 
 <script setup lang="ts">
+// Vue and Nuxt imports
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useHead, useToast } from '#imports'
+
+// Composable
 import { useAppRoutes } from '~/composables/useRoutes'
+
+// Stores
 import { useAuthStore } from '~/store/modules/auth'
+import { useStyleStore } from '~/store/modules/style'
+
+// Types
+import type { Style } from '~/types/style'
 
 // Composable
 const routes = useAppRoutes()
@@ -152,10 +163,19 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
+// Style form data interface
+interface StyleFormData {
+  id?: string
+  name: string
+  description: string | null
+  imageUrl: string | null
+  imageFile: File | null
+}
+
 // Style data
-const style = ref({
+const style = ref<StyleFormData>({
   name: '',
-  description: '',
+  description: null,
   imageUrl: null,
   imageFile: null,
 })
@@ -163,23 +183,24 @@ const style = ref({
 // UI state
 const isLoading = ref(true)
 const isSaving = ref(false)
-const error = ref(null)
-const imagePreview = ref(null)
-const fileInput = ref(null)
+const error = ref<string | null>(null)
+const imagePreview = ref<string | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 
 // Computed property to check if form is valid
 const isFormValid = computed(() => {
   return !!style.value.name
 })
 
+// Stores
+const authStore = useAuthStore()
+const styleStore = useStyleStore()
+
 // Fetch style data
 onMounted(async () => {
   try {
-    const styleId = route.params.id
+    const styleId = route.params.id as string
     isLoading.value = true
-
-    // Get auth store instance
-    const authStore = useAuthStore()
 
     // Check if user is authenticated
     if (!authStore.isLoggedIn) {
@@ -189,21 +210,12 @@ onMounted(async () => {
       return
     }
 
-    console.log('Fetching style with ID:', styleId)
+    // Fetch style data using the store
+    const styleData = await styleStore.fetchStyleById(styleId)
 
-    // Fetch style data with auth headers
-    const fetchData = await $fetch(`/api/styles/${styleId}`, {
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
-
-    // Check if we have data
-    if (fetchData) {
-      console.log('API response data:', fetchData)
+    if (styleData) {
       style.value = {
-        ...fetchData.style,
+        ...styleData,
         imageFile: null,
       }
 
@@ -212,26 +224,26 @@ onMounted(async () => {
         imagePreview.value = style.value.imageUrl
       }
     } else {
-      console.error('No data in API response')
-      error.value = 'Failed to load style data. Please try again.'
+      error.value = 'Style not found'
     }
-
-    isLoading.value = false
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error loading style details:', err)
-    error.value = 'Failed to load style details. Please try again.'
+    error.value = err.message || 'Failed to load style details'
+  } finally {
     isLoading.value = false
   }
 })
 
 // Trigger file input click
 const triggerFileInput = () => {
-  fileInput.value.click()
+  fileInput.value?.click()
 }
 
 // Handle image upload
-const handleImageUpload = event => {
-  const file = event.target.files[0]
+const handleImageUpload = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+
   if (!file) return
 
   // Check file size (5MB limit)
@@ -248,15 +260,17 @@ const handleImageUpload = event => {
 
   // Create preview
   const reader = new FileReader()
-  reader.onload = e => {
-    imagePreview.value = e.target.result
+  reader.onload = (e: ProgressEvent<FileReader>) => {
+    if (e.target?.result) {
+      imagePreview.value = e.target.result as string
+    }
   }
   reader.readAsDataURL(file)
 }
 
 // Update style
 const updateStyle = async () => {
-  if (!style.value.name) {
+  if (!style.value?.name) {
     toast.add({
       title: 'Validation Error',
       description: 'Style name is required',
@@ -265,62 +279,29 @@ const updateStyle = async () => {
     return
   }
 
+  if (!style.value.id) {
+    toast.add({
+      title: 'Error',
+      description: 'Invalid style ID',
+      color: 'red',
+    })
+    return
+  }
+
   isSaving.value = true
 
   try {
-    const styleId = route.params.id
-
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      error.value = 'Authentication required. Please log in.'
-      navigateTo('/auth/login')
-      return
+    const styleData: Partial<Style> & { imageFile?: File } = {
+      name: style.value.name,
+      description: style.value.description,
     }
-
-    // Handle image upload via FormData if we have an image file
-    let _updatedStyle
 
     if (style.value.imageFile) {
-      // Use FormData to send the file directly to the server
-      const formData = new FormData()
-      formData.append('name', style.value.name)
-
-      if (style.value.description !== undefined) {
-        formData.append('description', style.value.description || '')
-      }
-
-      // Add the file with both possible field names to ensure compatibility
-      formData.append('file', style.value.imageFile)
-      formData.append('image', style.value.imageFile)
-
-      // Send form data to the server for processing with auth headers
-      _updatedStyle = await $fetch(`/api/styles/${styleId}`, {
-        method: 'PUT',
-        body: formData,
-        headers: {
-          ...authStore.getAuthHeaders(),
-          // Don't set Content-Type for FormData, let the browser set it with the correct boundary
-        },
-      })
-    } else {
-      // If no image changed, just send JSON data
-      const styleData = {
-        name: style.value.name,
-        description: style.value.description || null,
-      }
-
-      _updatedStyle = await $fetch(`/api/styles/${styleId}`, {
-        method: 'PUT',
-        body: styleData,
-        headers: {
-          ...authStore.getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
-      })
+      styleData.imageFile = style.value.imageFile
     }
+
+    // Update the style using the store
+    await styleStore.updateStyle(style.value.id, styleData)
 
     // Show success notification
     toast.add({
@@ -330,27 +311,13 @@ const updateStyle = async () => {
     })
 
     // Navigate to the style detail page
-    router.push(`/styles/${styleId}/detail`)
-  } catch (err) {
+    router.push(`/styles/${style.value.id}/detail`)
+  } catch (err: any) {
     console.error('Error updating style:', err)
-
-    // Enhanced error handling
-    let errorMessage = 'Failed to update style. Please try again.'
-
-    if (err.response) {
-      const status = err.response.status
-      if (status === 413) {
-        errorMessage = 'The image file is too large. Please use a smaller image.'
-      } else if (status === 415) {
-        errorMessage = 'The file format is not supported.'
-      } else if (err.data?.statusMessage) {
-        errorMessage = err.data.statusMessage
-      }
-    }
 
     toast.add({
       title: 'Error',
-      description: errorMessage,
+      description: err.message || 'Failed to update style. Please try again.',
       color: 'red',
     })
   } finally {

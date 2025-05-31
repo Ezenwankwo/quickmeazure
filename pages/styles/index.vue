@@ -52,9 +52,9 @@
       <!-- Debug info - hidden in production -->
       <pre v-if="false" class="text-xs p-2 bg-gray-100 mb-4 overflow-auto">
         isLoading: {{ isLoading }}
-        filteredStyles length: {{ filteredStyles ? filteredStyles.length : 'undefined' }}
-        showEmptyState computed: {{ showEmptyState }}
-        showDataGrid computed: {{ showDataGrid }}
+        styles count: {{ filteredStyles?.length || 0 }}
+        pagination: {{ pagination }}
+        error: {{ styleStore.error }}
       </pre>
 
       <!-- Loading State - only shown when loading -->
@@ -84,7 +84,7 @@
       </template>
 
       <!-- Empty State - shown when not loading and no data -->
-      <template v-else-if="filteredStyles.length === 0">
+      <template v-else-if="!filteredStyles || filteredStyles.length === 0">
         <UCard class="bg-white py-8 sm:py-16 border border-dashed border-gray-300">
           <div class="text-center max-w-md mx-auto px-4 sm:px-0">
             <div
@@ -124,7 +124,7 @@ class="px-4 sm:px-6 py-2">
       </template>
 
       <!-- Styles Grid - shown when not loading and has data -->
-      <template v-else>
+      <template v-else-if="filteredStyles && filteredStyles.length > 0">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           <UCard
             v-for="style in filteredStyles"
@@ -231,22 +231,17 @@ class="px-4 sm:px-6 py-2">
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useAppRoutes } from '~/composables/useRoutes'
-import DeleteModal from '~/components/DeleteModal.vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useAuthStore } from '~/store/modules/auth'
+import { useStyleStore } from '~/store/modules/style'
 
 // Composable
 const routes = useAppRoutes()
+const authStore = useAuthStore()
+const styleStore = useStyleStore()
 
 // Constants
 const NEW_STYLE_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.NEW] as string
-const _getStylePath = (id: string): string =>
-  (
-    routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.VIEW] as (params: {
-      id: string
-    }) => string
-  )({ id })
 const getEditStylePath = (id: string): string =>
   (
     routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.EDIT] as (params: {
@@ -265,19 +260,20 @@ useHead({
 // State
 const search = ref('')
 const sortBy = ref('newest')
-const isLoading = ref(true)
-const styles = ref([])
-const filteredStyles = ref([])
 const showDeleteModal = ref(false)
-const styleToDelete = ref(null)
+const styleToDelete = ref<{ id: string; name: string } | null>(null)
 const isDeleting = ref(false)
 const currentPage = ref(1)
-const pagination = ref({
-  total: 0,
-  page: 1,
-  limit: 12,
-  totalPages: 1,
-})
+
+// Computed
+const isLoading = computed(() => styleStore.isLoading)
+const filteredStyles = computed(() => styleStore.styles) // Use styles from store
+const pagination = computed(() => ({
+  total: styleStore.totalCount,
+  page: styleStore.currentPage,
+  limit: styleStore.itemsPerPage,
+  totalPages: Math.ceil(styleStore.totalCount / styleStore.itemsPerPage) || 1,
+}))
 
 // Sort options
 const sortOptions = [
@@ -299,114 +295,36 @@ const _logState = () => {
 
 // Load data
 const loadStyles = async () => {
-  isLoading.value = true
-
   try {
-    // Get auth token from the auth store
-    const authStore = useAuthStore()
-
     // Check if user is authenticated
-    if (!authStore.isLoggedIn || !authStore.token) {
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to view styles',
-        color: 'orange',
+        color: 'warning',
       })
       navigateTo('/auth/login')
       return
     }
 
-    // Build query parameters
-    const params = new URLSearchParams()
-    params.append('page', currentPage.value.toString())
-    params.append('limit', '12')
-
-    // Add search parameter if provided
-    if (search.value.trim()) {
-      params.append('search', search.value)
+    // Build filters
+    const filters = {
+      page: currentPage.value,
+      limit: 12,
+      search: search.value.trim() || undefined,
+      sortField: sortBy.value === 'name-asc' || sortBy.value === 'name-desc' ? 'name' : 'createdAt',
+      sortOrder: sortBy.value.endsWith('asc') ? 'asc' : 'desc',
     }
 
-    // Add sort parameters
-    let sortField = 'createdAt'
-    let sortOrder = 'desc'
+    // Fetch styles from the store
+    await styleStore.fetchStyles(filters)
 
-    switch (sortBy.value) {
-      case 'newest':
-        sortField = 'createdAt'
-        sortOrder = 'desc'
-        break
-      case 'oldest':
-        sortField = 'createdAt'
-        sortOrder = 'asc'
-        break
-      case 'name-asc':
-        sortField = 'name'
-        sortOrder = 'asc'
-        break
-      case 'name-desc':
-        sortField = 'name'
-        sortOrder = 'desc'
-        break
-    }
-
-    params.append('sortField', sortField)
-    params.append('sortOrder', sortOrder)
-
-    // Make API request using the auth token from the auth store
-    const response = await $fetch(`/api/styles?${params.toString()}`, {
-      headers: {
-        Authorization: `Bearer ${authStore.token}`,
-      },
-    })
-
-    console.log('API response:', response)
-
-    // Update state with response data
-    if (response && response.data) {
-      styles.value = response.data
-      filteredStyles.value = response.data
-
-      // Update pagination data
-      if (response.pagination) {
-        pagination.value = response.pagination
-      } else {
-        pagination.value = {
-          total: response.data.length,
-          page: 1,
-          limit: 12,
-          totalPages: Math.ceil(response.data.length / 12),
-        }
-      }
-    } else {
-      styles.value = []
-      filteredStyles.value = []
-      pagination.value = {
-        total: 0,
-        page: 1,
-        limit: 12,
-        totalPages: 1,
-      }
-    }
+    // Update filtered styles
+    filteredStyles.value = [...styleStore.styles]
   } catch (error) {
     console.error('Error loading styles:', error)
 
-    styles.value = []
-    filteredStyles.value = []
-    pagination.value = {
-      total: 0,
-      page: 1,
-      limit: 12,
-      totalPages: 1,
-    }
-
-    // Show error notification
-    useToast().add({
-      title: 'Error',
-      description: 'Failed to load styles. Please try again.',
-      color: 'red',
-    })
-  } finally {
-    isLoading.value = false
+    // Error handling is done in the store
   }
 }
 
@@ -424,20 +342,23 @@ const handlePageChange = page => {
 
 // Filter styles
 const filterStyles = () => {
-  // Don't trigger another API call if we're already loading
-  if (isLoading.value) {
-    console.log('Already loading, skipping filter request')
-    return
-  }
-
-  // Reset to page 1 when filters change
-  if (currentPage.value !== 1) {
-    currentPage.value = 1
-  }
-
-  // Load styles with current filters
+  currentPage.value = 1
   loadStyles()
 }
+
+// Watch for style store errors
+watch(
+  () => styleStore.error,
+  error => {
+    if (error) {
+      useToast().add({
+        title: 'Error',
+        description: error,
+        color: 'error',
+      })
+    }
+  }
+)
 
 // Reset search
 const resetSearch = () => {
@@ -470,59 +391,44 @@ const deleteStyle = async () => {
   isDeleting.value = true
 
   try {
-    // Get auth token from the auth store
-    const authStore = useAuthStore()
+    // Delete the style using the store
+    await styleStore.deleteStyle(styleToDelete.value.id)
 
-    // Call the delete endpoint directly with auth token
-    const response = await fetch(`/api/styles/${styleToDelete.value.id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authStore.token}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete style: ${response.status} ${response.statusText}`)
-    }
-
-    // Check if we are on a page where this was the only item
-    if (filteredStyles.value.length === 1 && pagination.value.page > 1) {
-      // Go to previous page if this was the last item on the current page
-      currentPage.value--
-    }
-
-    // Reload data to get updated pagination
-    loadStyles()
-
-    // Show success notification
+    // Show success message
     useToast().add({
-      title: 'Style Deleted',
-      description: `"${styleToDelete.value.name}" was successfully removed.`,
-      color: 'green',
+      title: 'Success',
+      description: 'Style deleted successfully',
+      color: 'primary',
     })
 
-    // Close modal
+    // Reset delete state
     showDeleteModal.value = false
     styleToDelete.value = null
+
+    // Reload styles to update the list if needed
+    if (styleStore.styles.length === 0 && currentPage.value > 1) {
+      currentPage.value--
+    }
+    await loadStyles()
   } catch (error) {
     console.error('Error deleting style:', error)
-
-    // Show error notification (session expiry is handled by authFetch)
-    if (!error.message?.includes('No authentication token')) {
-      useToast().add({
-        title: 'Error',
-        description: 'Failed to delete style. Please try again.',
-        color: 'red',
-      })
-    }
+    useToast().add({
+      title: 'Error',
+      description: 'Failed to delete style. Please try again.',
+      color: 'error',
+    })
   } finally {
     isDeleting.value = false
   }
 }
 
 onMounted(() => {
-  console.log('Component mounted - Loading styles...')
   loadStyles()
+})
+
+// Clean up the style store when the component is unmounted
+onUnmounted(() => {
+  // Reset the style store state if needed
+  styleStore.$reset()
 })
 </script>
