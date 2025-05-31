@@ -355,7 +355,7 @@ const updateFormFromProfile = (profileData: any) => {
 }
 
 // Reset form to original values
-const resetForm = () => {
+const _resetForm = () => {
   if (originalProfile.value) {
     updateFormFromProfile(originalProfile.value)
   }

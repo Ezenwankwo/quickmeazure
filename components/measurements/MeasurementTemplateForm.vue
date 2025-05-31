@@ -132,7 +132,6 @@ variant="ghost"
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useToast } from '#imports'
 import type { MeasurementField } from '~/types/measurement'
 import { useMeasurementTemplateStore } from '~/store/modules/measurementTemplate'
 

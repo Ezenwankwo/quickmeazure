@@ -161,7 +161,8 @@ type ActivityItem = {
   metadata?: Record<string, any>
 }
 
-type ActivityApiResponse = {
+// Type is defined for future use
+type _ActivityApiResponse = {
   activities: ActivityItem[]
   total: number
   page: number

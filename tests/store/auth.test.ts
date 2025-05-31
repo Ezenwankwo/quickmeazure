@@ -30,7 +30,9 @@ describe('Auth Store', () => {
         localStorageMock[key] = value
       },
       removeItem: (key: string) => {
-        delete localStorageMock[key]
+        // Use object destructuring to safely remove the property
+        const { [key]: _, ...rest } = localStorageMock
+        localStorageMock = rest as Record<string, string>
       },
       clear: () => {
         localStorageMock = {}

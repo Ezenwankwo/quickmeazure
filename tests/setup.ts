@@ -11,7 +11,9 @@ const localStorageMock = (() => {
       store[key] = value.toString()
     },
     removeItem: (key: string) => {
-      delete store[key]
+      // Use Object.defineProperty to safely remove the property
+      const { [key]: _, ...rest } = store
+      store = rest as Record<string, string>
     },
     clear: () => {
       store = {}
