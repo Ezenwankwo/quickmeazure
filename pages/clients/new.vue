@@ -308,10 +308,11 @@ class="block text-sm font-medium text-gray-700"
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useAuthStore } from '~/store/modules/auth'
 import { storeToRefs } from 'pinia'
 import { useAppRoutes } from '~/composables/useRoutes'
-import { useAuthStore, useMeasurementTemplatesStore } from '~/store'
+import { useMeasurementTemplatesStore } from '~/store'
 
 // Composable
 const routes = useAppRoutes()
@@ -623,11 +624,11 @@ const validateClient = () => {
 // Save client to API
 const saveClientToApi = async () => {
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to add clients',
@@ -647,7 +648,8 @@ const saveClientToApi = async () => {
         measurements: processedMeasurements,
       },
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 

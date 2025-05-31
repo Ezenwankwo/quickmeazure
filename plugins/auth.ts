@@ -1,22 +1,20 @@
 import { defineNuxtPlugin } from '#app'
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
 
-export default defineNuxtPlugin(async () => {
-  // Initialize auth on app startup
-  const auth = useSessionAuth()
+export default defineNuxtPlugin(async ({ $pinia }) => {
+  // Initialize auth store on app startup
+  const authStore = useAuthStore($pinia)
 
-  // If in client-side, check for token expiration
+  // Initialize the auth store (will restore session from localStorage if available)
   if (import.meta.client) {
-    // Get the current session status
-    const status = auth.status.value
-
-    // Perform any necessary initialization
-    console.log('Auth plugin initialized, status:', status)
+    authStore.init()
+    console.log('Auth plugin initialized, status:', authStore.status)
   }
 
+  // For backward compatibility, provide the auth store as $auth
   return {
     provide: {
-      auth,
+      auth: authStore,
     },
   }
 })

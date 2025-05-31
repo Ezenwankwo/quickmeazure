@@ -154,8 +154,8 @@
 
 <script setup>
 // Get the order ID from the route
-// Import auth composable
-import { useSessionAuth } from '~/composables/useSessionAuth'
+// Import auth store
+import { useAuthStore } from '~/store/modules/auth'
 
 const route = useRoute()
 const orderId = route.params.id
@@ -241,11 +241,11 @@ const fetchOrderDetails = async () => {
   isLoading.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to record a payment',
@@ -255,10 +255,11 @@ const fetchOrderDetails = async () => {
       return
     }
 
-    // Fetch the order by ID
+    // Fetch the order by ID with auth headers
     const data = await $fetch(`/api/orders/${orderId}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 
@@ -336,18 +337,29 @@ const savePayment = async () => {
   isSubmitting.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
+
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to record a payment',
+        color: 'orange',
+      })
+      navigateTo('/auth/login')
+      return
+    }
 
     // Format payment date
     const paymentDate = new Date(form.value.paymentDate).getTime()
 
-    // Call the payment API
+    // Call the payment API with auth headers
     await $fetch(`/api/payments`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
       body: {
         orderId: orderId,

@@ -253,8 +253,8 @@ required>
 
 <script setup>
 // Get the order ID from the route
-// Import auth composable
-import { useSessionAuth } from '~/composables/useSessionAuth'
+// Import auth store
+import { useAuthStore } from '~/store/modules/auth'
 
 const route = useRoute()
 const orderId = route.params.id
@@ -381,11 +381,11 @@ const saveOrder = async () => {
   isSubmitting.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to edit an order',
@@ -414,7 +414,8 @@ const saveOrder = async () => {
         method: 'PATCH',
         body: orderData,
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...authStore.getAuthHeaders(),
+          'Content-Type': 'application/json',
         },
       })
 
@@ -469,12 +470,11 @@ const fetchData = async () => {
   isLoading.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
-      // Redirect to login if not authenticated
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to edit an order',
@@ -489,7 +489,8 @@ const fetchData = async () => {
     try {
       stylesData = await $fetch('/api/styles', {
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...authStore.getAuthHeaders(),
+          'Content-Type': 'application/json',
         },
       })
 
@@ -516,7 +517,8 @@ const fetchData = async () => {
     try {
       orderData = await $fetch(`/api/orders/${orderId}`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...authStore.getAuthHeaders(),
+          'Content-Type': 'application/json',
         },
       })
 

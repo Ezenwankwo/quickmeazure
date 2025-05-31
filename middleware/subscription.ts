@@ -1,4 +1,4 @@
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
 
 /**
  * Middleware to check if user has an active subscription
@@ -16,11 +16,11 @@ export default defineNuxtRouteMiddleware(async (to, _from) => {
     return
   }
 
-  const auth = useSessionAuth()
+  const authStore = useAuthStore()
   const { data: subscription, error } = await useFetch('/api/subscriptions/current')
 
   // Skip middleware if not logged in (auth middleware will handle that)
-  if (!auth.isLoggedIn.value) {
+  if (!authStore.isLoggedIn) {
     return
   }
 

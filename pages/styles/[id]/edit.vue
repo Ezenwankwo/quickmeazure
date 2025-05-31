@@ -130,7 +130,7 @@ color="primary"
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
 import { useAppRoutes } from '~/composables/useRoutes'
-import { useApiAuth } from '~/composables/useApiAuth'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Composable
 const routes = useAppRoutes()
@@ -151,7 +151,6 @@ useHead({
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
-const { authFetch } = useApiAuth()
 
 // Style data
 const style = ref({
@@ -179,20 +178,26 @@ onMounted(async () => {
     const styleId = route.params.id
     isLoading.value = true
 
-    // Get auth token
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       error.value = 'Authentication required. Please log in.'
       isLoading.value = false
+      navigateTo('/auth/login')
       return
     }
 
     console.log('Fetching style with ID:', styleId)
 
-    // Use authFetch instead of useFetch directly
-    const fetchData = await authFetch(`/api/styles/${styleId}`)
+    // Fetch style data with auth headers
+    const fetchData = await $fetch(`/api/styles/${styleId}`, {
+      headers: {
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
+    })
 
     // Check if we have data
     if (fetchData) {
@@ -265,17 +270,13 @@ const updateStyle = async () => {
   try {
     const styleId = route.params.id
 
-    // Get auth token
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
-      toast.add({
-        title: 'Authentication Required',
-        description: 'Please log in to update this style.',
-        color: 'orange',
-      })
-      isSaving.value = false
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
+      error.value = 'Authentication required. Please log in.'
+      navigateTo('/auth/login')
       return
     }
 
@@ -295,12 +296,13 @@ const updateStyle = async () => {
       formData.append('file', style.value.imageFile)
       formData.append('image', style.value.imageFile)
 
-      // Send form data to the server for processing
+      // Send form data to the server for processing with auth headers
       _updatedStyle = await $fetch(`/api/styles/${styleId}`, {
         method: 'PUT',
         body: formData,
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...authStore.getAuthHeaders(),
+          // Don't set Content-Type for FormData, let the browser set it with the correct boundary
         },
       })
     } else {
@@ -314,7 +316,8 @@ const updateStyle = async () => {
         method: 'PUT',
         body: styleData,
         headers: {
-          Authorization: `Bearer ${token}`,
+          ...authStore.getAuthHeaders(),
+          'Content-Type': 'application/json',
         },
       })
     }

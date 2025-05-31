@@ -240,7 +240,7 @@ required>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppRoutes } from '~/composables/useRoutes'
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Composable
 const routes = useAppRoutes()
@@ -333,12 +333,11 @@ const calculateBalance = () => {
 // Fetch clients and styles data
 const fetchData = async () => {
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
-      // Redirect to login if not authenticated
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to create an order',
@@ -348,11 +347,12 @@ const fetchData = async () => {
       return
     }
 
-    // Fetch clients
+    // Fetch clients with auth headers
     console.log('Fetching clients data...')
     const clientsData = await $fetch('/api/clients', {
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 
@@ -364,11 +364,12 @@ const fetchData = async () => {
       clients.value = []
     }
 
-    // Fetch styles
+    // Fetch styles with auth headers
     console.log('Fetching styles data...')
     const stylesData = await $fetch('/api/styles', {
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 
@@ -404,9 +405,19 @@ const saveOrder = async () => {
   isSubmitting.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const _token = auth.token.value // Prefix with underscore to indicate it's intentionally unused
+    // Get auth store instance
+    const authStore = useAuthStore()
+
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to create an order',
+        color: 'orange',
+      })
+      navigateTo('/auth/login')
+      return
+    }
 
     // Format due date
     let dueDate = null

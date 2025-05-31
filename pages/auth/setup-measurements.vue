@@ -450,9 +450,10 @@ class="block text-sm font-medium text-gray-700"
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useToast, useHead, useSessionAuth, navigateTo } from '#imports'
+import { useToast, useHead, navigateTo } from '#imports'
+import { storeToRefs } from 'pinia'
 import { ROUTE_NAMES } from '~/constants/routes'
-import { useMeasurementTemplatesStore } from '~/store'
+import { useAuthStore, useMeasurementTemplatesStore } from '~/store'
 import { _useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
 
 useHead({
@@ -478,7 +479,9 @@ interface MeasurementTemplate {
   lowerBody: MeasurementField[]
 }
 
-const { user } = useSessionAuth()
+// Initialize auth store
+const authStore = useAuthStore()
+const { user } = storeToRefs(authStore)
 const toast = useToast()
 
 // Initialize API loading state

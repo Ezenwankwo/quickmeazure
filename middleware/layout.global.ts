@@ -1,9 +1,9 @@
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
 import { useLayout } from '~/composables/useLayout'
 
 export default defineNuxtRouteMiddleware(to => {
-  // Use only sessionAuth
-  const { isLoggedIn } = useSessionAuth()
+  // Use auth store for authentication state
+  const authStore = useAuthStore()
   const { setLayout } = useLayout()
 
   // Define which paths should use which layouts
@@ -41,7 +41,7 @@ export default defineNuxtRouteMiddleware(to => {
   }
 
   // Dashboard and authenticated routes
-  if (isLoggedIn.value) {
+  if (authStore.isLoggedIn) {
     // All authenticated routes use dashboard layout
     // Only set if not already specified in the page meta
     if (!to.meta.layout) {

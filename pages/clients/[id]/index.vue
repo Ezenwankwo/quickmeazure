@@ -328,6 +328,7 @@
 
 <script setup lang="ts">
 import { useAppRoutes } from '~/composables/useRoutes'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Composable
 const routes = useAppRoutes()
@@ -563,12 +564,11 @@ const fetchClient = async () => {
   isLoading.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
-      // Redirect to login if not authenticated
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to view client details',
@@ -578,10 +578,11 @@ const fetchClient = async () => {
       return
     }
 
-    // Fetch client by ID
+    // Fetch client by ID with auth headers
     const data = await $fetch(`/api/clients/${clientId}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 
@@ -615,14 +616,24 @@ const fetchOrders = async () => {
   isLoadingOrders.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    // Fetch orders for this client
+    if (!authStore.isLoggedIn) {
+      useToast().add({
+        title: 'Authentication required',
+        description: 'Please log in to view orders',
+        color: 'orange',
+      })
+      navigateTo('/auth/login')
+      return
+    }
+
+    // Fetch orders for this client with auth headers
     const data = await $fetch(`/api/orders?clientId=${clientId}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 

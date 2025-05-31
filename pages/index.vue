@@ -9,11 +9,14 @@
 </template>
 
 <script setup>
+import { storeToRefs } from 'pinia'
+
 definePageMeta({
   layout: 'default',
 })
 
-const { isLoggedIn } = useSessionAuth()
+const authStore = useAuthStore()
+const { isLoggedIn } = storeToRefs(authStore)
 
 // Check if user is logged in, if so redirect to dashboard
 onMounted(() => {

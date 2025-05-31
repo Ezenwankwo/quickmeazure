@@ -289,7 +289,8 @@ class="text-primary-600 hover:underline"
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useAuthStore } from '~/store/modules/auth'
 import { storeToRefs } from 'pinia'
 import { useMeasurementTemplatesStore } from '~/store'
 import { useAppRoutes } from '~/composables/useRoutes'
@@ -526,12 +527,11 @@ const fetchClient = async () => {
   isLoading.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
-      // Redirect to login if not authenticated
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to view client details',
@@ -541,10 +541,11 @@ const fetchClient = async () => {
       return
     }
 
-    // Fetch client by ID
+    // Fetch client by ID with auth headers
     const data = await $fetch(`/api/clients/${clientId}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
       baseURL: window.location.origin,
     })
@@ -697,12 +698,11 @@ const updateClient = async () => {
       return
     }
 
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
-      // Redirect to login if not authenticated
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to edit client details',
@@ -778,12 +778,11 @@ const deleteClient = async () => {
   isSubmitting.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
-      // Redirect to login if not authenticated
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to delete this client',

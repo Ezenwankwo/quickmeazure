@@ -1,12 +1,12 @@
 import { defineNuxtPlugin } from '#app'
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
 import { useToast } from '#imports'
 
 export default defineNuxtPlugin(async nuxtApp => {
   // Only run on client-side
   if (import.meta.server) return
 
-  const auth = useSessionAuth()
+  const authStore = useAuthStore()
   const toast = useToast()
   const router = useRouter()
 
@@ -35,9 +35,9 @@ export default defineNuxtPlugin(async nuxtApp => {
   // Function to check session status
   const checkSession = () => {
     // Only check if user is authenticated
-    if (!auth?.isAuthenticated?.value) return
+    if (!authStore.isLoggedIn) return
 
-    const tokenExpiryTime = auth?.tokenExpiry?.value
+    const tokenExpiryTime = authStore.sessionExpiry
     if (!tokenExpiryTime) return
 
     const now = Date.now()
@@ -58,10 +58,14 @@ export default defineNuxtPlugin(async nuxtApp => {
             actions: [
               {
                 label: 'Extend Session',
-                click: () => {
-                  // Refresh token
-                  auth.refreshToken()
-                  toast.success('Session extended successfully')
+                click: async () => {
+                  try {
+                    await authStore.refreshSession()
+                    toast.success('Session extended successfully')
+                  } catch (error) {
+                    console.error('Failed to extend session:', error)
+                    toast.error('Failed to extend session. Please log in again.')
+                  }
 
                   // Clear the warning timer
                   if (sessionTimeoutWarningTimer) {
@@ -133,8 +137,7 @@ export default defineNuxtPlugin(async nuxtApp => {
     // Check for saved signup progress on login
     nuxtApp.hook('page:finish', () => {
       // If user just logged in and there was a saved signup flow
-      // Add null checks to prevent errors
-      if (auth?.isAuthenticated?.value && router?.currentRoute?.value?.path === '/dashboard') {
+      if (authStore.isLoggedIn && router?.currentRoute?.value?.path === '/dashboard') {
         try {
           const savedPath = localStorage.getItem('signupFlowPath')
           const lastActive = localStorage.getItem('signupFlowLastActive')

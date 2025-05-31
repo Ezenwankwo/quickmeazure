@@ -1,10 +1,11 @@
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Client-side plugin to refresh auth token periodically
 export default defineNuxtPlugin({
   name: 'auth-refresh',
   setup(nuxtApp) {
-    const { isLoggedIn, refreshSession } = useSessionAuth()
+    const authStore = useAuthStore()
+    const { isLoggedIn } = storeToRefs(authStore)
 
     // Refresh interval - start at 15 minutes (in ms)
     const INITIAL_REFRESH_INTERVAL = 15 * 60 * 1000
@@ -14,7 +15,8 @@ export default defineNuxtPlugin({
     // Refresh on initial load if logged in, with a 5 second delay
     if (isLoggedIn.value) {
       setTimeout(() => {
-        refreshSession()
+        authStore
+          .refreshSession()
           .then(() => {
             console.log('Initial auth session refreshed successfully')
             // Reset interval to initial value after successful refresh
@@ -39,7 +41,7 @@ export default defineNuxtPlugin({
       refreshTimer = setTimeout(async () => {
         if (isLoggedIn.value) {
           try {
-            await refreshSession()
+            await authStore.refreshSession()
             console.log('Auth session refreshed successfully')
             // Reset interval to initial value after successful refresh
             currentRefreshInterval = INITIAL_REFRESH_INTERVAL

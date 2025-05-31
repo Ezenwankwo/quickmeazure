@@ -576,7 +576,7 @@ icon="i-heroicons-plus">
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAppRoutes } from '~/composables/useRoutes'
-import { useSessionAuth } from '~/composables/useSessionAuth'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Composable
 const routes = useAppRoutes()
@@ -711,12 +711,11 @@ const fetchOrders = async () => {
   isLoading.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    if (!token) {
-      // Redirect to login if not authenticated
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to view orders',
@@ -777,10 +776,11 @@ const fetchOrders = async () => {
       }
     }
 
-    // Make API request with all parameters
+    // Make API request with all parameters and auth headers
     const response = await $fetch(`/api/orders?${params.toString()}`, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 
@@ -994,15 +994,19 @@ const deleteOrder = async () => {
   isDeleting.value = true
 
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    // Call the delete endpoint
+    if (!authStore.isLoggedIn) {
+      throw new Error('No authenticated user found')
+    }
+
+    // Call the delete endpoint using auth store's headers
     await $fetch(`/api/orders/${orderToDelete.value.id}`, {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 
@@ -1049,15 +1053,19 @@ const deleteOrder = async () => {
 // Update order status
 const _updateOrderStatus = async (order, newStatus) => {
   try {
-    // Get auth token from the auth store
-    const auth = useSessionAuth()
-    const token = auth.token.value
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    // Call the update endpoint
+    if (!authStore.isLoggedIn) {
+      throw new Error('No authenticated user found')
+    }
+
+    // Call the update endpoint with auth headers
     await $fetch(`/api/orders/${order.id}`, {
       method: 'PATCH',
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
       body: {
         status: newStatus,

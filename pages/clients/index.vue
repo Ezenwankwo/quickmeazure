@@ -675,14 +675,19 @@ const deleteClient = async () => {
   isDeleting.value = true
 
   try {
-    // Get auth from our new session management composable
-    const auth = useSessionAuth()
+    // Get auth store instance
+    const authStore = useAuthStore()
 
-    // Call the delete endpoint
+    if (!authStore.isLoggedIn) {
+      throw new Error('No authenticated user found')
+    }
+
+    // Call the delete endpoint using auth store's headers
     await $fetch(`/api/clients/${clientToDelete.value.id}`, {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${auth.token.value}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 
@@ -801,7 +806,7 @@ const fetchClients = async () => {
       console.log('Attempting direct fetch...')
       const directResponse = await $fetch(`/api/clients?${params.toString()}`, {
         headers: {
-          Authorization: `Bearer ${authStore.token}`,
+          ...authStore.getAuthHeaders(),
           'Content-Type': 'application/json',
         },
       })

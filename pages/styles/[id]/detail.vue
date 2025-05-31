@@ -205,9 +205,11 @@ size="sm">
 import { useRoute, useRouter } from 'vue-router'
 import { useAppRoutes } from '~/composables/useRoutes'
 import DeleteModal from '~/components/DeleteModal.vue'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Composable
 const routes = useAppRoutes()
+const authStore = useAuthStore()
 
 // Constants
 const STYLES_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.INDEX] as string
@@ -242,30 +244,37 @@ onMounted(async () => {
     const styleId = route.params.id
     isLoading.value = true
 
-    // Get auth token
-    const auth = useSessionAuth()
-    const token = auth.token.value
-
-    if (!token) {
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       error.value = 'Authentication required. Please log in.'
       isLoading.value = false
+      navigateTo('/auth/login')
       return
     }
 
     console.log('Fetching style with ID:', styleId)
 
-    // Use $fetch instead of useFetch
     try {
-      const response = await $fetch(`/api/styles/${styleId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      // Fetch style data with auth headers
+      const [styleData, relatedOrdersData] = await Promise.all([
+        $fetch(`/api/styles/${styleId}`, {
+          headers: {
+            ...authStore.getAuthHeaders(),
+            'Content-Type': 'application/json',
+          },
+        }),
+        $fetch(`/api/orders?styleId=${styleId}`, {
+          headers: {
+            ...authStore.getAuthHeaders(),
+            'Content-Type': 'application/json',
+          },
+        }),
+      ])
 
-      if (response) {
-        console.log('API response data:', response)
-        style.value = response.style
-        relatedOrders.value = response.relatedOrders || []
+      if (styleData) {
+        console.log('API response data:', styleData)
+        style.value = styleData
+        relatedOrders.value = relatedOrdersData || []
       } else {
         console.error('No data in API response')
         error.value = 'Failed to load style data. Please try again.'
@@ -322,11 +331,8 @@ const deleteStyle = async () => {
   try {
     isDeleting.value = true
 
-    // Get auth token
-    const auth = useSessionAuth()
-    const token = auth.token.value
-
-    if (!token) {
+    // Check if user is authenticated
+    if (!authStore.isLoggedIn) {
       toast.add({
         title: 'Authentication Required',
         description: 'Please log in to delete this style.',
@@ -334,14 +340,16 @@ const deleteStyle = async () => {
       })
       confirmDelete.value = false
       isDeleting.value = false
+      navigateTo('/auth/login')
       return
     }
 
-    // Delete the style using direct $fetch for simplicity
+    // Delete the style with auth headers
     const response = await $fetch(`/api/styles/${route.params.id}`, {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json',
       },
     })
 
