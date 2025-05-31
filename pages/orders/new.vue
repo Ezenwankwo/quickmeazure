@@ -237,10 +237,11 @@ required>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAppRoutes } from '~/composables/useRoutes'
-import { useAuthStore } from '~/store/modules/auth'
+import { useOrderStore } from '~/store/modules/order'
+import { storeToRefs } from 'pinia'
+import type { CreateOrderInput } from '~/types/order'
 
 // Composable
 const routes = useAppRoutes()
@@ -250,7 +251,7 @@ const router = useRouter()
 const ORDERS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.INDEX] as string
 
 useHead({
-  title: 'Create New Order - QuickMeazure',
+  title: 'Create New Order',
 })
 
 // Track which sections are open
@@ -290,10 +291,9 @@ const statusOptions = [
   { label: 'Cancelled', value: 'Cancelled' },
 ]
 
-// State variables
-const isSubmitting = ref(false)
-const clients = ref([])
-const styles = ref([])
+// Initialize store
+const orderStore = useOrderStore()
+const { clients, styles } = storeToRefs(orderStore)
 
 // Generate options for clients dropdown
 const clientOptions = computed(() => {
@@ -333,59 +333,14 @@ const calculateBalance = () => {
 // Fetch clients and styles data
 const fetchData = async () => {
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to create an order',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
-    // Fetch clients with auth headers
-    console.log('Fetching clients data...')
-    const clientsData = await $fetch('/api/clients', {
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (clientsData && clientsData.data) {
-      clients.value = clientsData.data
-      console.log(`Successfully loaded ${clients.value.length} clients`)
-    } else {
-      console.warn('Clients data is not in the expected format', clientsData)
-      clients.value = []
-    }
-
-    // Fetch styles with auth headers
-    console.log('Fetching styles data...')
-    const stylesData = await $fetch('/api/styles', {
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (stylesData && stylesData.data) {
-      styles.value = stylesData.data
-      console.log(`Successfully loaded ${styles.value.length} styles`)
-    } else {
-      console.warn('Styles data is not in the expected format', stylesData)
-      styles.value = []
-    }
+    await orderStore.fetchClients()
+    await orderStore.fetchStyles()
   } catch (error) {
     console.error('Error fetching data:', error)
     useToast().add({
       title: 'Error',
       description: 'Failed to load required data. Please refresh the page.',
-      color: 'red',
+      color: 'error',
     })
   }
 }
@@ -397,7 +352,7 @@ const saveOrder = async () => {
     useToast().add({
       title: 'Validation Error',
       description: 'Please fill in all required fields.',
-      color: 'red',
+      color: 'error',
     })
     return
   }
@@ -405,28 +360,11 @@ const saveOrder = async () => {
   isSubmitting.value = true
 
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to create an order',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
     // Format due date
-    let dueDate = null
-    if (form.value.dueDate) {
-      dueDate = new Date(form.value.dueDate)
-    }
+    const dueDate = form.value.dueDate ? new Date(form.value.dueDate) : null
 
-    // Create the order
-    await createOrder({
+    // Prepare order data
+    const orderData: CreateOrderInput = {
       clientId:
         typeof form.value.clientId === 'object' ? form.value.clientId.value : form.value.clientId,
       styleId: form.value.styleId
@@ -439,32 +377,27 @@ const saveOrder = async () => {
       totalAmount: form.value.totalAmount,
       depositAmount: form.value.depositAmount || 0,
       notes: form.value.notes,
-    })
+    }
+
+    // Create the order using the store
+    await orderStore.createOrder(orderData)
 
     // Show success message
     useToast().add({
       title: 'Order created',
       description: 'The order has been created successfully.',
-      color: 'green',
+      color: 'primary',
     })
 
     // Redirect to orders list on success
     await router.push(ORDERS_PATH)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating order:', error)
-    let errorMessage = 'Failed to create order. Please try again.'
-
-    // Handle unauthorized errors
-    if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      // Redirect to login
-      navigateTo('/auth/login')
-    }
 
     useToast().add({
       title: 'Error',
-      description: errorMessage,
-      color: 'red',
+      description: error.message || 'Failed to create order. Please try again.',
+      color: 'error',
     })
   } finally {
     isSubmitting.value = false

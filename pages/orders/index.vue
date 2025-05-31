@@ -575,7 +575,8 @@ icon="i-heroicons-plus">
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAppRoutes } from '~/composables/useRoutes'
+import { storeToRefs } from 'pinia'
+import type { Order } from '~/types/order'
 import { useAuthStore } from '~/store/modules/auth'
 
 // Composable
@@ -592,28 +593,74 @@ const _getOrderPath = (id: string): string =>
 
 // Set page metadata
 useHead({
-  title: 'Orders - QuickMeazure',
+  title: 'Orders',
 })
 
-// State
+// Stores
+const orderStore = useOrderStore()
+
+// Composable
+const toast = useToast()
+
+// Used in template but not directly in script
+const _router = useRouter()
+const _authStore = useAuthStore()
+
+// Component state
 const search = ref('')
 const sortBy = ref('dueDate-asc')
-const isLoading = ref(true)
-const orders = ref([])
-const filteredOrders = ref([])
 const isFilterOpen = ref(false)
 const showDeleteModal = ref(false)
-const orderToDelete = ref(null)
+const orderToDelete = ref<Order | null>(null)
 const isDeleting = ref(false)
 const currentPage = ref(1)
-const totalItems = ref(0)
-const totalPages = ref(0)
+const itemsPerPage = 10
+
+// Computed properties
+const totalItems = computed(() => orderStore.totalCount)
+const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
+
+// Orders from store
+const { orders, isLoading } = storeToRefs(orderStore)
 
 // Filters
 const filters = ref({
   status: 'all',
   dueDate: 'all',
   paymentStatus: 'any',
+})
+
+// Apply filters to store
+watchEffect(() => {
+  const filterParams: Record<string, any> = {}
+
+  if (filters.value.status !== 'all') {
+    filterParams.status = filters.value.status
+  }
+
+  if (filters.value.paymentStatus !== 'any') {
+    filterParams.paymentStatus = filters.value.paymentStatus
+  }
+
+  // Apply search
+  if (search.value) {
+    filterParams.search = search.value
+  }
+
+  // Apply sorting
+  const [sortField, sortOrder] = sortBy.value.split('-')
+  filterParams.sortBy = sortField
+  filterParams.sortOrder = sortOrder.toUpperCase()
+
+  // Apply pagination
+  filterParams.page = currentPage.value
+  filterParams.limit = itemsPerPage
+
+  // Update store filters
+  orderStore.updateFilters(filterParams)
+
+  // Fetch orders with current filters
+  orderStore.fetchOrders()
 })
 
 // Options for filters
@@ -711,20 +758,6 @@ const fetchOrders = async () => {
   isLoading.value = true
 
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to view orders',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
     // Build query parameters
     const params = new URLSearchParams()
     params.append('page', currentPage.value.toString())
@@ -810,7 +843,7 @@ const fetchOrders = async () => {
     useToast().add({
       title: 'Error',
       description: errorMessage,
-      color: 'red',
+      color: 'error',
     })
 
     orders.value = []
@@ -885,19 +918,22 @@ const formatOrderData = order => {
 }
 
 // Call fetchOrders on component mount
-onMounted(() => {
-  fetchOrders()
+onMounted(async () => {
+  await orderStore.fetchOrders()
 })
 
 // Computed property to check if any filter is applied
-const isFilterApplied = computed(() => {
+const hasActiveFilters = computed(() => {
   return (
-    filters.value.status !== 'all' ||
-    filters.value.dueDate !== 'all' ||
-    filters.value.paymentStatus !== 'any' ||
+    orderStore.filters.status !== 'all' ||
+    orderStore.filters.dueDate !== 'all' ||
+    orderStore.filters.paymentStatus !== 'any' ||
     search.value.trim() !== ''
   )
 })
+
+// Expose to template
+const _hasActiveFilters = hasActiveFilters
 
 // Filter and sort orders
 const filterOrders = () => {
@@ -994,112 +1030,70 @@ const deleteOrder = async () => {
   isDeleting.value = true
 
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    if (!authStore.isLoggedIn) {
-      throw new Error('No authenticated user found')
-    }
-
-    // Call the delete endpoint using auth store's headers
-    await $fetch(`/api/orders/${orderToDelete.value.id}`, {
-      method: 'DELETE',
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
-
-    // Remove from local array
-    const index = orders.value.findIndex(o => o.id === orderToDelete.value.id)
-    if (index !== -1) {
-      orders.value.splice(index, 1)
-    }
-
-    // Update filtered orders
-    filterOrders()
+    await orderStore.deleteOrder(orderToDelete.value.id)
 
     // Show success notification
-    useToast().add({
+    toast.add({
       title: 'Order deleted',
       description: `Order for ${orderToDelete.value.client} has been deleted successfully.`,
-      color: 'green',
+      color: 'primary',
     })
 
     // Close modal
     showDeleteModal.value = false
     orderToDelete.value = null
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting order:', error)
-    let errorMessage = 'Failed to delete order. Please try again.'
+
+    toast.add({
+      title: 'Error',
+      description: error.message || 'Failed to delete order. Please try again.',
+      color: 'error',
+    })
 
     // Handle unauthorized errors
     if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      // Redirect to login
-      navigateTo('/auth/login')
+      // The store will handle the redirect to login
+      return
     }
-
-    useToast().add({
-      title: 'Error',
-      description: errorMessage,
-      color: 'red',
-    })
   } finally {
     isDeleting.value = false
   }
 }
 
 // Update order status
-const _updateOrderStatus = async (order, newStatus) => {
+const _updateOrderStatus = async (order: Order, newStatus: string) => {
+  const oldStatus = order.status
+  isUpdatingStatus.value = true
+
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    if (!authStore.isLoggedIn) {
-      throw new Error('No authenticated user found')
-    }
-
-    // Call the update endpoint with auth headers
-    await $fetch(`/api/orders/${order.id}`, {
-      method: 'PATCH',
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-      body: {
-        status: newStatus,
-      },
-    })
-
-    // Update locally
-    const index = orders.value.findIndex(o => o.id === order.id)
-    if (index !== -1) {
-      orders.value[index].status = newStatus
-      filterOrders() // Refresh filtered list
-    }
+    await orderStore.updateOrderStatus(order.id, newStatus)
 
     // Show success notification
-    useToast().add({
+    toast.add({
       title: 'Status updated',
-      description: `Order for ${order.client} is now ${newStatus}`,
-      color: 'green',
+      description: `Order status changed to ${newStatus}`,
+      color: 'primary',
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating order status:', error)
-    let errorMessage = 'Failed to update order status. Please try again.'
+
+    // Revert the status change on error
+    order.status = oldStatus
+
+    toast.add({
+      title: 'Error',
+      description: error.message || 'Failed to update order status. Please try again.',
+      color: 'error',
+    })
 
     // Handle unauthorized errors
     if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      navigateTo('/auth/login')
+      // The store will handle the redirect to login
+      return
     }
-
-    useToast().add({
-      title: 'Error',
-      description: errorMessage,
-      color: 'red',
-    })
+  } finally {
+    isUpdatingStatus.value = false
   }
 }
 

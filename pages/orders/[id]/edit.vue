@@ -255,21 +255,22 @@ required>
 // Get the order ID from the route
 // Import stores and utilities
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useHead } from '#imports'
-import { useAuthStore } from '~/store/modules/auth'
+import { storeToRefs } from 'pinia'
+import { useOrderStore } from '~/store/modules/order'
 import { useStyleStore } from '~/store'
+import type { UpdateOrderInput } from '~/types/order'
 
 const route = useRoute()
 const orderId = route.params.id
 
 // Initialize stores
+const orderStore = useOrderStore()
 const styleStore = useStyleStore()
-const authStore = useAuthStore()
+const { isLoading } = storeToRefs(orderStore)
 
 // Set page metadata
 useHead({
-  title: 'Edit Order - QuickMeazure',
-  meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1' }],
+  title: 'Edit Order',
 })
 
 // Track which sections are open
@@ -301,8 +302,7 @@ const _errors = ref({})
 // Client name for display
 const clientName = ref('')
 
-// State variables
-const isLoading = ref(true)
+// Local state
 const isSubmitting = ref(false)
 
 // Computed for style dropdown options
@@ -393,83 +393,37 @@ const saveOrder = async () => {
   isSubmitting.value = true
 
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to edit an order',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
     // Prepare data with proper type conversions
-    const orderData = {
+    const orderData: UpdateOrderInput = {
       clientId: form.value.clientId,
       styleId: form.value.styleId === '' ? null : form.value.styleId,
       status: form.value.status,
-      dueDate: form.value.dueDate ? new Date(form.value.dueDate).getTime() : null,
+      dueDate: form.value.dueDate ? new Date(form.value.dueDate) : null,
       totalAmount: Number(form.value.totalAmount || 0),
       depositAmount: Number(form.value.depositAmount || 0),
       notes: form.value.notes || '',
     }
 
-    console.log('Sending order update:', orderData)
+    console.log('Updating order with data:', orderData)
 
-    // Update the order
-    try {
-      await $fetch(`/api/orders/${orderId}`, {
-        method: 'PATCH',
-        body: orderData,
-        headers: {
-          ...authStore.getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
-      })
+    // Update the order using the store
+    await orderStore.updateOrder(orderId, orderData)
 
-      // Show success message
-      useToast().add({
-        title: 'Success',
-        description: 'Order updated successfully',
-        color: 'green',
-      })
+    // Show success message
+    useToast().add({
+      title: 'Success',
+      description: 'Order updated successfully',
+      color: 'primary',
+    })
 
-      // Navigate back to the order details page
-      navigateTo(`/orders/${orderId}/detail`)
-    } catch (apiError) {
-      console.error('API error when updating order:', apiError)
-
-      if (apiError.response) {
-        console.error('Error response:', apiError.response._data)
-      }
-
-      throw apiError // Re-throw for the outer catch block
-    }
-  } catch (error) {
+    // Navigate back to the order details page
+    navigateTo(`/orders/${orderId}/detail`)
+  } catch (error: any) {
     console.error('Error updating order:', error)
-
-    // Handle different types of errors
-    let errorMessage = 'Failed to update order. Please try again.'
-
-    if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      navigateTo('/auth/login')
-    } else if (error.response?.status === 404) {
-      errorMessage = 'Order not found. It may have been deleted.'
-      navigateTo('/orders')
-    } else if (error.response?.status === 400) {
-      errorMessage = 'Invalid order data. Please check your inputs.'
-    } else if (error.message) {
-      errorMessage = error.message
-    }
 
     useToast().add({
       title: 'Error',
-      description: errorMessage,
+      description: error.message || 'Failed to update order. Please try again.',
       color: 'error',
     })
   } finally {
@@ -479,63 +433,21 @@ const saveOrder = async () => {
 
 // Fetch order, measurements and styles data
 const fetchData = async () => {
-  isLoading.value = true
-
   try {
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to edit an order',
-        color: 'warning',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
     // Fetch styles first, so we have style data available when processing the order
     await styleStore.fetchStyles()
 
-    // Then fetch the order data
-    console.log(`Fetching order with ID: ${orderId}`)
-    let orderData
+    // Fetch the order data using the store
+    const orderData = await orderStore.fetchOrderById(orderId)
 
-    try {
-      orderData = await $fetch(`/api/orders/${orderId}`, {
-        headers: {
-          ...authStore.getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
-      })
-
-      console.log('Retrieved order data:', orderData)
-    } catch (orderError) {
-      console.error('Error fetching order:', orderError)
-
-      if (orderError.response?.status === 404) {
-        useToast().add({
-          title: 'Error',
-          description: 'Order not found. It may have been deleted.',
-          color: 'error',
-        })
-
-        setTimeout(() => {
-          navigateTo('/orders')
-        }, 1500)
-        return
-      }
-
-      throw orderError // Re-throw for the outer catch block
-    }
-
-    if (!orderData || !orderData.id) {
-      throw new Error('Invalid order data received')
+    if (!orderData) {
+      throw new Error('Order not found')
     }
 
     // Now populate the form with existing data
     form.value = {
       clientId: orderData.clientId || '',
-      styleId: orderData.styleId || null, // Use null instead of empty string for consistency
+      styleId: orderData.styleId || null,
       status: orderData.status || 'Pending',
       dueDate: orderData.dueDate ? formatDateForInput(orderData.dueDate) : '',
       totalAmount: Number(orderData.totalAmount || 0),
@@ -544,9 +456,7 @@ const fetchData = async () => {
     }
 
     // Set client name for display
-    clientName.value = orderData.clientName || 'Client'
-
-    console.log('Form initialized with:', form.value)
+    clientName.value = orderData.client?.name || 'Client'
   } catch (error) {
     console.error('Error fetching data:', error)
     let errorMessage = 'Failed to load order data. Please try again.'

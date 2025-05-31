@@ -303,21 +303,27 @@
 
 <script setup>
 // Get the order ID from the route
-// Import auth store
-import { useAuthStore } from '~/store/modules/auth'
+import { useOrderStore } from '~/store/modules/order'
+import { storeToRefs } from 'pinia'
+// Type imports can be added back when needed
 
 const route = useRoute()
 const orderId = route.params.id
 
-// State management
-const order = ref(null)
-const isLoading = ref(true)
+// Initialize store
+const orderStore = useOrderStore()
+const { currentOrder, isLoading } = storeToRefs(orderStore)
+// Error handling is done through try/catch blocks
+
+// Local state
 const isUpdating = ref(false)
+
+// Alias for template
+const order = computed(() => currentOrder.value)
 
 // Set page metadata
 useHead({
-  title: 'Order Details - QuickMeazure',
-  meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1' }],
+  title: 'Order Details',
 })
 
 // Utility functions
@@ -368,37 +374,12 @@ const isDueSoon = dueDate => {
 }
 
 // Update order status
-const updateOrderStatus = async newStatus => {
+const updateOrderStatus = async (newStatus: string) => {
   if (isUpdating.value) return
   isUpdating.value = true
 
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to update order status',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
-    // Update the order status with auth headers
-    await $fetch(`/api/orders/${orderId}`, {
-      method: 'PATCH',
-      body: { status: newStatus },
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
-
-    // Update the local order object
-    order.value.status = newStatus
+    await orderStore.updateOrderStatus(orderId, newStatus)
 
     // Show success message
     useToast().add({
@@ -406,11 +387,12 @@ const updateOrderStatus = async newStatus => {
       description: `Order status changed to ${newStatus}`,
       color: 'green',
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating order status:', error)
+
     useToast().add({
       title: 'Error',
-      description: 'Failed to update order status',
+      description: error.message || 'Failed to update order status',
       color: 'red',
     })
   } finally {
@@ -418,48 +400,16 @@ const updateOrderStatus = async newStatus => {
   }
 }
 
-// Fetch the order data on component mount
-const fetchOrder = async () => {
-  isLoading.value = true
-
+// Fetch order data on component mount
+onMounted(async () => {
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to view order details',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
-    // Fetch the order data with auth headers
-    const orderData = await $fetch(`/api/orders/${orderId}`, {
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
-
-    order.value = orderData
-  } catch (error) {
-    console.error('Error fetching order:', error)
+    await orderStore.fetchOrderById(orderId)
+  } catch (error: any) {
     useToast().add({
       title: 'Error',
-      description: 'Failed to load order details',
+      description: error.message || 'Failed to load order details',
       color: 'red',
     })
-  } finally {
-    isLoading.value = false
   }
-}
-
-// Fetch order data on component mount
-onMounted(() => {
-  fetchOrder()
 })
 </script>
