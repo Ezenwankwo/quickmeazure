@@ -100,15 +100,20 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import type { MeasurementTemplate } from '~/types/measurement'
 
-const props = defineProps({
-  template: {
-    type: Object,
-    required: true,
-  },
-})
+interface Props {
+  template: MeasurementTemplate
+}
 
-defineEmits(['edit', 'archive', 'unarchive', 'delete'])
+const props = defineProps<Props>()
+
+type EmitEvents = {
+  (e: 'edit', template: MeasurementTemplate): void
+  (e: 'archive' | 'unarchive' | 'delete', id: number): void
+}
+
+const emit = defineEmits<EmitEvents>()
 
 const visibleFields = computed(() => {
   return props.template.fields?.slice(0, 3) || []
@@ -119,19 +124,25 @@ const hasMoreFields = computed(() => {
 })
 
 const dropdownItems = computed(() => {
-  const items = []
+  const items: Array<
+    Array<{
+      label: string
+      icon: string
+      click: () => void
+    }>
+  > = []
 
-  if (!props.template.isArchived) {
+  if (!props.template.archived) {
     items.push([
       {
         label: 'Edit',
         icon: 'i-heroicons-pencil',
-        click: () => $emit('edit', props.template),
+        click: () => emit('edit', props.template),
       },
       {
         label: 'Archive',
         icon: 'i-heroicons-archive-box',
-        click: () => $emit('archive', props.template.id),
+        click: () => emit('archive', props.template.id),
       },
     ])
   } else {
@@ -139,7 +150,7 @@ const dropdownItems = computed(() => {
       {
         label: 'Restore',
         icon: 'i-heroicons-arrow-uturn-left',
-        click: () => $emit('unarchive', props.template.id),
+        click: () => emit('unarchive', props.template.id),
       },
     ])
   }
@@ -148,23 +159,29 @@ const dropdownItems = computed(() => {
     items[0].push({
       label: 'Delete',
       icon: 'i-heroicons-trash',
-      click: () => $emit('delete', props.template.id),
+      click: () => emit('delete', props.template.id),
     })
   }
 
   return items
 })
 
-const formatGender = (gender: string) => {
+const formatGender = (gender?: string) => {
+  if (!gender) return 'Unspecified'
   return gender.charAt(0).toUpperCase() + gender.slice(1)
 }
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+const formatDate = (dateString?: string) => {
+  if (!dateString) return 'Unknown date'
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch (_error) {
+    return 'Invalid date'
+  }
 }
 </script>

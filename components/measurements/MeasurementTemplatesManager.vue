@@ -136,20 +136,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useMeasurementTemplatesStore } from '~/store'
+import { onMounted, ref, computed, watch } from 'vue'
+import { useToast } from '#imports'
+import type { MeasurementTemplate } from '~/types/measurement'
+import { useMeasurementTemplateStore } from '~/store/modules/measurementTemplate'
+
+// Components
+import MeasurementTemplateCard from './MeasurementTemplateCard.vue'
+import MeasurementTemplateForm from './MeasurementTemplateForm.vue'
 
 // Template state
-const {
-  templates,
-  loading: _templatesLoading,
-  error: _templatesError,
-  fetchTemplates,
-  archiveTemplateById,
-  unarchiveTemplateById,
-  deleteTemplateById,
-  resetTemplates,
-} = useMeasurementTemplatesStore()
+const templateStore = useMeasurementTemplateStore()
+const toast = useToast()
+
+// Fetch templates on mount
+onMounted(() => {
+  templateStore.fetchTemplates()
+})
 
 // UI state
 const activeTemplateTab = ref('active')
@@ -161,29 +164,27 @@ const isTemplateModalOpen = computed({
     if (!value) editingTemplate.value = null
   },
 })
-const editingTemplate = ref(null)
+const editingTemplate = ref<MeasurementTemplate | null>(null)
 const isDeleting = ref(false)
-const isResetting = ref(false)
 const isDeleteConfirmOpen = ref(false)
-const templateToDelete = ref(null)
-const showResetConfirm = ref(false)
+const templateToDelete = ref<MeasurementTemplate | null>(null)
 
 // Computed
 const templateTabs = computed(() => [
   {
     key: 'active',
     label: 'Active',
-    count: templates.value.filter(t => !t.archived).length,
+    count: templateStore.templates.filter(t => !t.archived).length,
   },
   {
     key: 'archived',
     label: 'Archived',
-    count: templates.value.filter(t => t.archived).length,
+    count: templateStore.templates.filter(t => t.archived).length,
   },
 ])
 
 const filteredTemplates = computed(() => {
-  return templates.value.filter(template => {
+  return templateStore.templates.filter(template => {
     if (activeTemplateTab.value === 'active') return !template.archived
     if (activeTemplateTab.value === 'archived') return template.archived
     return true
@@ -191,8 +192,8 @@ const filteredTemplates = computed(() => {
 })
 
 // Methods
-const openEditTemplate = template => {
-  editingTemplate.value = template
+const openEditTemplate = (template: MeasurementTemplate) => {
+  editingTemplate.value = { ...template }
   isTemplateModalOpen.value = true
 }
 
@@ -201,58 +202,58 @@ const closeTemplateModal = () => {
   editingTemplate.value = null
 }
 
-const handleTemplateSaved = () => {
+const handleTemplateSaved = async () => {
   closeTemplateModal()
-  fetchTemplates()
+  await templateStore.fetchTemplates()
 }
 
-const archiveTemplate = async id => {
+const archiveTemplate = async (id: number) => {
   try {
-    await archiveTemplateById(id)
+    await templateStore.updateTemplate(id, { archived: true })
 
-    useToast().add({
+    toast.add({
       title: 'Template archived',
       description: 'The template has been moved to the archive',
       icon: 'i-heroicons-check-circle',
-      color: 'green',
+      color: 'primary',
     })
 
-    await fetchTemplates()
-  } catch (err) {
+    await templateStore.fetchTemplates()
+  } catch (err: any) {
     console.error('Error archiving template:', err)
-    useToast().add({
+    toast.add({
       title: 'Error archiving template',
-      description: 'Please try again',
-      color: 'red',
+      description: err.message || 'Please try again',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
   }
 }
 
-const unarchiveTemplate = async id => {
+const unarchiveTemplate = async (id: number) => {
   try {
-    await unarchiveTemplateById(id)
+    await templateStore.updateTemplate(id, { archived: false })
 
-    useToast().add({
+    toast.add({
       title: 'Template restored',
       description: 'The template has been restored to active templates',
       icon: 'i-heroicons-check-circle',
-      color: 'green',
+      color: 'primary',
     })
 
-    await fetchTemplates()
-  } catch (err) {
+    await templateStore.fetchTemplates()
+  } catch (err: any) {
     console.error('Error restoring template:', err)
-    useToast().add({
+    toast.add({
       title: 'Error restoring template',
-      description: 'Please try again',
-      color: 'red',
+      description: err.message || 'Please try again',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
   }
 }
 
-const confirmDeleteTemplate = template => {
+const confirmDeleteTemplate = (template: MeasurementTemplate) => {
   templateToDelete.value = template
   isDeleteConfirmOpen.value = true
 }
@@ -263,25 +264,25 @@ const deleteTemplate = async () => {
   isDeleting.value = true
 
   try {
-    await deleteTemplateById(templateToDelete.value.id)
+    await templateStore.deleteTemplate(templateToDelete.value.id)
 
-    useToast().add({
+    toast.add({
       title: 'Template deleted',
       description: 'The template has been permanently removed',
       icon: 'i-heroicons-check-circle',
-      color: 'green',
+      color: 'primary',
     })
 
     isDeleteConfirmOpen.value = false
     templateToDelete.value = null
 
-    await fetchTemplates()
-  } catch (err) {
+    await templateStore.fetchTemplates()
+  } catch (err: any) {
     console.error('Error deleting template:', err)
-    useToast().add({
+    toast.add({
       title: 'Error deleting template',
-      description: 'Please try again',
-      color: 'red',
+      description: err.message || 'Please try again',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
   } finally {
@@ -289,8 +290,8 @@ const deleteTemplate = async () => {
   }
 }
 
-// Lifecycle
-onMounted(async () => {
-  await fetchTemplates()
+// Watch for changes in the active tab to refresh data
+watch(activeTemplateTab, async () => {
+  await templateStore.fetchTemplates()
 })
 </script>

@@ -132,7 +132,9 @@ variant="ghost"
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useMeasurementTemplatesStore } from '~/store'
+import { useToast } from '#imports'
+import type { MeasurementField } from '~/types/measurement'
+import { useMeasurementTemplateStore } from '~/store/modules/measurementTemplate'
 
 const props = defineProps({
   modelValue: {
@@ -145,9 +147,13 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'saved'])
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'saved'): void
+}>()
 
-const { createTemplate, updateTemplate } = useMeasurementTemplatesStore()
+const templateStore = useMeasurementTemplateStore()
+const toast = useToast()
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -189,13 +195,15 @@ const unitOptions = [
 // Generate a unique key for each field
 const generateKey = () => Math.random().toString(36).substring(2, 11)
 
-// Add a new field
-const addField = (field?: any) => {
+// Add a new field (unused but kept for potential future use)
+const _addField = (field?: Partial<MeasurementField> & { key?: string }) => {
   form.value.fields.push({
-    key: generateKey(),
+    key: field?.key || generateKey(),
     name: field?.name || '',
-    unit: field?.unit || 'in',
-    isRequired: field?.isRequired ?? true,
+    unit: field?.unit || 'cm',
+    type: field?.type || 'number',
+    required: field?.required ?? true,
+    order: form.value.fields.length,
     isDefault: field?.isDefault ?? false,
     ...(field?.id && { id: field.id }),
   })
@@ -243,13 +251,15 @@ const loadTemplateData = () => {
 
   form.value = {
     name: props.template.name,
-    gender: props.template.gender,
-    fields: (props.template.fields || []).map((field: any) => ({
-      key: generateKey(),
+    gender: props.template.gender || 'unisex',
+    fields: (props.template.fields || []).map((field: MeasurementField, index: number) => ({
+      key: field.id || generateKey(),
       id: field.id,
       name: field.name,
-      unit: field.unit,
-      isRequired: field.isRequired,
+      unit: field.unit || 'cm',
+      type: field.type || 'number',
+      required: field.required ?? true,
+      order: field.order ?? index,
       isDefault: field.isDefault,
     })),
   }
@@ -297,34 +307,49 @@ const onSubmit = async () => {
     return
   }
 
-  isSubmitting.value = true
-
   try {
     const templateData = {
       name: form.value.name,
+      description: '',
       gender: form.value.gender,
       fields: form.value.fields.map((field, index) => ({
         ...(field.id && { id: field.id }),
         name: field.name.trim(),
+        type: field.type,
+        required: field.required,
         unit: field.unit,
-        isRequired: field.isRequired,
-        displayOrder: index,
+        order: index,
       })),
     }
 
-    if (editing.value) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      await updateTemplate(props.template!.id!, templateData)
+    if (editing.value && props.template?.id) {
+      await templateStore.updateTemplate(Number(props.template.id), templateData)
+      toast.add({
+        title: 'Template updated',
+        description: 'Your measurement template has been updated',
+        icon: 'i-heroicons-check-circle',
+        color: 'primary',
+      })
     } else {
-      await createTemplate(templateData)
+      await templateStore.createTemplate(templateData)
+      toast.add({
+        title: 'Template created',
+        description: 'Your new measurement template has been created',
+        icon: 'i-heroicons-check-circle',
+        color: 'primary',
+      })
     }
 
     emit('saved')
     close()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving template:', error)
-  } finally {
-    isSubmitting.value = false
+    toast.add({
+      title: 'Error saving template',
+      description: error.message || 'An error occurred while saving the template',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-triangle',
+    })
   }
 }
 

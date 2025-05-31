@@ -68,6 +68,14 @@ export const API_ENDPOINTS = {
     INVOICES: `${API_BASE}/subscriptions/invoices`,
   },
 
+  // Dashboard
+  DASHBOARD: {
+    STATS: `${API_BASE}/dashboard/stats`,
+    RECENT_ACTIVITY: `${API_BASE}/dashboard/recent-activity`,
+    ORDERS_DUE_SOON: `${API_BASE}/dashboard/orders-due-soon`,
+    CLIENT_GROWTH: `${API_BASE}/dashboard/client-growth`,
+  },
+
   // Settings
   SETTINGS: {
     PROFILE: `${API_BASE}/settings/profile`,
