@@ -1,9 +1,9 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+// Types
 import type { User } from '~/types/auth'
 import type { UserPreferences } from '~/types/user'
 import type { SubscriptionPlan } from '~/types/subscription'
-import { useRuntimeConfig } from '#app'
+
+// Constants
 import { API_ENDPOINTS } from '~/constants/api'
 
 /**
@@ -194,20 +194,38 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * Fetch user profile data from the API
+   * Fetch user profile data from the API using useAsyncData
    * @returns Promise with the result of the operation
    */
   async function fetchProfile() {
     try {
       console.log('User store: Fetching profile data...')
 
-      // Call the profile API endpoint
-      const response = await $fetch(API_ENDPOINTS.USERS.ME, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
+      // Use useAsyncData for the profile fetch
+      const { data, error: fetchError } = await useAsyncData(
+        'user-profile',
+        () =>
+          $fetch(API_ENDPOINTS.USERS.ME, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            server: true,
+          }),
+        {
+          server: true,
+          lazy: true,
+          default: () => null,
+        }
+      )
+
+      // Check for errors
+      if (fetchError.value) {
+        throw new Error(fetchError.value.message || 'Failed to fetch profile data')
+      }
+
+      const response = data.value
 
       if (response) {
         // Update the store with the fetched profile data

@@ -1,22 +1,11 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { useAuthStore } from './auth'
-import { useSubscriptionStore } from './subscription'
-import { differenceInDays, parseISO } from 'date-fns'
-import { API_ENDPOINTS } from '~/constants/api'
+// Types
+import type { Notification } from '~/types/notification'
 
-export interface Notification {
-  id: string
-  type: 'payment' | 'subscription' | 'usage' | 'system'
-  severity: 'info' | 'warning' | 'critical'
-  title: string
-  message: string
-  createdAt: Date
-  read: boolean
-  actionUrl?: string
-  actionText?: string
-  expiresAt?: Date
-}
+// Utils
+import { differenceInDays, parseISO } from 'date-fns'
+
+// Constants
+import { API_ENDPOINTS } from '~/constants/api'
 
 /**
  * Notification store for managing user notifications
@@ -52,39 +41,58 @@ export const useNotificationStore = defineStore('notification', () => {
 
   // Methods
   /**
-   * Fetch notifications from the server
+   * Fetch notifications from the server using useAsyncData
    */
   const fetchNotifications = async () => {
-    if (!authStore.isLoggedIn) return
+    if (!authStore.isLoggedIn) return []
 
     try {
       loading.value = true
       error.value = null
+      const { $fetch } = useNuxtApp()
 
-      const response = await fetch(API_ENDPOINTS.NOTIFICATIONS.BASE, {
-        headers: {
-          Authorization: `Bearer ${authStore.token}`,
-          'Content-Type': 'application/json',
-        },
-      })
+      // Use useAsyncData for the notifications fetch
+      const { data, error: fetchError } = await useAsyncData(
+        'user-notifications',
+        () =>
+          $fetch(API_ENDPOINTS.NOTIFICATIONS.BASE, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+            },
+            credentials: 'include',
+            server: true,
+          }),
+        {
+          server: true,
+          lazy: true,
+          default: () => ({ notifications: [] }),
+        }
+      )
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch notifications: ${response.statusText}`)
+      // Check for errors
+      if (fetchError.value) {
+        throw new Error(fetchError.value.message || 'Failed to fetch notifications')
       }
 
-      const data = await response.json()
-      notifications.value = data.notifications || []
+      // Update notifications
+      notifications.value = data.value?.notifications || []
       lastChecked.value = new Date()
+      error.value = null
+
+      return notifications.value
     } catch (err: any) {
       console.error('Error fetching notifications:', err)
       error.value = err.message
+      throw err
     } finally {
       loading.value = false
     }
   }
 
   /**
-   * Mark a notification as read
+   * Mark a notification as read using useAsyncData
    */
   const markAsRead = async (notificationId: string) => {
     try {
@@ -94,24 +102,28 @@ export const useNotificationStore = defineStore('notification', () => {
       // Optimistically update UI
       notification.read = true
 
-      // Update on server
-      await fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${notificationId}/read`, {
+      // Update on server using $fetch directly for non-GET requests
+      await $fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${notificationId}/read`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authStore.token}`,
           'Content-Type': 'application/json',
+          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
         },
+        credentials: 'include',
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error marking notification as read:', err)
       // Revert optimistic update on error
       const notification = notifications.value.find(n => n.id === notificationId)
-      if (notification) notification.read = false
+      if (notification) {
+        notification.read = false
+      }
+      throw err
     }
   }
 
   /**
-   * Mark all notifications as read
+   * Mark all notifications as read using useAsyncData
    */
   const markAllAsRead = async () => {
     try {
@@ -120,41 +132,48 @@ export const useNotificationStore = defineStore('notification', () => {
         n.read = true
       })
 
-      // Update on server
-      await fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/read-all`, {
+      // Update on server using $fetch directly for non-GET requests
+      await $fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/mark-all-read`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authStore.token}`,
           'Content-Type': 'application/json',
+          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
         },
+        credentials: 'include',
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error marking all notifications as read:', err)
-      // Revert optimistic update on error
+      // Revert optimistic update on error by refreshing notifications
       await fetchNotifications()
+      throw err
     }
   }
 
   /**
-   * Delete a notification
+   * Delete a notification using useAsyncData
    */
   const deleteNotification = async (notificationId: string) => {
     try {
-      // Optimistically update UI
-      notifications.value = notifications.value.filter(n => n.id !== notificationId)
+      // Optimistically remove from UI
+      const index = notifications.value.findIndex(n => n.id === notificationId)
+      if (index === -1) return
 
-      // Update on server
-      await fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${notificationId}`, {
+      const [_deleted] = notifications.value.splice(index, 1)
+
+      // Delete on server using $fetch directly for non-GET requests
+      await $fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${notificationId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${authStore.token}`,
           'Content-Type': 'application/json',
+          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
         },
+        credentials: 'include',
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting notification:', err)
-      // Revert optimistic update on error
+      // Re-fetch to restore state on error
       await fetchNotifications()
+      throw err
     }
   }
 

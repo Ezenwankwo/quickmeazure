@@ -1,16 +1,17 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { useAuthStore } from './auth'
+// Types
 import type { MeasurementTemplate } from '~/types/measurement'
+
+// Constants
 import { API_ENDPOINTS } from '~/constants/api'
 
-// Define types for pending operations
+// Types for pending operations
 interface PendingOperation {
   type: 'create' | 'update' | 'archive' | 'delete'
   templateId?: number
   timestamp: number
 }
 
+// Store for managing measurement templates
 export const useMeasurementTemplatesStore = defineStore('measurementTemplates', () => {
   // State
   const templates = ref<MeasurementTemplate[]>([])
@@ -21,7 +22,6 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
   const optimisticUpdates = ref<Map<number, MeasurementTemplate>>(new Map())
 
   // Get Nuxt composables
-  const { $fetch } = useNuxtApp()
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase || '/api'
   const authStore = useAuthStore()
@@ -183,19 +183,25 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
         headers['Authorization'] = `Bearer ${authStore.token}`
       }
 
+      // Use $fetch directly for non-GET requests
       const response = await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATE_BY_ID(templateId), {
         method: 'PUT',
-        body: JSON.stringify(updates),
+        body: updates,
         baseURL,
         headers,
+        credentials: 'include',
       })
 
       if (optimistic) {
         pendingOperations.value.delete(operationId)
       }
 
-      templates.value[templateIndex] = response
-      return response
+      if (response) {
+        templates.value[templateIndex] = response
+        return response
+      }
+
+      throw new Error('No response data received')
     } catch (err: any) {
       if (optimistic) {
         templates.value[templateIndex] = originalTemplate
@@ -224,15 +230,6 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
 
     const originalTemplate = { ...templates.value[templateIndex] }
 
-    if (optimistic) {
-      templates.value = templates.value.filter(t => t.id !== templateId)
-      pendingOperations.value.set(operationId, {
-        type: 'delete',
-        templateId,
-        timestamp: Date.now(),
-      })
-    }
-
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -242,14 +239,20 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
         headers['Authorization'] = `Bearer ${authStore.token}`
       }
 
+      // Use $fetch directly for non-GET requests
       await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATE_BY_ID(templateId), {
         method: 'DELETE',
         baseURL,
         headers,
+        credentials: 'include',
       })
 
       if (optimistic) {
-        delete pendingOperations.value[operationId]
+        pendingOperations.value.delete(operationId)
+      }
+
+      if (optimistic) {
+        templates.value = templates.value.filter(t => t.id !== templateId)
       }
 
       return true

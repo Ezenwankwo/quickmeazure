@@ -1,11 +1,12 @@
-import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+// Types
 import type { User, LoginCredentials, RegistrationData } from '~/types/auth'
 import type { AuthHeaders } from '~/types/api'
-import { useRuntimeConfig, navigateTo } from '#app'
-import { useUserStore } from './user'
-import { getFromStorage, setToStorage, removeFromStorage, STORAGE_KEYS } from '~/utils/storage'
+
+// Constants
 import { API_ENDPOINTS, type ApiResponse } from '~/constants/api'
+
+// Utils
+import { STORAGE_KEYS, getFromStorage, setToStorage, removeFromStorage } from '~/utils/storage'
 
 /**
  * Auth store for managing authentication state
@@ -350,19 +351,18 @@ export const useAuthStore = defineStore(
         const now = Date.now()
         sessionExpiry.value = now + 8 * 60 * 60 * 1000
 
-        // Save to localStorage
+        // Save to storage
         if (import.meta.client) {
-          localStorage.setItem(
-            'auth',
-            JSON.stringify({
-              token: response.token,
-              sessionExpiry: sessionExpiry.value,
-            })
-          )
-          localStorage.setItem('lastLoginTime', now.toString())
+          setToStorage(STORAGE_KEYS.AUTH, {
+            token: response.token,
+            refreshToken: response.refreshToken,
+            user: response.user,
+            expiresAt: sessionExpiry.value,
+          })
+          setToStorage('lastLoginTime', now.toString())
         }
 
-        return { success: true }
+        return { success: true, user: response.user }
       } catch (error: any) {
         console.error('Registration failed:', error)
 
@@ -401,8 +401,8 @@ export const useAuthStore = defineStore(
         console.log('Starting logout process')
 
         // Mark this as an intentional logout if not already set
-        if (import.meta.client && !localStorage.getItem('intentionalLogout')) {
-          localStorage.setItem('intentionalLogout', 'true')
+        if (import.meta.client && !getFromStorage('intentionalLogout')) {
+          setToStorage('intentionalLogout', 'true')
         }
 
         // Clear session timeout
@@ -437,7 +437,7 @@ export const useAuthStore = defineStore(
         // Clear the intentional logout flag after successful logout
         if (import.meta.client) {
           setTimeout(() => {
-            localStorage.removeItem('intentionalLogout')
+            removeFromStorage('intentionalLogout')
           }, 1000) // Small delay to ensure other operations complete
         }
 
@@ -466,14 +466,14 @@ export const useAuthStore = defineStore(
         // Set refreshing flag
         isRefreshing.value = true
 
-        // Set flag in localStorage to prevent multiple tabs from refreshing simultaneously
+        // Set flag in storage to prevent multiple tabs from refreshing simultaneously
         if (import.meta.client) {
-          localStorage.setItem('isHandlingTokenRefresh', 'true')
+          setToStorage('isHandlingTokenRefresh', 'true')
         }
 
         console.log('Refreshing session token')
 
-        // Call the refresh token API endpoint
+        // Use $fetch directly for the refresh token request
         const response = await $fetch<
           ApiResponse<{ token: string; refreshToken?: string; user?: User }>
         >(API_ENDPOINTS.AUTH.REFRESH, {
@@ -483,6 +483,7 @@ export const useAuthStore = defineStore(
             'X-Refresh-Token': refreshToken.value || '',
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
         })
 
         // Check if the response is valid
@@ -530,7 +531,7 @@ export const useAuthStore = defineStore(
 
         // Clear refresh handling flag
         if (import.meta.client) {
-          localStorage.removeItem('isHandlingTokenRefresh')
+          removeFromStorage('isHandlingTokenRefresh')
         }
 
         return { success: true }
@@ -539,7 +540,7 @@ export const useAuthStore = defineStore(
 
         // Clear refresh handling flag
         if (import.meta.client) {
-          localStorage.removeItem('isHandlingTokenRefresh')
+          removeFromStorage('isHandlingTokenRefresh')
         }
 
         // If refresh fails with 401/403, the session is likely invalid
@@ -562,7 +563,7 @@ export const useAuthStore = defineStore(
     async function handleSessionExpiry(showNotification = true, reason = 'Session expired') {
       // Check if this is an intentional logout
       const isIntentionalLogout =
-        import.meta.client && localStorage.getItem('intentionalLogout') === 'true'
+        import.meta.client && getFromStorage('intentionalLogout') === 'true'
 
       console.log(`Handling session expiry: ${reason}`, { isIntentionalLogout })
 
@@ -693,7 +694,7 @@ export const useAuthStore = defineStore(
   },
   {
     persist: {
-      storage: import.meta.client ? localStorage : null,
+      storage: import.meta.client ? window.localStorage : null,
       paths: ['user', 'token', 'sessionExpiry'],
     },
   }

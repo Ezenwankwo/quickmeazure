@@ -1,72 +1,19 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { useAuthStore } from './auth'
-import { getFromStorage, setToStorage, removeFromStorage, STORAGE_KEYS } from '~/utils/storage'
+// Types
+import type {
+  SubscriptionPlan,
+  PaymentMethod,
+  BillingHistoryItem,
+  PlanLimits,
+  SubscriptionStatus,
+} from '~/types/subscription'
+
+// Constants
 import { API_ENDPOINTS } from '~/constants/api'
 
-// Define subscription plan types
-export interface SubscriptionPlan {
-  id: string
-  name: string
-  description: string
-  price: number
-  interval: 'monthly' | 'yearly'
-  features: PlanFeature[]
-  limits: PlanLimits
-}
+// Utils
+import { STORAGE_KEYS, getFromStorage, setToStorage, removeFromStorage } from '~/utils/storage'
 
-// Define payment method types
-export interface PaymentMethod {
-  id: number
-  type: string
-  last4: string
-  expiryMonth: string
-  expiryYear: string
-  brand: string
-  isDefault: boolean
-  createdAt: string
-}
-
-// Define payment/invoice types
-export interface BillingHistoryItem {
-  id: number
-  date: string
-  description: string
-  amount: number
-  status: string
-  reference?: string
-  metadata?: any
-}
-
-// Define feature structure
-export interface PlanFeature {
-  id: string
-  name: string
-  description: string
-  included: boolean
-}
-
-// Define limits structure
-export interface PlanLimits {
-  clients: number
-  templates: number
-  users: number
-  storage: number // in MB
-}
-
-// Define subscription status
-export interface SubscriptionStatus {
-  active: boolean
-  planId: string | null
-  trialEndsAt: string | null
-  currentPeriodEndsAt: string | null
-  canceledAt: string | null
-  pastDue: boolean
-}
-
-/**
- * Subscription store for managing subscription plans, features, and status
- */
+// Define subscription store for managing subscription plans, features, and status
 export const useSubscriptionStore = defineStore('subscription', () => {
   // State
   const plans = ref<SubscriptionPlan[]>([])
@@ -106,35 +53,42 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   })
 
   /**
-   * Fetch available subscription plans
+   * Fetch available subscription plans using useAsyncData
    */
   const fetchPlans = async () => {
     try {
       loading.value = true
       error.value = null
 
-      // Make direct fetch request
       const url = API_ENDPOINTS.SUBSCRIPTIONS.PLANS
       console.log('Fetching subscription plans...')
 
-      const fetchResponse = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authStore.token ? `Bearer ${authStore.token}` : '',
-        },
-        cache: 'no-store',
-      })
+      const { data, error: fetchError } = await useAsyncData<SubscriptionPlan[]>(
+        'subscription-plans',
+        () =>
+          $fetch(url, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+            },
+            method: 'GET',
+            credentials: 'include',
+            server: true,
+          }),
+        {
+          transform: (data: any) => (Array.isArray(data) ? data : data?.data || []),
+          server: true,
+          lazy: true,
+          default: () => [],
+        }
+      )
 
-      if (!fetchResponse.ok) {
-        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      if (fetchError.value) {
+        throw new Error(fetchError.value.message)
       }
 
-      const data = await fetchResponse.json()
-      console.log('Subscription plans response:', data)
-
       // Update plans in store
-      plans.value = Array.isArray(data) ? data : data.data || []
+      plans.value = data.value || []
       lastFetched.value = Date.now()
 
       // Cache plans in localStorage for offline access
@@ -152,32 +106,44 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   }
 
   /**
-   * Fetch current subscription status
+   * Fetch current subscription status using useAsyncData
    */
   const fetchSubscriptionStatus = async () => {
     try {
       loading.value = true
       error.value = null
 
-      // Make direct fetch request
       const url = API_ENDPOINTS.SUBSCRIPTIONS.CURRENT
       console.log('Fetching subscription status...')
 
-      const fetchResponse = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authStore.token ? `Bearer ${authStore.token}` : '',
-        },
-        cache: 'no-store',
-      })
+      const { data, error: fetchError } = await useAsyncData(
+        'subscription-status',
+        () =>
+          $fetch(url, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+            },
+            method: 'GET',
+            credentials: 'include',
+            server: true,
+          }),
+        {
+          server: true,
+          lazy: true,
+          default: () => ({
+            data: {},
+            token: null,
+          }),
+        }
+      )
 
-      if (!fetchResponse.ok) {
-        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      if (fetchError.value) {
+        throw new Error(fetchError.value.message)
       }
 
-      const data = await fetchResponse.json()
-      console.log('Subscription status response:', data)
+      const responseData = data.value
+      console.log('Subscription status response:', responseData)
 
       // Update status in store
       status.value = {
@@ -559,39 +525,42 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   }
 
   /**
-   * Fetch billing history
+   * Fetch billing history using useAsyncData
    */
   const fetchBillingHistory = async () => {
     try {
       loadingBillingHistory.value = true
       error.value = null
 
-      // Make direct fetch request
       const url = API_ENDPOINTS.SUBSCRIPTIONS.BILLING_HISTORY
       console.log('Fetching billing history...')
 
-      // Get auth headers from auth store
-      const authHeaders = authStore.getAuthHeaders()
+      const { data, error: fetchError } = await useAsyncData<BillingHistoryItem[]>(
+        'billing-history',
+        () =>
+          $fetch(url, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+            },
+            method: 'GET',
+            credentials: 'include',
+            server: true,
+          }),
+        {
+          transform: (data: any) => data?.data || [],
+          server: true,
+          lazy: true,
+          default: () => [],
+        }
+      )
 
-      const fetchResponse = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
-        cache: 'no-store',
-      })
-
-      if (!fetchResponse.ok) {
-        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      if (fetchError.value) {
+        throw new Error(fetchError.value.message)
       }
 
-      const data = await fetchResponse.json()
-      console.log('Billing history response:', data)
-
       // Update billing history in store
-      billingHistory.value = data.data || []
-
+      billingHistory.value = data.value || []
       return billingHistory.value
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch billing history'
@@ -604,39 +573,42 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   }
 
   /**
-   * Fetch payment methods
+   * Fetch payment methods using useAsyncData
    */
   const fetchPaymentMethods = async () => {
     try {
       loadingPaymentMethods.value = true
       error.value = null
 
-      // Make direct fetch request
       const url = API_ENDPOINTS.SUBSCRIPTIONS.PAYMENT_METHODS
       console.log('Fetching payment methods...')
 
-      // Get auth headers from auth store
-      const authHeaders = authStore.getAuthHeaders()
+      const { data, error: fetchError } = await useAsyncData<PaymentMethod[]>(
+        'payment-methods',
+        () =>
+          $fetch(url, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+            },
+            method: 'GET',
+            credentials: 'include',
+            server: true,
+          }),
+        {
+          transform: (data: any) => data?.data || [],
+          server: true,
+          lazy: true,
+          default: () => [],
+        }
+      )
 
-      const fetchResponse = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
-        cache: 'no-store',
-      })
-
-      if (!fetchResponse.ok) {
-        throw new Error(`API error: ${fetchResponse.status} ${fetchResponse.statusText}`)
+      if (fetchError.value) {
+        throw new Error(fetchError.value.message)
       }
 
-      const data = await fetchResponse.json()
-      console.log('Payment methods response:', data)
-
       // Update payment methods in store
-      paymentMethods.value = data.data || []
-
+      paymentMethods.value = data.value || []
       return paymentMethods.value
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch payment methods'
