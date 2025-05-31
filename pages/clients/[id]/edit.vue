@@ -289,19 +289,19 @@ class="text-primary-600 hover:underline"
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useAuthStore } from '~/store/modules/auth'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import type { Client } from '~/types/client'
 import { useMeasurementTemplatesStore } from '~/store'
-import { useAppRoutes } from '~/composables/useRoutes'
+import { useClientStore } from '~/store/modules/client'
 
 // Composable
 const routes = useAppRoutes()
-const route = useRoute()
-const router = useRouter()
 
-// Get client ID from route
-const clientId = route.params.id as string
+// Get route params
+const route = useRoute()
+const clientId = Array.isArray(route.params.id) ? route.params.id[0] : (route.params.id as string)
 
 // Constants
 const _CLIENTS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.INDEX] as string
@@ -313,7 +313,14 @@ const getClientPath = (id: string): string =>
   )({ id })
 
 // Client form data
-const form = ref({
+interface ClientFormData {
+  name: string
+  email: string | null
+  phone: string | null
+  address: string | null
+}
+
+const form = ref<ClientFormData>({
   name: '',
   email: null,
   phone: null,
@@ -325,12 +332,15 @@ const measurements = ref({
   notes: null,
 })
 
+// Use client store
+const toast = useToast()
+const clientStore = useClientStore()
+const { currentClient: client, isLoading, error: clientError } = storeToRefs(clientStore)
+
 // UI state
-const isLoading = ref(true)
-const isSubmitting = ref(false)
-const isSaving = computed(() => isSubmitting.value)
+const isUpdating = ref(false)
+const isDeleting = ref(false)
 const isFormValid = computed(() => form.value.name && form.value.name.trim() !== '')
-const client = ref(null)
 
 // Use the measurement templates composable
 const measurementTemplatesStore = useMeasurementTemplatesStore()
@@ -372,7 +382,7 @@ async function loadTemplates(forceRefresh = false) {
     useToast().add({
       title: 'Error',
       description: 'Failed to load measurement templates',
-      color: 'red',
+      color: 'error',
     })
   }
 }
@@ -400,7 +410,7 @@ const selectTemplate = async templateId => {
       useToast().add({
         title: 'Error',
         description: 'Template not found',
-        color: 'red',
+        color: 'error',
       })
       return
     }
@@ -489,22 +499,43 @@ const processMeasurements = () => {
   const allFields = [...upperBodyFields.value, ...lowerBodyFields.value, ...otherFields.value]
 
   // Store ALL fields from the template, even those without values
-  allFields.forEach(field => {
-    // Convert field name to the format used in measurements object (lowercase with underscores)
-    const fieldName = field.name.toLowerCase().replace(/\s+/g, '_')
-    const value = measurements.value[fieldName]
+  allFields.forEach(
+    (field: {
+      name: string
+      unit?: string
+      id: string
+      category?: string
+      isRequired?: boolean
+      displayOrder?: number
+    }) => {
+      try {
+        // Convert field name to the format used in measurements object (lowercase with underscores)
+        const fieldName = field.name.toLowerCase().replace(/\s+/g, '_')
+        const measurementsValue = measurements.value as Record<string, any>
+        const rawValue = measurementsValue[fieldName]
 
-    // Store field metadata and value (even if null)
-    processedMeasurements.values[fieldName] = {
-      value: value !== null && value !== '' ? parseFloat(value) : null,
-      unit: field.unit || 'in',
-      name: field.name,
-      fieldId: field.id,
-      category: field.category || null,
-      isRequired: field.isRequired || false,
-      displayOrder: field.displayOrder || 0,
+        // Handle different value types safely
+        let fieldValue: number | null = null
+        if (rawValue !== null && rawValue !== undefined && rawValue !== '') {
+          const numValue = Number(rawValue)
+          fieldValue = Number.isNaN(numValue) ? null : numValue
+        }
+
+        // Store field metadata and value (even if null)
+        processedMeasurements.values[fieldName] = {
+          value: fieldValue,
+          unit: field.unit || 'in',
+          name: field.name,
+          fieldId: field.id,
+          category: field.category || null,
+          isRequired: field.isRequired || false,
+          displayOrder: field.displayOrder || 0,
+        }
+      } catch (error) {
+        console.error(`Error processing field ${field.name}:`, error)
+      }
     }
-  })
+  )
 
   // Store template information in the values if selected
   if (selectedTemplateId.value) {
@@ -524,55 +555,34 @@ const processMeasurements = () => {
 
 // Fetch client details
 const fetchClient = async () => {
-  isLoading.value = true
-
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
+    await clientStore.fetchClientById(clientId)
 
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to view client details',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
+    if (!client.value) {
+      throw new Error('Client not found')
     }
-
-    // Fetch client by ID with auth headers
-    const data = await $fetch(`/api/clients/${clientId}`, {
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-      baseURL: window.location.origin,
-    })
-
-    client.value = data
 
     // Populate form with client data
     form.value = {
-      name: data.name || '',
-      email: data.email || null,
-      phone: data.phone || null,
-      address: data.address || null,
+      name: client.value.name || '',
+      email: client.value.email || null,
+      phone: client.value.phone || null,
+      address: client.value.address || null,
     }
 
     // Process measurement data if available
-    if (data.measurement) {
+    if (client.value.measurement) {
       // If using the new schema with values field
-      if (data.measurement.values) {
-        const measurementValues = data.measurement.values
+      if (client.value.measurement.values) {
+        const measurementValues = client.value.measurement.values as Record<string, any>
 
         // Set notes
-        measurements.value.notes = data.measurement.notes || null
+        measurements.value.notes = client.value.measurement.notes || null
 
         // Store all measurement values in a temporary object for later use
-        const tempValues = {}
+        const tempValues: Record<string, any> = {}
         Object.entries(measurementValues).forEach(([key, data]) => {
-          if (key !== '_template') {
+          if (key !== '_template' && data && typeof data === 'object' && 'value' in data) {
             tempValues[key] = data.value
           }
         })
@@ -596,59 +606,67 @@ const fetchClient = async () => {
 
           // Process all fields from the template
           const allFields = [
-            ...upperBodyFields.value,
-            ...lowerBodyFields.value,
-            ...otherFields.value,
+            ...(upperBodyFields.value || []),
+            ...(lowerBodyFields.value || []),
+            ...(otherFields.value || []),
           ]
 
-          allFields.forEach(field => {
-            // Convert field name to the format used in measurements object (lowercase with underscores)
-            const fieldName = field.name.toLowerCase().replace(/\s+/g, '_')
-
-            // Set the value if it exists in our temporary values
-            if (tempValues[fieldName] !== undefined) {
-              console.log(`Setting value for ${fieldName}:`, tempValues[fieldName])
-              measurements.value[fieldName] = tempValues[fieldName]
-            } else {
-              console.log(`No value found for ${fieldName}, setting to null`)
-              measurements.value[fieldName] = null
+          // Populate measurements from template fields
+          allFields.forEach((field: { key: string }) => {
+            if (field.key in tempValues) {
+              const measurementsValue = measurements.value as Record<string, any>
+              measurementsValue[field.key] = tempValues[field.key]
             }
           })
 
-          console.log('Final measurements object:', measurements.value)
+          // Add any additional fields that weren't in the template
+          Object.entries(tempValues).forEach(([key, value]) => {
+            if (!(key in measurements.value)) {
+              measurements.value[key as keyof typeof measurements.value] = value
+            }
+          })
         }
       }
       // Legacy schema (before migration)
       else {
         // Set notes
-        measurements.value.notes = data.measurement.notes || null
+        measurements.value.notes = client.value.measurement.notes || null
 
         // Map legacy fields to new structure
         const legacyFields = [
           'height',
           'weight',
-          'bust',
-          'waist',
-          'hip',
-          'inseam',
-          'shoulder',
-          'sleeve',
-          'neck',
           'chest',
+          'waist',
+          'hips',
+          'inseam',
+          'sleeve',
+          'shoulder',
+          'neck',
+          'bicep',
+          'wrist',
           'thigh',
-        ]
+          'calf',
+          'ankle',
+        ] as const
 
         legacyFields.forEach(field => {
-          if (data.measurement[field] !== null && data.measurement[field] !== undefined) {
-            measurements.value[field] = data.measurement[field]
+          const measurement = client.value?.measurement as Record<string, any> | undefined
+          if (measurement?.[field] !== null && measurement?.[field] !== undefined) {
+            // Use type assertion to ensure type safety
+            const measurementsValue = measurements.value as Record<string, any>
+            measurementsValue[field] = measurement[field]
           }
         })
 
-        // Handle additional measurements
-        if (data.measurement.additionalMeasurements) {
-          Object.entries(data.measurement.additionalMeasurements).forEach(([key, value]) => {
+        // Map additional measurements
+        const additionalMeasurements = (client.value?.measurement as any)
+          ?.additionalMeasurements as Record<string, any> | undefined
+        if (additionalMeasurements) {
+          Object.entries(additionalMeasurements).forEach(([key, value]) => {
             if (value !== undefined) {
-              measurements.value[key] = value
+              const measurementsValue = measurements.value as Record<string, any>
+              measurementsValue[key] = value
             }
           })
         }
@@ -657,7 +675,7 @@ const fetchClient = async () => {
 
     // Update page title with client name
     useHead({
-      title: `Edit ${data.name} - QuickMeazure`,
+      title: `Edit ${client.value.name}`,
     })
   } catch (error) {
     console.error('Error fetching client:', error)
@@ -675,7 +693,7 @@ const fetchClient = async () => {
     useToast().add({
       title: 'Error',
       description: errorMessage,
-      color: 'red',
+      color: 'error',
     })
   } finally {
     isLoading.value = false
@@ -684,79 +702,86 @@ const fetchClient = async () => {
 
 // Update client
 const updateClient = async () => {
-  isSubmitting.value = true
+  isUpdating.value = true
 
   try {
-    // Validate form
-    if (!form.value.name) {
-      useToast().add({
-        title: 'Missing information',
-        description: 'Please enter the client name',
-        color: 'red',
-      })
-      isSubmitting.value = false
-      return
+    // Process measurements if template is selected
+    let measurementData = undefined
+    if (selectedTemplateId.value) {
+      measurementData = processMeasurements()
     }
 
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to edit client details',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
+    // Prepare the update data
+    const updateData: Partial<Client> = {
+      ...form.value,
+      measurement: measurementData as any, // Cast to any to avoid type issues
     }
 
-    // Process measurements for saving
-    const processedMeasurements = processMeasurements()
-
-    // Update client
-    await $fetch(`/api/clients/${clientId}`, {
-      method: 'PUT',
-      body: {
-        name: form.value.name,
-        email: form.value.email,
-        phone: form.value.phone,
-        address: form.value.address,
-        measurements: processedMeasurements,
-      },
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      baseURL: window.location.origin,
-    })
+    // Update client via store
+    await clientStore.updateClient(clientId, updateData)
 
     // Show success message
-    useToast().add({
-      title: 'Client updated',
-      description: 'Client information has been updated successfully',
-      color: 'green',
+    toast.add({
+      title: 'Success',
+      description: 'Client updated successfully',
+      color: 'primary',
     })
 
-    // Redirect to client detail page after successful update
-    await router.push(getClientPath(clientId))
+    // Redirect to client detail page
+    navigateTo(`/clients/${clientId}`)
   } catch (error) {
     console.error('Error updating client:', error)
-    let errorMessage = 'Failed to update client'
 
-    // Handle specific error cases
-    if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      navigateTo('/auth/login')
-    }
-
-    useToast().add({
+    toast.add({
       title: 'Error',
-      description: errorMessage,
-      color: 'red',
+      description: clientError.value || 'Failed to update client. Please try again.',
+      color: 'error',
     })
   } finally {
-    isSubmitting.value = false
+    isUpdating.value = false
+  }
+}
+
+// Delete client
+const deleteClient = async () => {
+  isDeleting.value = true
+
+  try {
+    // Show confirmation dialog
+    const confirmed = await useConfirmDialog({
+      title: 'Delete Client',
+      description: 'Are you sure you want to delete this client? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      confirmButtonColor: 'red',
+    })
+
+    if (!confirmed) {
+      return
+    }
+
+    // Delete client
+    await clientStore.deleteClient(clientId)
+
+    // Show success message
+    toast.add({
+      title: 'Success',
+      description: 'Client deleted successfully',
+      color: 'primary',
+    })
+
+    // Redirect to clients list
+    navigateTo('/clients')
+  } catch (error) {
+    console.error('Error deleting client:', error)
+
+    toast.add({
+      title: 'Error',
+      description: clientError.value || 'Failed to delete client. Please try again.',
+      color: 'error',
+    })
+  } finally {
+    isDeleting.value = false
   }
 }
 
@@ -786,26 +811,20 @@ const deleteClient = async () => {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to delete this client',
-        color: 'orange',
+        color: 'warning',
       })
       navigateTo('/auth/login')
       return
     }
 
     // Delete client
-    await $fetch(`/api/clients/${clientId}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      baseURL: window.location.origin,
-    })
+    await clientStore.deleteClient(clientId)
 
     // Show success message
     useToast().add({
       title: 'Client deleted',
       description: 'Client has been deleted successfully',
-      color: 'green',
+      color: 'primary',
     })
 
     // Redirect to clients list
@@ -823,7 +842,7 @@ const deleteClient = async () => {
     useToast().add({
       title: 'Error',
       description: errorMessage,
-      color: 'red',
+      color: 'error',
     })
   } finally {
     isSubmitting.value = false
@@ -831,8 +850,7 @@ const deleteClient = async () => {
 }
 
 // Fetch client data and templates on mount
-onMounted(() => {
-  fetchClient()
-  loadTemplates()
+onMounted(async () => {
+  await Promise.all([fetchClient(), loadTemplates()])
 })
 </script>

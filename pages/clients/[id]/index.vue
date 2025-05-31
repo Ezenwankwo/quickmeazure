@@ -327,13 +327,13 @@
 </template>
 
 <script setup lang="ts">
-import { useAppRoutes } from '~/composables/useRoutes'
 import { useAuthStore } from '~/store/modules/auth'
+import { useClientStore } from '~/store/modules/client'
+import { storeToRefs } from 'pinia'
 
 // Composable
 const routes = useAppRoutes()
 const route = useRoute()
-const _router = useRouter() // Prefix with underscore to indicate it's intentionally unused
 
 // Get client ID from route
 const clientId = route.params.id as string
@@ -347,9 +347,9 @@ const _getEditClientPath = (id: string): string =>
     }) => string
   )({ id })
 
-// Client data
-const client = ref(null)
-const isLoading = ref(true)
+// Use client store
+const clientStore = useClientStore()
+const { currentClient: client, isLoading } = storeToRefs(clientStore)
 
 // Orders data
 const orders = ref([])
@@ -561,52 +561,21 @@ const debugMeasurements = data => {
 
 // Fetch client details
 const fetchClient = async () => {
-  isLoading.value = true
-
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    // Check if user is authenticated
-    if (!authStore.isLoggedIn) {
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to view client details',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
-    }
-
-    // Fetch client by ID with auth headers
-    const data = await $fetch(`/api/clients/${clientId}`, {
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
-
-    client.value = data
+    await clientStore.fetchClientById(clientId)
 
     // Run debug analysis on the measurement data
-    debugMeasurements(data)
+    if (client.value) {
+      debugMeasurements(client.value)
+    }
   } catch (error) {
     console.error('Error fetching client:', error)
-    let errorMessage = 'Failed to load client details. Please try again.'
-
-    // Handle unauthorized errors
-    if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      navigateTo('/auth/login')
-    }
 
     useToast().add({
       title: 'Error',
-      description: errorMessage,
-      color: 'red',
+      description: clientStore.error || 'Failed to load client details. Please try again.',
+      color: 'error',
     })
-  } finally {
-    isLoading.value = false
   }
 }
 
@@ -623,7 +592,7 @@ const fetchOrders = async () => {
       useToast().add({
         title: 'Authentication required',
         description: 'Please log in to view orders',
-        color: 'orange',
+        color: 'warning',
       })
       navigateTo('/auth/login')
       return
@@ -643,7 +612,7 @@ const fetchOrders = async () => {
     useToast().add({
       title: 'Error',
       description: 'Failed to load orders',
-      color: 'red',
+      color: 'error',
     })
   } finally {
     isLoadingOrders.value = false

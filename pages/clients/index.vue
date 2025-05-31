@@ -453,8 +453,6 @@ size="sm"
 
 <script setup lang="ts">
 // Import stores and utilities
-import { useAuthStore } from '~/store/modules/auth'
-import { useAppRoutes } from '~/composables/useRoutes'
 
 // Composable
 const routes = useAppRoutes()
@@ -493,6 +491,12 @@ interface Filters {
 const search = ref('')
 const sortBy = ref('name-asc')
 const currentPage = ref(1)
+
+// Use client store
+const clientStore = useClientStore()
+
+// Expose store state to template
+const { isLoading } = storeToRefs(clientStore)
 const _itemsPerPage = ref(10) // Prefix with underscore to indicate it's intentionally unused
 const isFilterOpen = ref(false)
 const isDeleteModalOpen = ref(false)
@@ -503,14 +507,11 @@ const filters = ref<Filters>({
 })
 
 // Data
-const clients = ref<Client[]>([])
 const filteredClients = ref<Client[]>([])
-const isLoading = ref(true)
-const error = ref<string | null>(null)
 
 // Set page metadata
 useHead({
-  title: 'Clients - QuickMeazure',
+  title: 'Clients',
 })
 
 // Table configuration
@@ -542,13 +543,6 @@ const columns = [
 ]
 
 // State management
-const clients = ref([])
-const isLoading = ref(true)
-const error = ref(null)
-const search = ref('')
-const isFilterOpen = ref(false)
-const filteredClients = ref([])
-const currentPage = ref(1)
 const isDeleteModalOpen = ref(false)
 const clientToDelete = ref(null)
 const isDeleting = ref(false)
@@ -675,56 +669,28 @@ const deleteClient = async () => {
   isDeleting.value = true
 
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
-    if (!authStore.isLoggedIn) {
-      throw new Error('No authenticated user found')
-    }
-
-    // Call the delete endpoint using auth store's headers
-    await $fetch(`/api/clients/${clientToDelete.value.id}`, {
-      method: 'DELETE',
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
-
-    // Remove from local array
-    const index = clients.value.findIndex(c => c.id === clientToDelete.value.id)
-    if (index !== -1) {
-      clients.value.splice(index, 1)
-    }
-
-    // Update filtered clients
-    filterClients()
+    await clientStore.deleteClient(clientToDelete.value.id)
 
     // Show success notification
     useToast().add({
       title: 'Client deleted',
-      description: `${clientToDelete.value.name} has been deleted successfully.`,
-      color: 'green',
+      description: `${clientToDelete.value.name} has been deleted`,
+      color: 'primary',
     })
 
-    // Close modal
+    // Close modal and reset state
     isDeleteModalOpen.value = false
     clientToDelete.value = null
+
+    // Refresh the clients list
+    filterClients()
   } catch (error) {
     console.error('Error deleting client:', error)
-    let errorMessage = 'Failed to delete client. Please try again.'
-
-    // Handle unauthorized errors
-    if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      // Redirect to login
-      navigateTo('/auth/login')
-    }
 
     useToast().add({
       title: 'Error',
-      description: errorMessage,
-      color: 'red',
+      description: error.value || 'Failed to delete client. Please try again.',
+      color: 'error',
     })
   } finally {
     isDeleting.value = false
@@ -735,167 +701,37 @@ const deleteClient = async () => {
 
 // Function to fetch clients from the API
 const fetchClients = async () => {
-  isLoading.value = true
-  error.value = null
-
-  console.log('Starting fetchClients', {
-    page: currentPage.value,
-    perPage: ITEMS_PER_PAGE,
-    search: search.value,
-    sortBy: sortBy.value,
-    filters: filters.value,
-  })
-
   try {
-    // Get auth and API stores
-    const authStore = useAuthStore()
+    const [sortField, sortOrder] = sortBy.value.split('-')
 
-    // Check authentication
-    if (!authStore.isLoggedIn) {
-      console.log('User not authenticated, redirecting to login')
-      useToast().add({
-        title: 'Authentication required',
-        description: 'Please log in to view clients',
-        color: 'orange',
-      })
-      navigateTo('/auth/login')
-      return
+    const filters = {
+      search: search.value,
+      sortField,
+      sortOrder,
+      page: currentPage.value,
+      perPage: ITEMS_PER_PAGE,
+      hasMeasurements: filters.value.hasMeasurements,
+      hasOrders: filters.value.hasOrders,
     }
 
-    console.log('User authenticated:', {
-      isLoggedIn: authStore.isLoggedIn,
-      hasToken: !!authStore.token,
-    })
+    await clientStore.fetchClients(filters)
 
-    // Build query parameters
-    const params = new URLSearchParams()
-
-    // Add search parameter if present
-    if (search.value) {
-      params.append('search', search.value)
-    }
-
-    // Add pagination parameters
-    params.append('page', currentPage.value.toString())
-    params.append('perPage', ITEMS_PER_PAGE.toString())
-
-    // Add sorting parameters
-    if (sortBy.value) {
-      const [field, direction] = sortBy.value.split('-')
-      params.append('sortField', field)
-      params.append('sortOrder', direction)
-    }
-
-    // Add filter parameters
-    if (filters.value.hasMeasurements !== null) {
-      params.append('hasMeasurements', filters.value.hasMeasurements.toString())
-    }
-
-    if (filters.value.hasOrders !== null) {
-      params.append('hasOrders', filters.value.hasOrders.toString())
-    }
-
-    // Log the request we're about to make
-    console.log(`Making API request to: /api/clients?${params.toString()}`)
-
-    // Try both direct fetch and API store to debug the issue
-    let response
-
-    try {
-      // First try direct fetch to see if the API is accessible
-      console.log('Attempting direct fetch...')
-      const directResponse = await $fetch(`/api/clients?${params.toString()}`, {
-        headers: {
-          ...authStore.getAuthHeaders(),
-          'Content-Type': 'application/json',
-        },
-      })
-
-      console.log('Direct fetch successful:', directResponse)
-      response = directResponse
-    } catch (directError) {
-      console.error('Direct fetch failed:', directError)
-    }
-
-    // Check if the response is valid
-    if (!response) {
-      throw new Error('No response received from API')
-    }
-
-    // Extract data from the API response
-    let clientsData = []
-
-    // Handle different possible response formats
-    if (Array.isArray(response)) {
-      // Direct array response
-      clientsData = response
-    } else if (response.data) {
-      // Response with data property
-      if (Array.isArray(response.data)) {
-        // Data is directly an array
-        clientsData = response.data
-      } else if (response.data.data && Array.isArray(response.data.data)) {
-        // Nested data property (common in paginated responses)
-        clientsData = response.data.data
-      } else if (response.data.items && Array.isArray(response.data.items)) {
-        // Data with items property
-        clientsData = response.data.items
-      }
-    }
-
-    console.log('Extracted clients data:', clientsData)
-
-    // Format the clients data for display
-    clients.value = clientsData.map(client => formatClientData(client))
+    // Update local pagination state based on store
+    totalItems.value = clientStore.totalCount
+    totalPages.value = Math.ceil(totalItems.value / ITEMS_PER_PAGE)
 
     // Update filtered clients list
-    filteredClients.value = clients.value
-
-    console.log('Formatted clients:', clients.value)
-
-    // Update pagination from server response if available
-    const pagination =
-      response.pagination ||
-      (response.data && response.data.pagination) ||
-      (response.data && response.data.meta && response.data.meta.pagination)
-
-    if (pagination) {
-      currentPage.value = pagination.page || pagination.current_page || 1
-      totalItems.value = pagination.total || 0
-      totalPages.value = pagination.total_pages || Math.ceil(totalItems.value / ITEMS_PER_PAGE)
-    } else {
-      // If no pagination info is available, calculate based on the array length
-      totalItems.value = clients.value.length
-      totalPages.value = Math.ceil(totalItems.value / ITEMS_PER_PAGE)
-    }
-
-    console.log('Pagination updated:', {
-      totalItems: totalItems.value,
-      totalPages: totalPages.value,
-      currentPage: currentPage.value,
-      itemsPerPage: ITEMS_PER_PAGE,
-    })
+    filteredClients.value = clientStore.clients.map(client => formatClientData(client))
   } catch (error) {
     console.error('Error fetching clients:', error)
-    let errorMessage = 'Failed to load clients. Please refresh the page.'
-
-    // Handle unauthorized errors
-    if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      // Redirect to login
-      navigateTo('/auth/login')
-    }
 
     useToast().add({
       title: 'Error',
-      description: errorMessage,
-      color: 'red',
+      description: clientStore.error || 'Failed to load clients. Please refresh the page.',
+      color: 'error',
     })
 
-    clients.value = []
     filteredClients.value = []
-  } finally {
-    isLoading.value = false
   }
 }
 
