@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import type { User, LoginCredentials, RegistrationData, AuthHeaders } from '../types'
+import type { User, LoginCredentials, RegistrationData } from '~/types/auth'
+import type { AuthHeaders } from '~/types/api'
 import { useRuntimeConfig, navigateTo } from '#app'
 import { useUserStore } from './user'
 import { getFromStorage, setToStorage, removeFromStorage, STORAGE_KEYS } from '~/utils/storage'

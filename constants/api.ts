@@ -76,28 +76,3 @@ export const API_ENDPOINTS = {
     BILLING: `${API_BASE}/settings/billing`,
   },
 }
-
-// Helper types for API responses
-export interface ApiResponse<T = any> {
-  data: T
-  message?: string
-  success: boolean
-}
-
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
-  meta: {
-    current_page: number
-    from: number
-    last_page: number
-    path: string
-    per_page: number
-    to: number
-    total: number
-  }
-}
-
-export interface ApiError {
-  message: string
-  statusCode: number
-  errors?: Record<string, string[]>
-}

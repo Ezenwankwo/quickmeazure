@@ -1,0 +1,57 @@
+/**
+ * Authentication and user-related types
+ */
+
+export interface User {
+  id: number
+  name: string
+  email: string
+  password: string
+  avatar?: string
+  businessName?: string
+  phone?: string
+  location?: string
+  bio?: string
+  specializations?: Record<string, any>
+  services?: Record<string, any>
+  hasCompletedSetup: boolean
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface AuthState {
+  user: User | null
+  token: string | null
+  refreshToken: string | null
+  isAuthenticated: boolean
+  loading: boolean
+  error: string | null
+}
+
+export interface LoginCredentials {
+  email: string
+  password: string
+  rememberMe?: boolean
+}
+
+export interface RegistrationData {
+  name: string
+  email: string
+  password: string
+  confirmPassword: string
+  acceptTerms: boolean
+}
+
+export interface PasswordResetData {
+  email: string
+  token: string
+  password: string
+  confirmPassword: string
+}
+
+export interface AuthResponse {
+  user: User
+  token: string
+  refreshToken: string
+  expiresIn: number
+}

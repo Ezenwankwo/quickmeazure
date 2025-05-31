@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { User, UserPreferences, SubscriptionPlan } from '../types'
+import type { User } from '~/types/auth'
+import type { UserPreferences } from '~/types/user'
+import type { SubscriptionPlan } from '~/types/subscription'
 import { useRuntimeConfig } from '#app'
 import { API_ENDPOINTS } from '~/constants/api'
 

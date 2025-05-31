@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useAuthStore } from './auth'
-import type { MeasurementTemplate } from '~/types'
+import type { MeasurementTemplate } from '~/types/measurement'
 import { API_ENDPOINTS } from '~/constants/api'
 
 // Define types for pending operations
@@ -17,8 +17,8 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
   const loading = ref(false)
   const error = ref<string | null>(null)
   const lastFetched = ref<number>(0)
-  const pendingOperations = ref<Record<string, PendingOperation>>({})
-  const optimisticUpdates = ref<Record<number, MeasurementTemplate>>({})
+  const pendingOperations = ref<Map<string, PendingOperation>>(new Map())
+  const optimisticUpdates = ref<Map<number, MeasurementTemplate>>(new Map())
 
   // Get Nuxt composables
   const { $fetch } = useNuxtApp()
@@ -95,19 +95,19 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
     const operationId = `create-${tempId}`
 
     if (optimistic) {
-      const optimisticTemplate = {
+      const optimisticTemplate: MeasurementTemplate = {
         ...templateData,
         id: tempId,
         archived: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }
+      } as MeasurementTemplate
       templates.value = [optimisticTemplate, ...templates.value]
-      pendingOperations.value[operationId] = {
+      pendingOperations.value.set(operationId, {
         type: 'create',
         templateId: tempId,
         timestamp: Date.now(),
-      }
+      })
     }
 
     try {
@@ -128,7 +128,7 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
 
       if (optimistic) {
         templates.value = templates.value.filter(t => t.id !== tempId)
-        delete pendingOperations.value[operationId]
+        pendingOperations.value.delete(operationId)
       }
 
       templates.value = [response, ...templates.value]
@@ -136,7 +136,7 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
     } catch (err: any) {
       if (optimistic) {
         templates.value = templates.value.filter(t => t.id !== tempId)
-        delete pendingOperations.value[operationId]
+        pendingOperations.value.delete(operationId)
       }
       error.value = err.message || 'Failed to create template'
       throw err
@@ -166,8 +166,12 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
         ...originalTemplate,
         ...updates,
         updatedAt: new Date().toISOString(),
-      }
-      pendingOperations.value[operationId] = { type: 'update', templateId, timestamp: Date.now() }
+      } as MeasurementTemplate
+      pendingOperations.value.set(operationId, {
+        type: 'update',
+        templateId,
+        timestamp: Date.now(),
+      })
     }
 
     try {
@@ -187,7 +191,7 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
       })
 
       if (optimistic) {
-        delete pendingOperations.value[operationId]
+        pendingOperations.value.delete(operationId)
       }
 
       templates.value[templateIndex] = response
@@ -195,7 +199,7 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
     } catch (err: any) {
       if (optimistic) {
         templates.value[templateIndex] = originalTemplate
-        delete pendingOperations.value[operationId]
+        pendingOperations.value.delete(operationId)
       }
       error.value = err.message || 'Failed to update template'
       throw err
@@ -222,7 +226,11 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
 
     if (optimistic) {
       templates.value = templates.value.filter(t => t.id !== templateId)
-      pendingOperations.value[operationId] = { type: 'delete', templateId, timestamp: Date.now() }
+      pendingOperations.value.set(operationId, {
+        type: 'delete',
+        templateId,
+        timestamp: Date.now(),
+      })
     }
 
     try {
@@ -248,7 +256,7 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
     } catch (err: any) {
       if (optimistic) {
         templates.value = [...templates.value, originalTemplate]
-        delete pendingOperations.value[operationId]
+        pendingOperations.value.delete(operationId)
       }
       error.value = err.message || 'Failed to delete template'
       throw err
@@ -261,13 +269,13 @@ export const useMeasurementTemplatesStore = defineStore('measurementTemplates', 
    * Apply any pending optimistic updates
    */
   const applyPendingOptimisticUpdates = () => {
-    Object.entries(optimisticUpdates.value).forEach(([id, template]) => {
-      const templateId = parseInt(id)
-      const index = templates.value.findIndex(t => t.id === templateId)
+    optimisticUpdates.value.forEach((template, id) => {
+      const index = templates.value.findIndex(t => t.id === id)
       if (index !== -1) {
-        templates.value[index] = { ...templates.value[index], ...template }
+        templates.value[index] = template
       }
     })
+    optimisticUpdates.value.clear()
   }
 
   return {
