@@ -1,0 +1,77 @@
+import { useAuthStore } from '~/store/modules/auth'
+import { useToast } from '#imports'
+
+interface SubscriptionData {
+  planId: string
+  planName?: string
+  billingPeriod: string
+  amount?: number
+}
+
+interface SubscriptionResponse {
+  success: boolean
+  data?: any
+  error?: string
+}
+
+/**
+ * Composable for managing subscription-related operations
+ */
+export function useSubscriptionManagement() {
+  const authStore = useAuthStore()
+  const toast = useToast()
+
+  /**
+   * Load subscription data
+   */
+  const loadSubscription = async (): Promise<SubscriptionResponse> => {
+    try {
+      const data = await $fetch('/api/subscription/status', {
+        method: 'GET',
+        headers: authStore.getAuthHeaders(),
+      })
+
+      return { success: true, data }
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message || error.message || 'Failed to load subscription'
+      toast.add({
+        title: 'Error',
+        description: message,
+        color: 'error',
+      })
+      return { success: false, error: message }
+    }
+  }
+
+  /**
+   * Create a new subscription
+   */
+  const createSubscription = async (
+    subscriptionData: SubscriptionData
+  ): Promise<SubscriptionResponse> => {
+    try {
+      const data = await $fetch('/api/subscription/create', {
+        method: 'POST',
+        body: subscriptionData,
+        headers: authStore.getAuthHeaders(),
+      })
+
+      return { success: true, data }
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message || error.message || 'Failed to create subscription'
+      toast.add({
+        title: 'Error',
+        description: message,
+        color: 'error',
+      })
+      return { success: false, error: message }
+    }
+  }
+
+  return {
+    loadSubscription,
+    createSubscription,
+  }
+}

@@ -332,10 +332,10 @@ const measurements = ref({
   notes: null,
 })
 
-// Use client store and API
+// Use client store and auth store
 const toast = useToast()
 const clientStore = useClientStore()
-const clientApi = useClientApi()
+const authStore = useAuthStore()
 const { currentClient: client, error: _clientError } = storeToRefs(clientStore) // Prefix with underscore to indicate intentionally unused
 const isLoading = ref(false)
 
@@ -560,29 +560,43 @@ const fetchClient = async () => {
   try {
     isLoading.value = true
 
-    // Fetch client using the API
-    const response = await clientApi.getClientById(clientId)
+    // Fetch client directly using useAsyncData
+    const { data: response, error } = await useAsyncData(`client-${clientId}`, () =>
+      $fetch(`/api/clients/${clientId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${useAuthStore().token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+    )
 
-    if (response.success && response.client) {
+    if (error.value) {
+      throw new Error(error.value?.data?.message || 'Failed to fetch client')
+    }
+
+    if (response.value && response.value.data) {
+      const client = response.value.data
+
       // Update store with the fetched client
-      clientStore.setCurrentClient(response.client)
+      clientStore.setCurrentClient(client)
 
       // Update form with client data
       form.value = {
-        name: response.client.name || '',
-        email: response.client.email || null,
-        phone: response.client.phone || null,
-        address: response.client.address || null,
+        name: client.name || '',
+        email: client.email || null,
+        phone: client.phone || null,
+        address: client.address || null,
       }
 
       // Process measurement data if available
-      if (response.client.measurement) {
+      if (client.measurement) {
         // If using the new schema with values field
-        if (response.client.measurement.values) {
-          const measurementValues = response.client.measurement.values as Record<string, any>
+        if (client.measurement.values) {
+          const measurementValues = client.measurement.values as Record<string, any>
 
           // Set notes
-          measurements.value.notes = response.client.measurement.notes || null
+          measurements.value.notes = client.measurement.notes || null
 
           // Store all measurement values in a temporary object for later use
           const tempValues: Record<string, any> = {}
@@ -613,17 +627,17 @@ const fetchClient = async () => {
               }
             })
           }
-        } else if (response.client.measurement.measurements) {
+        } else if (client.measurement.measurements) {
           // Handle old schema with direct measurements
-          selectedTemplateId.value = response.client.measurement.templateId || null
+          selectedTemplateId.value = client.measurement.templateId || null
           measurements.value = {
             ...measurements.value,
-            ...response.client.measurement.measurements,
+            ...client.measurement.measurements,
           }
         }
       }
     } else {
-      throw new Error(response.error || 'Failed to load client data')
+      throw new Error('Failed to load client data')
     }
   } catch (error) {
     console.error('Error fetching client:', error)
@@ -656,12 +670,19 @@ const updateClient = async () => {
       measurement: measurementData as any, // Cast to any to avoid type issues
     }
 
-    // Update client via API
-    const response = await useClientApi().updateClient(clientId, updateData)
+    // Update client directly using $fetch
+    const response = await $fetch(`/api/clients/${clientId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updateData),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${useAuthStore().token}`,
+      },
+    })
 
-    if (response.success) {
+    if (response && response.data) {
       // Update the store with the updated client data
-      clientStore.updateClientInStore(response.client)
+      clientStore.updateClientInStore(response.data)
 
       // Show success message
       toast.add({
@@ -673,7 +694,7 @@ const updateClient = async () => {
       // Redirect to client detail page
       navigateTo(`/clients/${clientId}`)
     } else {
-      throw new Error(response.error || 'Failed to update client')
+      throw new Error('Failed to update client')
     }
   } catch (error) {
     console.error('Error updating client:', error)
@@ -698,35 +719,38 @@ const deleteClient = async () => {
     // Show confirmation dialog
     const confirmed = await useConfirmDialog({
       title: 'Delete Client',
-      description: 'Are you sure you want to delete this client? This action cannot be undone.',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      content: `Are you sure you want to delete ${form.value.name}? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
       confirmButtonColor: 'red',
     })
 
     if (!confirmed) {
+      isDeleting.value = false
+      isLoading.value = false
       return
     }
 
-    // Delete client via API
-    const response = await useClientApi().deleteClient(clientId)
+    // Delete client directly using $fetch
+    await $fetch(`/api/clients/${clientId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${useAuthStore().token}`,
+      },
+    })
 
-    if (response.success) {
-      // Remove client from store
-      clientStore.removeClient(clientId)
+    // Remove client from store
+    clientStore.removeClient(clientId)
 
-      // Show success message
-      toast.add({
-        title: 'Success',
-        description: 'Client deleted successfully',
-        color: 'primary',
-      })
+    // Show success message
+    toast.add({
+      title: 'Success',
+      description: 'Client deleted successfully',
+      color: 'primary',
+    })
 
-      // Redirect to clients list
-      navigateTo('/clients')
-    } else {
-      throw new Error(response.error || 'Failed to delete client')
-    }
+    // Redirect to clients list
+    navigateTo(_CLIENTS_PATH)
   } catch (error) {
     console.error('Error deleting client:', error)
 

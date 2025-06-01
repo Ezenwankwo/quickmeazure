@@ -349,6 +349,7 @@ const _getEditClientPath = (id: string): string =>
 
 // Use client store
 const clientStore = useClientStore()
+const authStore = useAuthStore()
 const { currentClient: client, isLoading } = storeToRefs(clientStore)
 
 // Orders data
@@ -562,20 +563,41 @@ const debugMeasurements = data => {
 // Fetch client details
 const fetchClient = async () => {
   try {
-    await clientStore.fetchClientById(clientId)
+    isLoading.value = true
 
-    // Run debug analysis on the measurement data
-    if (client.value) {
-      debugMeasurements(client.value)
+    // Use useAsyncData for GET request
+    const { data: response, error } = await useAsyncData(`client-${clientId}`, () =>
+      $fetch(`/api/clients/${clientId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+        },
+      })
+    )
+
+    if (error.value) {
+      throw new Error(error.value?.data?.message || 'Failed to load client details')
+    }
+
+    if (response.value) {
+      // Update the store with the fetched client
+      clientStore.setCurrentClient(response.value.data)
+
+      // Run debug analysis on the measurement data
+      if (client.value) {
+        debugMeasurements(client.value)
+      }
     }
   } catch (error) {
     console.error('Error fetching client:', error)
 
     useToast().add({
       title: 'Error',
-      description: clientStore.error || 'Failed to load client details. Please try again.',
+      description: error.message || 'Failed to load client details. Please try again.',
       color: 'error',
     })
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -585,9 +607,6 @@ const fetchOrders = async () => {
   isLoadingOrders.value = true
 
   try {
-    // Get auth store instance
-    const authStore = useAuthStore()
-
     if (!authStore.isLoggedIn) {
       useToast().add({
         title: 'Authentication required',
@@ -598,20 +617,29 @@ const fetchOrders = async () => {
       return
     }
 
-    // Fetch orders for this client with auth headers
-    const data = await $fetch(`/api/orders?clientId=${clientId}`, {
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
+    // Use useAsyncData for GET request
+    const { data: response, error } = await useAsyncData(`orders-client-${clientId}`, () =>
+      $fetch(`/api/orders?clientId=${clientId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+    )
 
-    orders.value = data
+    if (error.value) {
+      throw new Error(error.value?.data?.message || 'Failed to load orders')
+    }
+
+    if (response.value) {
+      orders.value = response.value
+    }
   } catch (error) {
     console.error('Error fetching orders:', error)
     useToast().add({
       title: 'Error',
-      description: 'Failed to load orders',
+      description: error.message || 'Failed to load orders',
       color: 'error',
     })
   } finally {

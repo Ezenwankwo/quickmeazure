@@ -35,11 +35,9 @@
         <form class="space-y-6" @submit.prevent="handleLogin">
           <div class="space-y-4 flex flex-col">
             <div class="space-y-2">
-              <label
-for="email"
-class="block text-sm font-medium text-gray-700"
-                >Email address</label
-              >
+              <label for="email" class="block text-sm font-medium text-gray-700">
+                Email address
+              </label>
               <UInput
                 id="email"
                 v-model="form.email"
@@ -63,11 +61,7 @@ class="block text-sm font-medium text-gray-700"
                 size="lg"
               >
                 <template #trailing>
-                  <UButton
-color="gray"
-variant="ghost"
-icon
-@click="showPassword = !showPassword">
+                  <UButton color="neutral" variant="ghost" @click="showPassword = !showPassword">
                     <UIcon :name="showPassword ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'" />
                   </UButton>
                 </template>
@@ -120,14 +114,15 @@ icon
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import type { LoginCredentials as _LoginCredentials } from '~/types/auth'
+import type { LoginCredentials } from '~/types/auth'
 import { ROUTE_NAMES } from '~/constants/routes'
+import { useAuthStore } from '~/store/modules/auth'
 
-const authApi = useAuthApi()
 const toast = useToast()
 const router = useRouter()
+const authStore = useAuthStore()
 
-const { AUTH } = ROUTE_NAMES
+const { AUTH, DASHBOARD } = ROUTE_NAMES
 
 // Form state
 const form = ref({
@@ -142,39 +137,48 @@ const isLoading = ref(false)
 
 // Form submission handler
 async function handleLogin() {
-  if (!form.value.email || !form.value.password) {
-    toast.add({
-      title: 'Validation Error',
-      description: 'Please enter both email and password',
-      color: 'error',
-      icon: 'i-heroicons-exclamation-circle',
-    })
-    return
-  }
-
   isLoading.value = true
 
-  const result = await authApi.login({
-    email: form.value.email,
-    password: form.value.password,
-    remember: form.value.rememberMe,
-  })
+  try {
+    const loginCredentials: LoginCredentials = {
+      email: form.value.email,
+      password: form.value.password,
+      rememberMe: form.value.rememberMe,
+    }
 
-  if (result.success) {
-    // Show success message
-    toast.add({
-      title: 'Login Successful',
-      description: 'Welcome back!',
-      color: 'primary',
-      icon: 'i-heroicons-check-circle',
+    const response = await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: {
+        email: loginCredentials.email,
+        password: loginCredentials.password,
+        remember: loginCredentials.rememberMe,
+      },
+    })
+
+    // Handle successful login
+    const userData = response.user
+    const authToken = response.token
+
+    // Update auth state
+    await authStore.setAuthState({
+      user: userData,
+      token: authToken,
+      remember: loginCredentials.rememberMe,
     })
 
     // Redirect to dashboard or intended route
     const redirectTo = router.currentRoute.value.query.redirect as string
-    await router.push(redirectTo || '/dashboard')
+    await router.push(redirectTo || DASHBOARD.INDEX)
+  } catch (error: any) {
+    toast.add({
+      title: 'Login Error',
+      description: error.data.message,
+      color: 'error',
+      icon: 'i-heroicons-exclamation-triangle',
+    })
+  } finally {
+    isLoading.value = false
   }
-
-  isLoading.value = false
 }
 
 async function handleGoogleLogin() {

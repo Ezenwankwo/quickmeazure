@@ -246,13 +246,12 @@ import { computed, onMounted, ref } from 'vue'
 import DeleteModal from '~/components/DeleteModal.vue'
 import PlanSelectionModal from '~/components/plans/PlanSelectionModal.vue'
 import { useSubscriptionStore } from '~/store/modules/subscription'
-import { useSubscriptionApi } from '~/composables/useSubscriptionApi'
 import { useAuthStore } from '~/store/modules/auth'
 import { useUserStore } from '~/store/modules/user'
+import { API_ENDPOINTS } from '~/constants/api'
 
 // Initialize stores and composables
 const subscriptionStore = useSubscriptionStore()
-const subscriptionApi = useSubscriptionApi()
 const authStore = useAuthStore()
 const _userStore = useUserStore()
 
@@ -354,17 +353,24 @@ const refreshSubscription = async () => {
   try {
     console.log('Refreshing subscription data...')
 
-    // Fetch all subscription data using the API
-    const [
-      { data: statusData },
-      { data: plansData },
-      { data: billingData },
-      { data: paymentMethodsData },
-    ] = await Promise.all([
-      subscriptionApi.getSubscriptionStatus(),
-      subscriptionApi.getPlans(),
-      subscriptionApi.getBillingHistory(),
-      subscriptionApi.getPaymentMethods(),
+    // Fetch all subscription data using direct API calls
+    const [statusData, plansData, billingData, paymentMethodsData] = await Promise.all([
+      $fetch('/api/subscription/status', {
+        method: 'GET',
+        headers: authStore.getAuthHeaders(),
+      }),
+      $fetch('/api/subscription/plans', {
+        method: 'GET',
+        headers: authStore.getAuthHeaders(),
+      }),
+      $fetch('/api/subscription/billing-history', {
+        method: 'GET',
+        headers: authStore.getAuthHeaders(),
+      }),
+      $fetch('/api/subscription/payment-methods', {
+        method: 'GET',
+        headers: authStore.getAuthHeaders(),
+      }),
     ])
 
     // Update the store with the fetched data
@@ -414,21 +420,21 @@ const refreshSubscription = async () => {
 // Payment method management - handles both adding and changing payment methods
 const addPaymentMethod = async () => {
   try {
-    const { success, error } = await subscriptionApi.updatePaymentMethod({
-      // Pass payment method details from your form
-      // Example: token, card details, etc.
+    const response = await $fetch('/api/subscription/update-payment-method', {
+      method: 'POST',
+      body: {
+        // Pass payment method details from your form
+        // Example: token, card details, etc.
+      },
+      headers: authStore.getAuthHeaders(),
     })
 
-    if (success) {
-      await refreshSubscription()
-      toast.add({
-        title: 'Success',
-        description: 'Payment method updated successfully',
-        color: 'success',
-      })
-    } else if (error) {
-      throw new Error(error)
-    }
+    await refreshSubscription()
+    toast.add({
+      title: 'Success',
+      description: 'Payment method updated successfully',
+      color: 'success',
+    })
   } catch (error: any) {
     console.error('Error updating payment method:', error)
     toast.add({
@@ -478,22 +484,23 @@ const handlePlanFetchError = error => {
 const confirmPlanChange = async (planId: string) => {
   try {
     changePlanLoading.value = true
-    const { success, error } = await subscriptionApi.changePlan({
-      planId,
-      // Add any additional parameters required by your API
+
+    await $fetch('/api/subscription/change-plan', {
+      method: 'POST',
+      body: {
+        planId,
+        // Add any additional parameters required by your API
+      },
+      headers: authStore.getAuthHeaders(),
     })
 
-    if (success) {
-      await refreshSubscription()
-      toast.add({
-        title: 'Success',
-        description: 'Plan changed successfully',
-        color: 'success',
-      })
-      showPlanSelectionModal.value = false
-    } else if (error) {
-      throw new Error(error)
-    }
+    await refreshSubscription()
+    toast.add({
+      title: 'Success',
+      description: 'Plan changed successfully',
+      color: 'success',
+    })
+    showPlanSelectionModal.value = false
   } catch (error: any) {
     console.error('Error changing plan:', error)
     toast.add({
@@ -524,22 +531,23 @@ const cancelSubscription = () => {
 const confirmCancelSubscription = async () => {
   try {
     cancelLoading.value = true
-    const { success, error } = await subscriptionApi.cancelSubscription({
-      // Add any parameters required by your API
-      // For example: immediate: false to cancel at the end of the billing period
-    } as any)
 
-    if (success) {
-      await refreshSubscription()
-      toast.add({
-        title: 'Subscription Cancelled',
-        description: 'Your subscription has been cancelled',
-        color: 'success',
-      })
-      showCancelModal.value = false
-    } else if (error) {
-      throw new Error(error)
-    }
+    await $fetch('/api/subscription/cancel', {
+      method: 'POST',
+      body: {
+        // Add any parameters required by your API
+        // For example: immediate: false to cancel at the end of the billing period
+      },
+      headers: authStore.getAuthHeaders(),
+    })
+
+    await refreshSubscription()
+    toast.add({
+      title: 'Subscription Cancelled',
+      description: 'Your subscription has been cancelled',
+      color: 'success',
+    })
+    showCancelModal.value = false
   } catch (error: any) {
     console.error('Error cancelling subscription:', error)
     toast.add({
@@ -555,18 +563,18 @@ const confirmCancelSubscription = async () => {
 // Reactivate subscription
 const reactivateSubscription = async () => {
   try {
-    const { success, error } = await subscriptionApi.resumeSubscription({} as any)
+    await $fetch('/api/subscription/resume', {
+      method: 'POST',
+      body: {},
+      headers: authStore.getAuthHeaders(),
+    })
 
-    if (success) {
-      await refreshSubscription()
-      toast.add({
-        title: 'Subscription Reactivated',
-        description: 'Your subscription has been reactivated',
-        color: 'success',
-      })
-    } else if (error) {
-      throw new Error(error)
-    }
+    await refreshSubscription()
+    toast.add({
+      title: 'Subscription Reactivated',
+      description: 'Your subscription has been reactivated',
+      color: 'success',
+    })
   } catch (error: any) {
     console.error('Error reactivating subscription:', error)
     toast.add({

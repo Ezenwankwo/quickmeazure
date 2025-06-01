@@ -331,20 +331,24 @@ const fetchActivity = async () => {
       queryParams.append('end_date', endDate.toISOString())
     }
 
-    // Use the dedicated activity API endpoint
-    const url = `/api/activity?${queryParams.toString()}`
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authStore.getAuthHeaders(),
-      },
-    }).then(res => {
-      if (!res.ok) {
-        throw new Error(`API error: ${res.status} ${res.statusText}`)
-      }
-      return res.json()
-    })
+    // Use useAsyncData with $fetch for the activity API endpoint
+    const { data, error: fetchError } = await useAsyncData(
+      `activity-${queryParams.toString()}`,
+      () =>
+        $fetch(`/api/activity?${queryParams.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authStore.token}`,
+          },
+        })
+    )
+
+    if (fetchError.value) {
+      throw fetchError.value
+    }
+
+    const response = data.value
 
     if (response && response.activities) {
       activities.value = response.activities
@@ -365,7 +369,8 @@ const fetchActivity = async () => {
   } catch (err) {
     console.error('Failed to fetch activity:', err)
     error.value = true
-    errorMessage.value = err?.message || 'Failed to load activity data. Please try again.'
+    errorMessage.value =
+      err?.data?.message || err?.message || 'Failed to load activity data. Please try again.'
     activities.value = []
     totalCount.value = 0
     totalPages.value = 1

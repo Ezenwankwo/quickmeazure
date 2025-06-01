@@ -1,6 +1,7 @@
 import type { H3Event, EventHandlerRequest } from 'h3'
+import { defineCachedEventHandler } from '#imports'
 import { createError } from 'h3'
-import { useDrizzle, tables, eq, sql, desc } from '~/server/utils/drizzle'
+import { useDrizzle, tables, eq, sql, desc, and } from '~/server/utils/drizzle'
 
 interface ActivityItem {
   id: number
@@ -56,7 +57,7 @@ const getRelativeTime = (date: Date): string => {
   }
 }
 
-export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) => {
+export default defineCachedEventHandler(async (event: H3Event<EventHandlerRequest>) => {
   try {
     // Get authenticated user from event context
     const auth = event.context.auth
@@ -70,135 +71,152 @@ export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) =>
     const userId = auth.userId
     const limit = parseInt((event.context.query?.limit as string) || '10')
 
-    // Get database connection
     const db = useDrizzle()
 
-    // Get recent clients (created or updated)
-    const recentClients = await db
-      .select({
-        id: tables.clients.id,
-        name: tables.clients.name,
-        createdAt: tables.clients.createdAt,
-        action: sql<string>`'created'::text`,
-      })
-      .from(tables.clients)
-      .where(eq(tables.clients.userId, userId))
-      .orderBy(desc(tables.clients.createdAt))
+    // Combined query using UNION ALL for better performance
+    const activitiesQuery = db.$with('combined_activities').as(
+      db
+        // Client activities
+        .select({
+          id: tables.clients.id,
+          type: sql<string>`'client'::text`.as('type'),
+          action: sql<string>`'created'::text`.as('action'),
+          entity: tables.clients.name,
+          message: sql<string>`'Added new client ' || ${tables.clients.name}::text`.as('message'),
+          timestamp: tables.clients.createdAt,
+          icon: sql<string>`${activityIcons.client.created}::text`.as('icon'),
+          metadata: sql<
+            Record<string, any>
+          >`jsonb_build_object('clientId', ${tables.clients.id}::text)::jsonb`.as('metadata'),
+          sort_order: sql<number>`1::integer`.as('sort_order'),
+        })
+        .from(tables.clients)
+        .where(eq(tables.clients.userId, userId))
+
+        // Union with order activities
+        .unionAll(
+          db
+            .select({
+              id: tables.orders.id,
+              type: sql<string>`'order'::text`.as('type'),
+              action: sql<string>`CASE 
+                WHEN ${tables.orders.status} = 'completed'::text THEN 'completed'::text 
+                ELSE 'created'::text 
+              END`.as('action'),
+              entity: sql<string>`'Order #' || ${tables.orders.id}::text`,
+              message: sql<string>`CASE 
+                WHEN ${tables.orders.status} = 'completed'::text
+                THEN 'Completed order for ' || ${tables.clients.name}::text
+                ELSE 'New order created for ' || ${tables.clients.name}::text
+              END`.as('message'),
+              timestamp: sql<Date>`CASE 
+                WHEN ${tables.orders.status} = 'completed'::text AND ${tables.orders.updatedAt} IS NOT NULL 
+                THEN ${tables.orders.updatedAt}
+                ELSE ${tables.orders.createdAt}
+              END`.as('timestamp'),
+              icon: sql<string>`CASE 
+                WHEN ${tables.orders.status} = 'completed'::text
+                THEN ${activityIcons.order.completed}::text
+                ELSE ${activityIcons.order.created}::text
+              END`.as('icon'),
+              metadata: sql<Record<string, any>>`jsonb_build_object(
+                'orderId', ${tables.orders.id}::text,
+                'clientId', ${tables.orders.clientId}::text,
+                'clientName', ${tables.clients.name}::text
+              )::jsonb`.as('metadata'),
+              sort_order: sql<number>`2::integer`.as('sort_order'),
+            })
+            .from(tables.orders)
+            .innerJoin(tables.clients, eq(tables.orders.clientId, tables.clients.id))
+            .where(
+              and(
+                eq(tables.clients.userId, userId),
+                sql`${tables.orders.status} IN ('pending', 'in_progress', 'completed')`
+              )
+            )
+        )
+
+        // Union with payment activities
+        .unionAll(
+          db
+            .select({
+              id: tables.payments.id,
+              type: sql<string>`'payment'::text`.as('type'),
+              action: sql<string>`'received'::text`.as('action'),
+              entity: sql<string>`'Payment for Order #' || ${tables.payments.orderId}::text`,
+              message: sql<string>`'Received payment of ' || 
+                '₦' || ${tables.payments.amount}::text || ' from ' || ${tables.clients.name}::text`.as(
+                'message'
+              ),
+              timestamp: tables.payments.paymentDate,
+              icon: sql<string>`${activityIcons.payment.received}::text`.as('icon'),
+              metadata: sql<Record<string, any>>`jsonb_build_object(
+                'paymentId', ${tables.payments.id}::text,
+                'orderId', ${tables.payments.orderId}::text,
+                'amount', ${tables.payments.amount},
+                'clientName', ${tables.clients.name}::text
+              )::jsonb`.as('metadata'),
+              sort_order: sql<number>`3::integer`.as('sort_order'),
+            })
+            .from(tables.payments)
+            .innerJoin(tables.orders, eq(tables.payments.orderId, tables.orders.id))
+            .innerJoin(tables.clients, eq(tables.orders.clientId, tables.clients.id))
+            .where(eq(tables.clients.userId, userId))
+        )
+
+        // Union with measurement activities
+        .unionAll(
+          db
+            .select({
+              id: tables.measurements.id,
+              type: sql<string>`'measurement'::text`.as('type'),
+              action: sql<string>`'updated'::text`.as('action'),
+              entity: tables.clients.name,
+              message: sql<string>`'Updated measurements for ' || ${tables.clients.name}::text`.as(
+                'message'
+              ),
+              timestamp: tables.measurements.lastUpdated,
+              icon: sql<string>`${activityIcons.measurement.updated}::text`.as('icon'),
+              metadata: sql<Record<string, any>>`jsonb_build_object(
+                'measurementId', ${tables.measurements.id}::text,
+                'clientId', ${tables.measurements.clientId}::text,
+                'clientName', ${tables.clients.name}::text
+              )::jsonb`.as('metadata'),
+              sort_order: sql<number>`4::integer`.as('sort_order'),
+            })
+            .from(tables.measurements)
+            .innerJoin(tables.clients, eq(tables.measurements.clientId, tables.clients.id))
+            .where(
+              and(
+                eq(tables.clients.userId, userId),
+                sql`${tables.measurements.lastUpdated} IS NOT NULL`
+              )
+            )
+        )
+    )
+
+    // Get the combined and sorted activities
+    const combinedActivities = await db
+      .with(activitiesQuery)
+      .select()
+      .from(activitiesQuery)
+      .orderBy(desc(activitiesQuery.timestamp))
       .limit(limit)
 
-    // Get recent orders
-    const recentOrders = await db
-      .select({
-        id: tables.orders.id,
-        clientId: tables.orders.clientId,
-        status: tables.orders.status,
-        createdAt: tables.orders.createdAt,
-        updatedAt: tables.orders.updatedAt,
-        clientName: tables.clients.name,
-      })
-      .from(tables.orders)
-      .innerJoin(tables.clients, eq(tables.orders.clientId, tables.clients.id))
-      .where(eq(tables.clients.userId, userId))
-      .orderBy(desc(tables.orders.updatedAt))
-      .limit(limit)
-
-    // Get recent payments
-    const recentPayments = await db
-      .select({
-        id: tables.payments.id,
-        orderId: tables.payments.orderId,
-        amount: tables.payments.amount,
-        paymentDate: tables.payments.paymentDate,
-        clientName: tables.clients.name,
-      })
-      .from(tables.payments)
-      .innerJoin(tables.orders, eq(tables.payments.orderId, tables.orders.id))
-      .innerJoin(tables.clients, eq(tables.orders.clientId, tables.clients.id))
-      .where(eq(tables.clients.userId, userId))
-      .orderBy(desc(tables.payments.paymentDate))
-      .limit(limit)
-
-    // Get recent measurements
-    const recentMeasurements = await db
-      .select({
-        id: tables.measurements.id,
-        clientId: tables.measurements.clientId,
-        lastUpdated: tables.measurements.lastUpdated,
-        clientName: tables.clients.name,
-      })
-      .from(tables.measurements)
-      .innerJoin(tables.clients, eq(tables.measurements.clientId, tables.clients.id))
-      .where(eq(tables.clients.userId, userId))
-      .orderBy(desc(tables.measurements.lastUpdated))
-      .limit(limit)
-
-    // Now combine and format all activities
-    const activities: ActivityItem[] = [
-      // Format client activities
-      ...recentClients.map(client => ({
-        id: client.id,
-        type: 'client',
-        action: 'created',
-        entity: client.name,
-        message: `Added new client <strong>${client.name}</strong>`,
-        time: getRelativeTime(new Date(client.createdAt || new Date())),
-        icon: activityIcons.client.created,
-      })),
-
-      // Format order activities
-      ...recentOrders.map(order => {
-        const isCompleted = order.status === 'Completed'
-        const timestamp = isCompleted
-          ? order.updatedAt || order.createdAt || new Date()
-          : order.createdAt || new Date()
-
-        return {
-          id: order.id,
-          type: 'order',
-          action: isCompleted ? 'completed' : 'created',
-          entity: `Order #${order.id}`,
-          message: isCompleted
-            ? `Completed order for <strong>${order.clientName}</strong>`
-            : `New order created for <strong>${order.clientName}</strong>`,
-          time: getRelativeTime(new Date(timestamp)),
-          icon: activityIcons.order[isCompleted ? 'completed' : 'created'],
-        }
-      }),
-
-      // Format payment activities
-      ...recentPayments.map(payment => ({
-        id: payment.id,
-        type: 'payment',
-        action: 'received',
-        entity: `Payment for Order #${payment.orderId}`,
-        message: `Received payment of <strong>₦${payment.amount.toLocaleString()}</strong> from <strong>${payment.clientName}</strong>`,
-        time: getRelativeTime(new Date(payment.paymentDate || new Date())),
-        icon: activityIcons.payment.received,
-      })),
-
-      // Format measurement activities
-      ...recentMeasurements.map(measurement => {
-        const lastUpdated = measurement.lastUpdated || new Date()
-        return {
-          id: measurement.id,
-          type: 'measurement',
-          action: 'updated',
-          entity: measurement.clientName,
-          message: `Updated measurements for <strong>${measurement.clientName}</strong>`,
-          time: getRelativeTime(new Date(lastUpdated)),
-          icon: activityIcons.measurement.updated,
-        }
-      }),
-    ]
-
-    // Sort all activities by time (most recent first)
-    activities.sort((a, b) => {
-      // Use string comparison for the relative time strings
-      // This will work well enough for our relative time format
-      return a.time.localeCompare(b.time)
-    })
-
-    // Return the limited number of activities
+    // Format the combined activities
+    const activities: ActivityItem[] = combinedActivities.map(activity => ({
+      id: activity.id,
+      type: activity.type as 'client' | 'order' | 'payment' | 'measurement',
+      action: activity.action as 'created' | 'updated' | 'completed' | 'received',
+      entity: activity.entity,
+      message: activity.message.replace(
+        /<strong>(.*?)<\/strong>/g,
+        (_, p1) => `<strong>${p1}</strong>`
+      ),
+      time: getRelativeTime(new Date(activity.timestamp || new Date())),
+      icon: activity.icon,
+      metadata: activity.metadata,
+    }))
     return activities.slice(0, limit)
   } catch (error: any) {
     console.error('Dashboard recent activity API error:', error)

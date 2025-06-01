@@ -208,7 +208,7 @@ import { useRouter, useRoute } from 'vue-router'
 // Stores and composables
 import { useAuthStore } from '~/store/modules/auth'
 import { useStyleStore } from '~/store/modules/style'
-import { useStyleApi } from '~/composables/useStyleApi'
+// No need to import useStyleApi anymore
 
 // Types
 import type { Style } from '~/types/style'
@@ -221,7 +221,6 @@ const route = useRoute()
 const routes = useAppRoutes()
 const authStore = useAuthStore()
 const styleStore = useStyleStore()
-const styleApi = useStyleApi()
 const toast = useToast()
 
 // Constants
@@ -274,14 +273,25 @@ const fetchStyleData = async () => {
       return
     }
 
-    // Fetch style data using the API
-    const response = await styleApi.getStyleById(styleId)
+    // Fetch style data using direct fetch
+    const { data, error: fetchError } = await useAsyncData(`style-${styleId}`, () =>
+      $fetch(`/api/styles/${styleId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+        },
+      })
+    )
 
-    if (response.success && response.data) {
-      style.value = response.data
+    if (fetchError.value) {
+      throw new Error(fetchError.value?.data?.message || 'Failed to fetch style')
+    }
+
+    if (data.value) {
+      style.value = data.value
 
       // Update the style in the store for consistency
-      styleStore.currentStyle = response.data
+      styleStore.currentStyle = data.value
 
       // Fetch related orders (still using direct API call for now)
       try {
@@ -298,7 +308,7 @@ const fetchStyleData = async () => {
         // Don't fail the whole page if orders fail to load
       }
     } else {
-      error.value = response.error || 'Style not found'
+      error.value = 'Style not found'
       toast.add({
         title: 'Error',
         description: error.value,
@@ -372,10 +382,16 @@ const deleteStyle = async () => {
   try {
     isDeleting.value = true
 
-    // Delete the style using the API
-    const response = await styleApi.deleteStyle(style.value.id)
+    // Delete the style using direct fetch
+    await $fetch(`/api/styles/${style.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+      },
+    })
 
-    if (response.success) {
+    {
       toast.add({
         title: 'Success',
         description: 'Style deleted successfully',
@@ -389,8 +405,6 @@ const deleteStyle = async () => {
 
       // Navigate back to styles list
       router.push(STYLES_PATH)
-    } else {
-      throw new Error(response.error || 'Failed to delete style')
     }
   } catch (err: any) {
     console.error('Error deleting style:', err)

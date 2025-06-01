@@ -95,13 +95,13 @@ variant="outline"
 import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStyleStore } from '~/store/modules/style'
-import { useStyleApi } from '~/composables/useStyleApi'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Composable, stores, and API
 const routes = useAppRoutes()
 const router = useRouter()
 const styleStore = useStyleStore()
-const styleApi = useStyleApi()
+const authStore = useAuthStore()
 const toast = useToast()
 const STYLES_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.INDEX] as string
 
@@ -228,12 +228,16 @@ const saveStyle = async () => {
     // Add the image file
     formData.append('image', style.value.imageFile)
 
-    // Create the style using the API
-    const response = await styleApi.createStyle(formData)
+    // Create the style using direct fetch
+    const newStyle = await $fetch('/api/styles', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+      },
+    })
 
-    if (response.success && response.data) {
-      const newStyle = response.data
-
+    if (newStyle) {
       // Update the store with the new style
       styleStore.currentStyle = newStyle
 
@@ -246,8 +250,6 @@ const saveStyle = async () => {
 
       // Redirect to the new style's detail page
       await router.push(`${STYLES_PATH}/${newStyle.id}/detail`)
-    } else {
-      throw new Error(response.error || 'Failed to create style')
     }
   } catch (error: any) {
     console.error('Error creating style:', error)

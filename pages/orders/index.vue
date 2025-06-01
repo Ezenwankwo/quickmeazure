@@ -610,10 +610,10 @@ import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import type { Order } from '~/types/order'
 import { useAuthStore } from '~/store/modules/auth'
+import { API_ENDPOINTS } from '~/constants/api'
 
 // Stores and composables
 import { useOrderStore } from '~/store/modules/order'
-import { useOrderApi } from '~/composables/useOrderApi'
 
 // Composable
 const routes = useAppRoutes()
@@ -634,7 +634,7 @@ useHead({
 
 // Stores and composables
 const orderStore = useOrderStore()
-const orderApi = useOrderApi()
+const authStore = useAuthStore()
 const toast = useToast()
 
 // Used in template but not directly in script
@@ -932,20 +932,35 @@ const fetchOrders = async () => {
       }
     }
 
-    // Call the API using the new composable
-    const response = await orderApi.getOrders(queryParams)
+    // Call the API using useAsyncData with $fetch
+    const { data: response, error } = await useAsyncData(
+      `orders-${JSON.stringify(queryParams)}`,
+      () =>
+        $fetch(API_ENDPOINTS.ORDERS.BASE, {
+          method: 'GET',
+          params: queryParams,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authStore.token}`,
+          },
+        })
+    )
 
-    if (response.success && response.data) {
+    if (error.value) {
+      throw new Error(error.value?.data?.message || 'Failed to fetch orders')
+    }
+
+    if (response.value) {
       // Format the orders data for display
-      const formattedOrders = response.data.map(order => formatOrderData(order))
+      const formattedOrders = response.value.data.map(order => formatOrderData(order))
 
       // Update store with the new data
       orderStore.setOrders(formattedOrders)
 
       // Update pagination
-      if (response.total !== undefined) {
-        orderStore.setTotalCount(response.total)
-        totalItems.value = response.total
+      if (response.value.total !== undefined) {
+        orderStore.setTotalCount(response.value.total)
+        totalItems.value = response.value.total
         // No need to set totalPages here as it's computed from totalItems and ITEMS_PER_PAGE
       }
 

@@ -15,7 +15,8 @@
 <script setup>
 import { ref } from 'vue'
 import { usePaystack } from '~/composables/usePaystack'
-import { useSubscriptionManagement } from '~/composables/useSubscriptionManagement'
+import { useAuthStore } from '~/store/modules/auth'
+// Direct API calls instead of using useSubscriptionManagement
 
 const props = defineProps({
   amount: {
@@ -61,7 +62,8 @@ const emit = defineEmits(['success', 'error'])
 const loading = ref(false)
 const { processPayment } = usePaystack()
 const toast = useToast()
-const { loadSubscription } = useSubscriptionManagement()
+// Use direct $fetch calls instead of useSubscriptionManagement
+const authStore = useAuthStore()
 
 /**
  * Initiate payment with Paystack
@@ -77,8 +79,15 @@ const initiatePayment = async () => {
     onSuccess: async () => {
       loading.value = false
 
-      // Reload subscription data
-      await loadSubscription()
+      // Reload subscription data using direct API call
+      try {
+        await $fetch('/api/subscription/status', {
+          method: 'GET',
+          headers: authStore.getAuthHeaders(),
+        })
+      } catch (error) {
+        console.error('Failed to load subscription:', error)
+      }
 
       toast.add({
         title: 'Payment Successful',

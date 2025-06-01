@@ -300,10 +300,11 @@ size="lg" />
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ROUTE_NAMES, ROUTE_PATHS } from '~/constants/routes'
+import { useAuthStore } from '~/store/modules/auth'
 
 const router = useRouter()
 const toast = useToast()
-const authApi = useAuthApi()
+const authStore = useAuthStore()
 
 // Constants
 const { AUTH, LEGAL } = ROUTE_NAMES
@@ -418,40 +419,67 @@ async function handleRegister() {
   isLoading.value = true
 
   try {
-    const result = await authApi.register({
-      name: name.value,
-      email: email.value,
-      password: password.value,
+    const response = await $fetch('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: name.value,
+        email: email.value,
+        password: password.value,
+        subscriptionPlan: 'free',
+      }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
 
-    if (result.success) {
-      // Redirect to login page
-      await router.push(LOGIN_PATH)
-    } else {
-      // Handle specific error cases
-      const errorMessage = result.error || 'Registration failed'
-
-      if (
-        errorMessage.toLowerCase().includes('email is already registered') ||
-        errorMessage.toLowerCase().includes('email already exists') ||
-        errorMessage.toLowerCase().includes('email already registered')
-      ) {
-        formErrors.value.email =
-          'This email is already registered. Please use a different email or login instead.'
-      } else if (errorMessage.toLowerCase().includes('email')) {
-        formErrors.value.email = errorMessage
-      } else if (errorMessage.toLowerCase().includes('password')) {
-        formErrors.value.password = errorMessage
-      }
+    if (!response) {
+      throw new Error('No response received from server')
     }
-  } catch (error) {
-    console.error('Registration error:', error)
+
+    // Handle case where response is not in expected format but still contains data
+    let responseData = response
+    if (response.success === undefined) {
+      responseData = { success: true, data: response }
+    }
+
+    if (!responseData.success || !responseData.data) {
+      throw new Error(responseData.error || 'Registration failed')
+    }
+
+    // Show success message
     toast.add({
-      title: 'Registration Error',
-      description: 'An unexpected error occurred during registration.',
-      color: 'error',
-      icon: 'i-heroicons-exclamation-triangle',
+      title: 'Registration Successful',
+      description: 'Your account has been created. Please log in.',
+      color: 'primary',
+      icon: 'i-heroicons-check-circle',
     })
+
+    // Redirect to login page
+    await router.push(LOGIN_PATH)
+  } catch (error: any) {
+    console.error('Registration error:', error)
+    const errorMessage = error.data?.message || error.message || 'Registration failed'
+
+    // Handle specific error cases
+    if (
+      errorMessage.toLowerCase().includes('email is already registered') ||
+      errorMessage.toLowerCase().includes('email already exists') ||
+      errorMessage.toLowerCase().includes('email already registered')
+    ) {
+      formErrors.value.email =
+        'This email is already registered. Please use a different email or login instead.'
+    } else if (errorMessage.toLowerCase().includes('email')) {
+      formErrors.value.email = errorMessage
+    } else if (errorMessage.toLowerCase().includes('password')) {
+      formErrors.value.password = errorMessage
+    } else {
+      toast.add({
+        title: 'Registration Error',
+        description: errorMessage,
+        color: 'error',
+        icon: 'i-heroicons-exclamation-triangle',
+      })
+    }
   } finally {
     isLoading.value = false
   }

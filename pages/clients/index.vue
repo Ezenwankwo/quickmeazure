@@ -454,7 +454,7 @@ size="sm"
 <script setup lang="ts">
 // Import stores and utilities
 import { useClientStore } from '~/store/modules/client'
-import { useClientApi } from '~/composables/useClientApi'
+import { useAuthStore } from '~/store/modules/auth'
 import { onMounted, onUnmounted } from 'vue'
 
 // Composable
@@ -496,9 +496,9 @@ const clientToDelete = ref<Client | null>(null)
 const isLoading = ref(false)
 const _error = ref<string | null>(null) // Prefix with underscore to indicate it's intentionally unused
 
-// Initialize store and API
+// Initialize store
 const clientStore = useClientStore()
-const clientApi = useClientApi()
+const authStore = useAuthStore()
 
 // Data
 const filteredClients = ref<Client[]>([])
@@ -662,27 +662,30 @@ const deleteClient = async () => {
   isLoading.value = true
 
   try {
-    const response = await clientApi.deleteClient(clientToDelete.value.id)
-    if (response.success) {
-      // Update the store
-      clientStore.removeClient(clientToDelete.value.id)
+    // Use $fetch directly for DELETE request
+    await $fetch(`/api/clients/${clientToDelete.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${authStore.token}`,
+      },
+    })
 
-      useToast().add({
-        title: 'Success',
-        description: 'Client deleted successfully',
-        color: 'green',
-      })
+    // Update the store
+    clientStore.removeClient(clientToDelete.value.id)
 
-      // Refresh the clients list
-      await fetchClients()
-    } else {
-      throw new Error(response.error || 'Failed to delete client')
-    }
+    useToast().add({
+      title: 'Success',
+      description: 'Client deleted successfully',
+      color: 'green',
+    })
+
+    // Refresh the clients list
+    await fetchClients()
   } catch (err) {
     console.error('Error deleting client:', err)
     useToast().add({
       title: 'Error',
-      description: err.message || 'Failed to delete client. Please try again.',
+      description: err.data?.message || 'Failed to delete client. Please try again.',
       color: 'error',
     })
   } finally {
@@ -717,26 +720,39 @@ const fetchClients = async () => {
     // Destructure sort values but don't use them yet (prefix with underscore)
     const [_sortField, _sortOrder] = sortBy.value.split('-')
 
-    // Use the client API to fetch clients
-    const response = await clientApi.getClients(
-      currentPage.value,
-      ITEMS_PER_PAGE,
-      search.value
-      // Add other filters as needed
+    // Create query parameters
+    const query = new URLSearchParams({
+      page: currentPage.value.toString(),
+      limit: ITEMS_PER_PAGE.toString(),
+      search: search.value || '',
+    }).toString()
+
+    // Use useAsyncData for GET request
+    const { data: response, error } = await useAsyncData(
+      `clients-${currentPage.value}-${ITEMS_PER_PAGE}-${search.value}`,
+      () =>
+        $fetch(`/api/clients?${query}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${authStore.token}`,
+          },
+        })
     )
 
-    if (response.success) {
+    if (error.value) {
+      throw new Error(error.value?.data?.message || 'Failed to load clients')
+    }
+
+    if (response.value) {
       // Update the store with the new data
-      clientStore.setClients(response.clients, response.total)
+      clientStore.setClients(response.value.data, response.value.total)
 
       // Update local pagination state
-      totalItems.value = response.total
+      totalItems.value = response.value.total
       totalPages.value = Math.ceil(totalItems.value / ITEMS_PER_PAGE)
 
       // Update filtered clients list
-      filteredClients.value = response.clients.map(client => formatClientData(client))
-    } else {
-      throw new Error(response.error || 'Failed to load clients')
+      filteredClients.value = response.value.data.map(client => formatClientData(client))
     }
   } catch (err) {
     console.error('Error fetching clients:', err)

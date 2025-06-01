@@ -238,13 +238,14 @@ required>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useOrderApi } from '~/composables/useOrderApi'
 import type { CreateOrderInput, OrderItem } from '~/types/order'
+import { API_ENDPOINTS } from '~/constants/api'
+import { useAuthStore } from '~/store/modules/auth'
 
 // Composable
 const routes = useAppRoutes()
 const router = useRouter()
-const orderApi = useOrderApi()
+const authStore = useAuthStore()
 const toast = useToast()
 
 // Constants
@@ -359,10 +360,23 @@ const saveOrder = async () => {
       measurements: form.value.measurements || {},
     }
 
-    // Create the order using the API
-    const response = await orderApi.createOrder(orderData)
+    // Create the order using $fetch directly
+    const { data: response, error } = await useAsyncData('create-order', () =>
+      $fetch(API_ENDPOINTS.ORDERS.BASE, {
+        method: 'POST',
+        body: orderData,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`,
+        },
+      })
+    )
 
-    if (response.success && response.order) {
+    if (error.value) {
+      throw new Error(error.value?.data?.message || 'Failed to create order')
+    }
+
+    if (response.value) {
       // Show success message
       toast.add({
         title: 'Success',
@@ -371,9 +385,9 @@ const saveOrder = async () => {
       })
 
       // Redirect to the new order's detail page
-      await router.push(`/orders/${response.order.id}/detail`)
+      await router.push(`/orders/${response.value.id}/detail`)
     } else {
-      throw new Error(response.error || 'Failed to create order')
+      throw new Error('Failed to create order')
     }
   } catch (err: any) {
     console.error('Error creating order:', err)

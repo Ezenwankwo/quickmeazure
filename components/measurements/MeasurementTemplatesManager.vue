@@ -140,27 +140,31 @@ import { onMounted, ref, computed, watch } from 'vue'
 import { useToast } from '#imports'
 import type { MeasurementTemplate } from '~/types/measurement'
 import { useMeasurementTemplateStore } from '~/store/modules/measurementTemplate'
-import { useMeasurementTemplateApi } from '~/composables/useMeasurementTemplateApi'
+import { API_ENDPOINTS } from '~/constants/api'
 
 // Components
 import MeasurementTemplateCard from './MeasurementTemplateCard.vue'
 import MeasurementTemplateForm from './MeasurementTemplateForm.vue'
 
-// Template state and API
+// Template state
 const templateStore = useMeasurementTemplateStore()
-const templateApi = useMeasurementTemplateApi()
 const toast = useToast()
 
 // Fetch templates on mount
 const fetchTemplates = async () => {
   try {
     templateStore.setLoading(true)
-    const response = await templateApi.getTemplates()
 
-    if (response.success && response.templates) {
-      templateStore.setTemplates(response.templates)
-    } else {
-      throw new Error(response.error || 'Failed to fetch templates')
+    const { data, error } = await useAsyncData('measurement-templates', () =>
+      $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, { method: 'GET' })
+    )
+
+    if (error.value) {
+      throw new Error(error.value?.message || 'Failed to fetch templates')
+    }
+
+    if (data.value) {
+      templateStore.setTemplates(data.value)
     }
   } catch (error: any) {
     templateStore.setError(error.message || 'Failed to fetch templates')
@@ -229,20 +233,20 @@ const handleTemplateSaved = async () => {
 const archiveTemplate = async (id: number) => {
   try {
     templateStore.setLoading(true)
-    const response = await templateApi.updateTemplate(id, { archived: true })
 
-    if (response.success && response.template) {
-      templateStore.updateTemplateInStore(id, response.template)
+    const template = await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATE_BY_ID(id.toString()), {
+      method: 'PATCH',
+      body: { archived: true },
+    })
 
-      toast.add({
-        title: 'Template archived',
-        description: 'The template has been moved to the archive',
-        icon: 'i-heroicons-check-circle',
-        color: 'primary',
-      })
-    } else {
-      throw new Error(response.error || 'Failed to archive template')
-    }
+    templateStore.updateTemplateInStore(id, template)
+
+    toast.add({
+      title: 'Template archived',
+      description: 'The template has been moved to the archive',
+      icon: 'i-heroicons-check-circle',
+      color: 'primary',
+    })
   } catch (error: any) {
     console.error('Error archiving template:', error)
     templateStore.setError(error.message || 'Failed to archive template')
@@ -261,20 +265,20 @@ const archiveTemplate = async (id: number) => {
 const unarchiveTemplate = async (id: number) => {
   try {
     templateStore.setLoading(true)
-    const response = await templateApi.updateTemplate(id, { archived: false })
 
-    if (response.success && response.template) {
-      templateStore.updateTemplateInStore(id, response.template)
+    const template = await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATE_BY_ID(id.toString()), {
+      method: 'PATCH',
+      body: { archived: false },
+    })
 
-      toast.add({
-        title: 'Template restored',
-        description: 'The template has been restored to active templates',
-        icon: 'i-heroicons-check-circle',
-        color: 'primary',
-      })
-    } else {
-      throw new Error(response.error || 'Failed to restore template')
-    }
+    templateStore.updateTemplateInStore(id, template)
+
+    toast.add({
+      title: 'Template restored',
+      description: 'The template has been restored to active templates',
+      icon: 'i-heroicons-check-circle',
+      color: 'primary',
+    })
   } catch (error: any) {
     console.error('Error restoring template:', error)
     templateStore.setError(error.message || 'Failed to restore template')
@@ -301,23 +305,21 @@ const deleteTemplate = async () => {
   isDeleting.value = true
 
   try {
-    const response = await templateApi.deleteTemplate(templateToDelete.value.id)
+    await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATE_BY_ID(templateToDelete.value.id.toString()), {
+      method: 'DELETE',
+    })
 
-    if (response.success) {
-      templateStore.removeTemplate(templateToDelete.value.id)
+    templateStore.removeTemplate(templateToDelete.value.id)
 
-      toast.add({
-        title: 'Template deleted',
-        description: 'The template has been permanently removed',
-        icon: 'i-heroicons-check-circle',
-        color: 'primary',
-      })
+    toast.add({
+      title: 'Template deleted',
+      description: 'The template has been permanently removed',
+      icon: 'i-heroicons-check-circle',
+      color: 'primary',
+    })
 
-      isDeleteConfirmOpen.value = false
-      templateToDelete.value = null
-    } else {
-      throw new Error(response.error || 'Failed to delete template')
-    }
+    isDeleteConfirmOpen.value = false
+    templateToDelete.value = null
   } catch (error: any) {
     console.error('Error deleting template:', error)
     templateStore.setError(error.message || 'Failed to delete template')

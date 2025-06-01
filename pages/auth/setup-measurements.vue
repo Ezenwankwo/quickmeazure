@@ -444,12 +444,13 @@ class="block text-sm font-medium text-gray-700"
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useToast, useHead, navigateTo } from '#imports'
+import { ref, onMounted } from 'vue'
+import { useToast, useHead, navigateTo, useNuxtApp } from '#imports'
 import { storeToRefs } from 'pinia'
+import { useAuthStore, useMeasurementTemplateStore } from '~/store'
+import type { MeasurementTemplate, MeasurementField } from '~/types/measurement'
 import { ROUTE_NAMES } from '~/constants/routes'
-import { useAuthStore, useMeasurementTemplatesStore } from '~/store'
-import { _useMeasurementTemplates } from '~/composables/measurements/useMeasurementTemplates'
+import { API_ENDPOINTS } from '~/constants/api'
 
 useHead({
   title: 'Setup Measurements',
@@ -465,323 +466,169 @@ onMounted(() => {
 interface MeasurementField {
   id: string
   name: string
+  type: string
+  required: boolean
+  unit: string
+  order: number
+  category: string
 }
 
 // Define measurement template interface
 interface MeasurementTemplate {
+  id: number
+  userId: number
   name: string
-  upperBody: MeasurementField[]
-  lowerBody: MeasurementField[]
+  description: string
+  fields: MeasurementField[]
+  isDefault: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-// Initialize auth store
+// Initialize stores
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
 const toast = useToast()
+const { $api } = useNuxtApp()
+const measurementTemplateStore = useMeasurementTemplateStore()
 
 // Initialize API loading state
 const _apiLoading = ref(false)
 
-// Define tabs
-const tabs = [
-  { id: 'male', name: 'Male', icon: 'i-heroicons-user' },
-  { id: 'female', name: 'Female', icon: 'i-heroicons-user' },
-]
-
-// Active tab
-const activeTab = ref('male')
-
-// Form errors
-const formErrors = ref<Record<string, string>>({})
-
-// Processing state
-const _isProcessing = ref(false)
-const isSaving = ref(false)
+// Initialize loading state and templates
 const loading = ref(true)
+const currentTemplate = ref<MeasurementTemplate | null>(null)
 
 // Track if user has attempted to save
 const attemptedSave = ref(false)
 
-// Track original template state for detecting changes
-const originalTemplates = ref({})
-
-// Maximum number of fields allowed per section
-const maxFieldsPerSection = 15
-
 // Validate field on blur
-function validateField(field) {
-  field.validated = true
+function validateField(field: MeasurementField) {
   return !!field.name.trim()
-}
-
-// Validate template name
-function validateTemplateName(gender) {
-  if (!templates.value[gender].name.trim()) {
-    formErrors.value[`${gender}-name`] = 'Template name is required'
-    return false
-  }
-  // Use object assignment to remove the property instead of delete
-  formErrors.value = Object.fromEntries(
-    Object.entries(formErrors.value).filter(([key]) => key !== `${gender}-name`)
-  )
-  return true
-}
-
-// Check if template has unsaved changes
-function hasUnsavedChanges(tabId) {
-  if (!originalTemplates.value[tabId]) return false
-
-  const original = JSON.stringify(originalTemplates.value[tabId])
-  const current = JSON.stringify(templates.value[tabId])
-
-  return original !== current
-}
-
-// Switch between tabs with confirmation if there are unsaved changes
-function switchTab(newTabId) {
-  if (activeTab.value === newTabId) return
-
-  if (hasUnsavedChanges(activeTab.value)) {
-    // Show confirmation dialog
-    if (
-      confirm(
-        `You have unsaved changes in your ${activeTab.value === 'male' ? 'Male' : 'Female'} template. Save changes before switching?`
-      )
-    ) {
-      // Save current tab first
-      saveCurrentTab().then(() => {
-        activeTab.value = newTabId
-      })
-    } else {
-      // Discard changes and switch
-      if (originalTemplates.value[activeTab.value]) {
-        templates.value[activeTab.value] = JSON.parse(
-          JSON.stringify(originalTemplates.value[activeTab.value])
-        )
-      }
-      activeTab.value = newTabId
-    }
-  } else {
-    // No unsaved changes, switch directly
-    activeTab.value = newTabId
-  }
-}
-
-// Save just the current tab
-async function saveCurrentTab() {
-  const gender = activeTab.value
-
-  // Validate template name
-  if (!validateTemplateName(gender)) {
-    toast.add({
-      title: 'Error',
-      description: `Please provide a name for your ${gender === 'male' ? 'Male' : 'Female'} template`,
-      color: 'red',
-    })
-    return false
-  }
-
-  // Validate all fields have names
-  const emptyUpperFields = templates.value[gender].upperBody.filter(
-    field => !field.name.trim()
-  ).length
-  const emptyLowerFields = templates.value[gender].lowerBody.filter(
-    field => !field.name.trim()
-  ).length
-
-  if (emptyUpperFields > 0 || emptyLowerFields > 0) {
-    formErrors.value[`${gender}-fieldnames`] = true
-    toast.add({
-      title: 'Error',
-      description: `Please provide names for all measurement fields`,
-      color: 'red',
-    })
-    return false
-  }
-
-  try {
-    const templateToSave = templates.value[gender]
-
-    // Prepare template data for the store
-    const templateData = {
-      name: templateToSave.name,
-      gender: gender,
-      fields: [
-        ...templateToSave.upperBody.map((field, index) => ({
-          name: field.name,
-          category: 'upperBody',
-          order: index,
-        })),
-        ...templateToSave.lowerBody.map((field, index) => ({
-          name: field.name,
-          category: 'lowerBody',
-          order: index,
-        })),
-      ],
-      setupProcess: true, // Flag to indicate this is part of the setup process
-    }
-
-    // Save the template using the store
-    await measurementTemplatesStore.createTemplate(templateData)
-
-    // Update the original template reference
-    originalTemplates.value[gender] = JSON.parse(JSON.stringify(templateToSave))
-
-    toast.add({
-      title: 'Success',
-      description: `${gender === 'male' ? 'Male' : 'Female'} template saved successfully`,
-      color: 'green',
-    })
-    return true
-  } catch (error) {
-    console.error(`Error saving ${gender} template:`, error)
-    toast.add({
-      title: 'Error',
-      description: `Failed to save ${gender === 'male' ? 'Male' : 'Female'} template`,
-      color: 'red',
-    })
-    return false
-  }
 }
 
 // Generate a unique ID
 const generateId = () => {
-  return Math.random().toString(36).substring(2, 9)
+  return Math.random().toString(36).substr(2, 9)
 }
 
 // Get default template structure
 const getDefaultTemplate = (gender: 'male' | 'female'): MeasurementTemplate => {
-  const template: MeasurementTemplate = {
-    name: `Standard ${gender === 'male' ? 'Male' : 'Female'} Measurements`,
-    upperBody: [],
-    lowerBody: [],
+  const defaultFields: MeasurementField[] = [
+    {
+      id: generateId(),
+      name: 'Chest',
+      type: 'number',
+      required: true,
+      unit: 'in',
+      order: 0,
+      category: 'upperBody',
+    },
+    {
+      id: generateId(),
+      name: 'Waist',
+      type: 'number',
+      required: true,
+      unit: 'in',
+      order: 1,
+      category: 'upperBody',
+    },
+    {
+      id: generateId(),
+      name: 'Hips',
+      type: 'number',
+      required: true,
+      unit: 'in',
+      order: 2,
+      category: 'upperBody',
+    },
+  ]
+
+  return {
+    id: 0, // Will be set by the server
+    userId: user.value?.id || 0,
+    name: `Standard ${gender.charAt(0).toUpperCase() + gender.slice(1)} Measurements`,
+    description: `Standard measurement template for ${gender} clients`,
+    fields: defaultFields,
+    isDefault: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
-
-  // Default upper body measurements
-  const upperBodyDefaults =
-    gender === 'male'
-      ? ['Neck', 'Chest', 'Shoulders', 'Biceps', 'Forearms', 'Wrists']
-      : ['Neck', 'Shoulders', 'Bust', 'Under Bust', 'Waist', 'Upper Arms']
-
-  // Default lower body measurements
-  const lowerBodyDefaults =
-    gender === 'male'
-      ? ['Waist', 'Hips', 'Thighs', 'Calves', 'Ankles']
-      : ['Hips', 'Thighs', 'Calves', 'Ankles']
-
-  // Add default fields
-  upperBodyDefaults.forEach(name => {
-    template.upperBody.push({ id: generateId(), name })
-  })
-
-  lowerBodyDefaults.forEach(name => {
-    template.lowerBody.push({ id: generateId(), name })
-  })
-
-  return template
 }
 
-// Initialize templates with reactive objects
-const templates = ref<Record<string, MeasurementTemplate>>({
-  male: getDefaultTemplate('male'),
-  female: getDefaultTemplate('female'),
-})
-
-// Check if templates are valid
-const isTemplatesValid = computed(() => {
-  return (
-    templates.value.male.name.trim() !== '' &&
-    templates.value.female.name.trim() !== '' &&
-    templates.value.male.upperBody.every(field => field.name.trim() !== '') &&
-    templates.value.male.lowerBody.every(field => field.name.trim() !== '') &&
-    templates.value.female.upperBody.every(field => field.name.trim() !== '') &&
-    templates.value.female.lowerBody.every(field => field.name.trim() !== '')
-  )
-})
-
-// Initialize loading state and templates
+// On component mount, initialize template
 onMounted(async () => {
-  // Set loading state
-  loading.value = true
-
   try {
-    // Try to fetch existing templates from the API using the store
-    console.log('Initializing templates...')
+    loading.value = true
 
-    // Attempt to fetch templates, but don't worry if it fails (user might not have any yet)
-    try {
-      await measurementTemplatesStore.fetchTemplates()
+    // Load templates from store
+    await measurementTemplateStore.setTemplates([]) // This would normally be an API call
 
-      // If we have existing templates, we could use them here
-      // For now, we'll stick with the default templates for the setup process
-    } catch (fetchError) {
-      console.log('No existing templates found, using defaults', fetchError)
-    }
-
-    // Store original templates to track changes
-    originalTemplates.value = {
-      male: JSON.parse(JSON.stringify(templates.value.male)),
-      female: JSON.parse(JSON.stringify(templates.value.female)),
+    // If no templates exist, create a default one
+    if (measurementTemplateStore.templates.length === 0) {
+      currentTemplate.value = getDefaultTemplate('male')
+    } else {
+      currentTemplate.value = measurementTemplateStore.templates[0]
     }
   } catch (error) {
-    console.error('Error initializing templates:', error)
+    console.error('Error loading templates:', error)
     toast.add({
       title: 'Error',
-      description: 'Failed to initialize measurement templates',
+      description: 'Failed to load measurement templates. Please refresh the page to try again.',
       color: 'red',
+      icon: 'i-heroicons-exclamation-triangle',
+      timeout: 5000,
     })
   } finally {
-    // Set loading to false to show the content
     loading.value = false
   }
 })
 
 // Add a new field
-const addField = (gender: string, section: 'upperBody' | 'lowerBody') => {
-  if (!templates.value[gender]) return
+const addField = (category: 'upperBody' | 'lowerBody') => {
+  if (!currentTemplate.value) return
 
   const newField: MeasurementField = {
     id: generateId(),
     name: '',
+    type: 'number',
+    required: false,
+    unit: 'in',
+    order: currentTemplate.value.fields.filter(f => f.category === category).length,
+    category,
   }
 
-  templates.value[gender][section].push(newField)
-
-  // Clear any field name errors
-  if (formErrors.value[`${gender}-fieldnames`]) {
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-    delete formErrors.value[`${gender}-fieldnames`]
-  }
+  currentTemplate.value.fields.push(newField)
+  currentTemplate.value.updatedAt = new Date().toISOString()
 }
 
 // Remove a field
-const removeField = (gender: string, section: 'upperBody' | 'lowerBody', index: number) => {
-  if (!templates.value[gender] || !templates.value[gender][section]) return
+const removeField = (fieldId: string) => {
+  if (!currentTemplate.value) return
 
-  // Don't allow removing all fields
-  if (templates.value[gender][section].length <= 1) {
-    toast.add({
-      title: 'Cannot Remove Field',
-      description: 'You must have at least one measurement field in each section.',
-      color: 'orange',
-      icon: 'i-heroicons-exclamation-triangle',
-      timeout: 3000,
-    })
-    return
-  }
+  if (
+    confirm('Are you sure you want to remove this measurement field? This action cannot be undone.')
+  ) {
+    // Check if this is a default field that can't be removed
+    const defaultFields = ['Chest', 'Waist', 'Hips', 'Inseam']
+    const field = currentTemplate.value.fields.find(f => f.id === fieldId)
 
-  // Remove the field
-  templates.value[gender][section].splice(index, 1)
+    if (field && defaultFields.includes(field.name)) {
+      toast.add({
+        title: 'Cannot remove',
+        description: 'This is a default field and cannot be removed.',
+        color: 'warning',
+      })
+      return
+    }
 
-  // Clear any field name errors
-  const errorKey = `${gender}-fieldnames`
-  if (Object.prototype.hasOwnProperty.call(formErrors.value, errorKey)) {
-    formErrors.value[errorKey] = undefined
+    // Remove the field
+    currentTemplate.value.fields = currentTemplate.value.fields.filter(f => f.id !== fieldId)
+    currentTemplate.value.updatedAt = new Date().toISOString()
   }
 }
 
-// Initialize the measurement templates store
-const measurementTemplatesStore = useMeasurementTemplatesStore()
+const measurementTemplatesStore = useMeasurementTemplateStore()
 
 // Save templates and complete setup
 async function saveTemplates() {
@@ -791,60 +638,21 @@ async function saveTemplates() {
   // Clear previous errors
   formErrors.value = {}
 
-  // Validate template names
-  if (!templates.value.male.name.trim()) {
-    formErrors.value['male-name'] = 'Please provide a name for your male template'
-  }
-
-  if (!templates.value.female.name.trim()) {
-    formErrors.value['female-name'] = 'Please provide a name for your female template'
-  }
-
-  // Check if all fields have names
-  const maleEmptyFields = templates.value.male.upperBody
-    .concat(templates.value.male.lowerBody)
-    .filter(field => !field.name.trim()).length
-
-  const femaleEmptyFields = templates.value.female.upperBody
-    .concat(templates.value.female.lowerBody)
-    .filter(field => !field.name.trim()).length
-
-  if (maleEmptyFields > 0) {
-    formErrors.value['male-fieldnames'] = 'Please provide names for all measurement fields'
-    // Mark all empty fields as validated to show errors
-    templates.value.male.upperBody.forEach(field => {
-      if (!field.name.trim()) field.validated = true
-    })
-    templates.value.male.lowerBody.forEach(field => {
-      if (!field.name.trim()) field.validated = true
-    })
-  }
-
-  if (femaleEmptyFields > 0) {
-    formErrors.value['female-fieldnames'] = 'Please provide names for all measurement fields'
-    // Mark all empty fields as validated to show errors
-    templates.value.female.upperBody.forEach(field => {
-      if (!field.name.trim()) field.validated = true
-    })
-    templates.value.female.lowerBody.forEach(field => {
-      if (!field.name.trim()) field.validated = true
-    })
-  }
-
-  // If there are errors, don't proceed
-  if (Object.keys(formErrors.value).length > 0) {
+  // Validate templates
+  if (!isTemplatesValid.value) {
+    // Show error message
     toast.add({
-      title: 'Error',
-      description: 'Please fix the highlighted errors before continuing.',
-      color: 'red',
+      title: 'Validation Error',
+      description: 'Please fill in all required fields before saving.',
+      color: 'error',
     })
     return
   }
 
-  // Start saving
-  isSaving.value = true
-
   try {
+    // Set processing state
+    isProcessing.value = true
+
     // Prepare male template data
     const maleTemplateData = {
       name: templates.value.male.name,
@@ -883,10 +691,16 @@ async function saveTemplates() {
       setupProcess: true, // Flag to indicate this is part of the setup process
     }
 
-    // Save both templates using the measurement templates store
+    // Save both templates using direct $fetch calls
     const [maleResponse, femaleResponse] = await Promise.all([
-      measurementTemplatesStore.createTemplate(maleTemplateData),
-      measurementTemplatesStore.createTemplate(femaleTemplateData),
+      $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, {
+        method: 'POST',
+        body: maleTemplateData,
+      }),
+      $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, {
+        method: 'POST',
+        body: femaleTemplateData,
+      }),
     ])
 
     console.log('Templates saved:', { maleResponse, femaleResponse })
@@ -897,14 +711,21 @@ async function saveTemplates() {
       female: JSON.parse(JSON.stringify(templates.value.female)),
     }
 
-    // Refresh templates from the store
-    await measurementTemplatesStore.fetchTemplates()
+    // Refresh templates from the API
+    const { data } = await useAsyncData('measurement-templates', () =>
+      $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, { method: 'GET' })
+    )
+
+    // Update the store with fetched templates
+    if (data.value) {
+      measurementTemplatesStore.setTemplates(data.value)
+    }
 
     // Show success message
     toast.add({
       title: 'Success',
       description: 'Your measurement templates have been saved successfully.',
-      color: 'green',
+      color: 'primary',
     })
 
     // Navigate to dashboard using direct window.location approach
@@ -921,28 +742,19 @@ async function saveTemplates() {
     console.error('Error saving templates:', error)
 
     // Show error message with details if available
-    const errorMessage =
-      error.data?.message ||
-      error.message ||
-      'There was a problem saving your templates. Please try again.'
+    const errorMessage = error.data?.message || error.message || 'Failed to save templates'
     toast.add({
       title: 'Error',
       description: errorMessage,
-      color: 'red',
+      color: 'error',
     })
   } finally {
-    isSaving.value = false
+    isProcessing.value = false
   }
 }
 
 // Set page metadata
 useHead({
-  title: 'Setup Measurements - QuickMeazure',
-  meta: [
-    {
-      name: 'description',
-      content: 'Set up your measurement templates for male and female clients.',
-    },
-  ],
+  title: 'Setup Measurements',
 })
 </script>

@@ -234,13 +234,12 @@ class="px-4 sm:px-6 py-2">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useAuthStore } from '~/store/modules/auth'
 import { useStyleStore } from '~/store/modules/style'
-import { useStyleApi } from '~/composables/useStyleApi'
+import type { Style } from '~/types/style'
 
 // Composable
 const routes = useAppRoutes()
 const authStore = useAuthStore()
 const styleStore = useStyleStore()
-const styleApi = useStyleApi()
 
 // Constants
 const NEW_STYLE_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.NEW] as string
@@ -317,32 +316,46 @@ const loadStyles = async () => {
     isLoading.value = true
 
     // Build filters
-    const filters = {
-      page: currentPage.value,
-      limit: itemsPerPage.value,
-      search: search.value.trim() || undefined,
-      sortField: sortBy.value === 'name-asc' || sortBy.value === 'name-desc' ? 'name' : 'createdAt',
-      sortOrder: sortBy.value.endsWith('asc') ? 'asc' : 'desc',
+    const queryParams = new URLSearchParams()
+
+    // Add filters to query params
+    queryParams.append('page', currentPage.value.toString())
+    queryParams.append('limit', itemsPerPage.value.toString())
+
+    if (search.value.trim()) {
+      queryParams.append('search', search.value.trim())
     }
 
-    // Fetch styles using the API composable
-    const response = await styleApi.getStyles(filters)
+    const sortField =
+      sortBy.value === 'name-asc' || sortBy.value === 'name-desc' ? 'name' : 'createdAt'
+    queryParams.append('sortField', sortField)
 
-    if (response.success) {
-      styles.value = response.data || []
-      totalCount.value = response.total
-    } else if (response.error) {
-      useToast().add({
-        title: 'Error',
-        description: response.error,
-        color: 'error',
+    const sortOrder = sortBy.value.endsWith('asc') ? 'asc' : 'desc'
+    queryParams.append('sortOrder', sortOrder)
+
+    // Fetch styles directly using useAsyncData
+    const { data, error } = await useAsyncData(`styles-${queryParams.toString()}`, () =>
+      $fetch(`/api/styles?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`,
+        },
       })
+    )
+
+    if (error.value) {
+      throw error.value
     }
+
+    styles.value = data.value?.data || []
+    totalCount.value = data.value?.total || 0
   } catch (error) {
     console.error('Error loading styles:', error)
     useToast().add({
       title: 'Error',
-      description: 'Failed to load styles. Please try again.',
+      description:
+        error.data?.message || error.message || 'Failed to load styles. Please try again.',
       color: 'error',
     })
   } finally {
@@ -412,34 +425,37 @@ const deleteStyle = async () => {
   isDeleting.value = true
 
   try {
-    // Delete the style using the API
-    const response = await styleApi.deleteStyle(styleToDelete.value.id)
+    // Delete the style directly using $fetch
+    await $fetch(`/api/styles/${styleToDelete.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authStore.token}`,
+      },
+    })
 
-    if (response.success) {
-      // Show success message
-      useToast().add({
-        title: 'Success',
-        description: 'Style deleted successfully',
-        color: 'primary',
-      })
+    // Show success message
+    useToast().add({
+      title: 'Success',
+      description: 'Style deleted successfully',
+      color: 'primary',
+    })
 
-      // Reset delete state
-      showDeleteModal.value = false
-      styleToDelete.value = null
+    // Reset delete state
+    showDeleteModal.value = false
+    styleToDelete.value = null
 
-      // Reload styles to update the list if needed
-      if (styles.value.length === 0 && currentPage.value > 1) {
-        currentPage.value--
-      }
-      await loadStyles()
-    } else {
-      throw new Error(response.error || 'Failed to delete style')
+    // Reload styles to update the list if needed
+    if (styles.value.length === 0 && currentPage.value > 1) {
+      currentPage.value--
     }
+    await loadStyles()
   } catch (error) {
     console.error('Error deleting style:', error)
     useToast().add({
       title: 'Error',
-      description: error.message || 'Failed to delete style. Please try again.',
+      description:
+        error.data?.message || error.message || 'Failed to delete style. Please try again.',
       color: 'error',
     })
   } finally {

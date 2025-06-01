@@ -302,9 +302,10 @@
 </template>
 
 <script setup lang="ts">
-import { useOrderApi } from '~/composables/useOrderApi'
 import { useToast } from '#imports'
 import { ref, onMounted } from 'vue'
+import { API_ENDPOINTS } from '~/constants/api'
+import { useAuthStore } from '~/store/modules/auth'
 import type { Order } from '~/types/order'
 
 // Get the order ID from the route
@@ -312,7 +313,7 @@ const route = useRoute()
 const orderId = route.params.id as string
 
 // Initialize composables
-const orderApi = useOrderApi()
+const authStore = useAuthStore()
 const toast = useToast()
 
 // State
@@ -326,12 +327,24 @@ const fetchOrder = async () => {
   error.value = null
 
   try {
-    const response = await orderApi.getOrderById(orderId)
+    const { data, error: fetchError } = await useAsyncData(`order-${orderId}`, () =>
+      $fetch(`${API_ENDPOINTS.ORDERS.BASE}/${orderId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`,
+        },
+      })
+    )
 
-    if (response.success && response.data) {
-      order.value = response.data
+    if (fetchError.value) {
+      throw new Error(fetchError.value?.data?.message || 'Failed to fetch order')
+    }
+
+    if (data.value) {
+      order.value = data.value
     } else {
-      throw new Error(response.error || 'Failed to fetch order')
+      throw new Error('Failed to fetch order')
     }
   } catch (err) {
     console.error('Error fetching order:', err)

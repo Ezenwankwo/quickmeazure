@@ -142,7 +142,8 @@ import { useToast } from '#imports'
 import { monthlyPlans, annualPlans } from '~/data/subscription-plans'
 import { useAppRoutes } from '~/composables/useRoutes'
 import { usePaystack } from '~/composables/usePaystack'
-import { useSubscriptionManagement } from '~/composables/useSubscriptionManagement'
+import { useAuthStore } from '~/store/modules/auth'
+// Direct API calls instead of using useSubscriptionManagement
 import PlanSelectionModal from '~/components/plans/PlanSelectionModal.vue'
 
 // Composable
@@ -155,8 +156,8 @@ const DASHBOARD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX] as
 
 // Add paystack composable
 const { processPayment } = usePaystack()
-// Add subscription management
-const { loadSubscription: _loadSubscription, createSubscription } = useSubscriptionManagement()
+// Use direct API calls instead of useSubscriptionManagement
+const authStore = useAuthStore()
 
 // Set page metadata
 useHead({
@@ -218,15 +219,19 @@ const skipPayment = async () => {
   isProcessing.value = true
 
   try {
-    // Create a subscription object for free/growth plan users
-    const result = await createSubscription({
-      planId: selectedPlan.value.id,
-      planName: selectedPlan.value.label,
-      billingPeriod: billingPeriod.value,
+    // Create a subscription object for free/growth plan users using direct API call
+    const result = await $fetch('/api/subscription/create', {
+      method: 'POST',
+      body: {
+        planId: selectedPlan.value.id,
+        planName: selectedPlan.value.label,
+        billingPeriod: billingPeriod.value,
+      },
+      headers: authStore.getAuthHeaders(),
     })
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to create subscription')
+    if (!result) {
+      throw new Error('Failed to create subscription')
     }
 
     // Show success message
@@ -271,14 +276,18 @@ async function processPaystackPayment() {
   try {
     isProcessing.value = true
 
-    // Create subscription first
+    // Create subscription first using direct API call
     const subscriptionData = {
       planId: selectedPlan.value.id,
       billingPeriod: billingPeriod.value,
       amount: selectedPlan.value.numericPrice,
     }
 
-    const { data: subscription } = await createSubscription(subscriptionData)
+    const subscription = await $fetch('/api/subscription/create', {
+      method: 'POST',
+      body: subscriptionData,
+      headers: authStore.getAuthHeaders(),
+    })
 
     // Process payment
     const paymentData = {

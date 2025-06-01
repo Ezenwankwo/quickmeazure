@@ -6,17 +6,22 @@ export interface User {
   id: number
   name: string
   email: string
-  password: string
-  avatar?: string
-  businessName?: string
-  phone?: string
-  location?: string
-  bio?: string
+  password?: string
+  avatar?: string | null
+  businessName?: string | null
+  phone?: string | null
+  location?: string | null
+  bio?: string | null
   specializations?: Record<string, any>
   services?: Record<string, any>
   hasCompletedSetup: boolean
   createdAt: string
-  updatedAt?: string
+  updatedAt?: string | null
+  subscription?: {
+    plan: string
+    status: string
+    expiryDate: string | null
+  }
 }
 
 export interface AuthState {

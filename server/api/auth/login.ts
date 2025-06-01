@@ -92,12 +92,20 @@ export default defineEventHandler(async event => {
       }
     )
 
-    // Set user session with nuxt-auth-utils
+    // Set user session with nuxt-auth-utils with full user data
     await setUserSession(event, {
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
+        avatar: user.avatar,
+        businessName: user.businessName,
+        phone: user.phone,
+        location: user.location,
+        bio: user.bio,
+        specializations: user.specializations,
+        services: user.services,
+        hasCompletedSetup: user.hasCompletedSetup,
         subscriptionPlan,
         subscriptionExpiry,
       },
@@ -111,14 +119,30 @@ export default defineEventHandler(async event => {
       path: '/',
     })
 
-    // Return user data and token without sensitive fields
+    // Return full user data and token similar to profile endpoint
     return {
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        subscriptionPlan,
-        subscriptionExpiry,
+        avatar: user.avatar,
+        businessName: user.businessName,
+        phone: user.phone,
+        location: user.location,
+        bio: user.bio,
+        specializations: user.specializations,
+        services: user.services,
+        hasCompletedSetup: user.hasCompletedSetup,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        subscription: {
+          plan: subscriptionPlan,
+          status:
+            subscriptions.length > 0 && subscriptions[0].status === 'active'
+              ? 'active'
+              : 'inactive',
+          expiryDate: subscriptionExpiry ? new Date(subscriptionExpiry) : null,
+        },
       },
       token,
     }

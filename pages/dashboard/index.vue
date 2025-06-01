@@ -11,24 +11,8 @@
       }"
     />
 
-    <!-- Loading State -->
-    <div v-if="isLoading" class="text-center py-12">
-      <div class="flex justify-center">
-        <UIcon name="i-heroicons-arrow-path" class="h-8 w-8 text-primary-500 animate-spin" />
-      </div>
-      <p class="mt-2 text-gray-500">Loading dashboard data...</p>
-    </div>
-
-    <!-- Error State -->
-    <UAlert
-v-else-if="error"
-:title="error"
-color="red"
-variant="soft"
-class="mb-6" />
-
     <!-- Dashboard Content -->
-    <template v-else>
+    <template>
       <!-- Stats Overview -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <UCard class="bg-white">
@@ -281,10 +265,15 @@ import { onMounted, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '~/store/modules/dashboard'
 import { useAppRoutes } from '~/composables/useRoutes'
+import { useAuthStore } from '~/store/modules/auth'
+import { API_ENDPOINTS } from '~/constants/api'
 import type { ChartPeriod } from '~/types/dashboard'
+
+type _ChartPeriod = ChartPeriod // Workaround for unused type import
 
 // Initialize stores
 const dashboardStore = useDashboardStore()
+const authStore = useAuthStore()
 const { stats, recentActivity, dueOrders, clientGrowth, isLoading, error, chartPeriod } =
   storeToRefs(dashboardStore)
 
@@ -418,65 +407,199 @@ const getStatusColor = (status: string) => {
   }
 }
 
-// Import the dashboard API composable
-const dashboardApi = useDashboardApi()
+// Toast for notifications
+const toast = useToast()
 
-// Watch for chart period changes
-watch(chartPeriod, (newPeriod: ChartPeriod) => {
-  fetchClientGrowth(newPeriod)
+// Client growth data
+const fetchClientGrowth = async () => {
+  try {
+    const token = authStore.token
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    return await $fetch(API_ENDPOINTS.DASHBOARD.CLIENT_GROWTH, {
+      method: 'GET',
+      params: { period: chartPeriod.value },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  } catch (error) {
+    console.error('Error fetching client growth data:', error)
+    throw error
+  }
+}
+
+const {
+  data: clientGrowthData,
+  status: clientGrowthStatus,
+  refresh: refreshClientGrowth,
+} = useAsyncData('client-growth', fetchClientGrowth, {
+  default: () => ({
+    labels: [],
+    data: [],
+    totalGrowth: 0,
+    percentGrowth: 0,
+  }),
+  watch: [chartPeriod],
+  immediate: true,
 })
 
-// Fetch client growth data
-const fetchClientGrowth = async (period: ChartPeriod = 'month') => {
-  try {
-    dashboardStore.setLoading(true)
-    dashboardStore.setError(null)
-    dashboardStore.setChartPeriod(period)
+// Watch for changes in chart period and refresh data
+watch(
+  chartPeriod,
+  () => {
+    console.log('Chart period changed, refreshing client growth data...')
+    refreshClientGrowth()
+  },
+  { immediate: true }
+)
 
-    const response = await dashboardApi.getClientGrowth(period)
+// Watch for changes in client growth data
+watchEffect(() => {
+  const status = clientGrowthStatus.value
+  const data = clientGrowthData.value
 
-    if (response.success && response.growthData) {
-      dashboardStore.setClientGrowth(response.growthData)
-    } else {
-      throw new Error(response.error || 'Failed to fetch client growth data')
-    }
-  } catch (err: any) {
-    dashboardStore.setError(err.message || 'Failed to fetch client growth data')
-    console.error('Error fetching client growth data:', err)
-  } finally {
+  console.log('Client growth status changed:', { status, hasData: !!data })
+
+  if (status === 'success' && data) {
+    console.log('Setting client growth data:', data)
+    dashboardStore.setClientGrowth(data)
     dashboardStore.setLoading(false)
+  } else if (status === 'error') {
+    console.error('Error fetching client growth data')
+    const errorMessage = 'Failed to fetch client growth data'
+    dashboardStore.setError(errorMessage)
+    dashboardStore.setLoading(false)
+    toast.add({
+      title: 'Error',
+      description: errorMessage,
+      color: 'error',
+      timeout: 5000,
+    })
+  } else if (status === 'pending') {
+    dashboardStore.setLoading(true)
+  }
+})
+
+// Function to fetch dashboard data with proper error handling
+const fetchDashboardData = async () => {
+  console.log('Fetching dashboard data...')
+  const token = authStore.token
+
+  if (!token) {
+    console.error('No authentication token found')
+    // Instead of throwing, return default values to prevent infinite loading
+    return {
+      stats: { totalClients: 0, activeOrders: 0, revenue: 0, newClients: 0 },
+      activities: [],
+      dueOrders: [],
+    }
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  }
+
+  try {
+    console.log('Starting dashboard API calls...')
+    const [stats, activities, dueOrders] = await Promise.allSettled([
+      $fetch(API_ENDPOINTS.DASHBOARD.STATS, {
+        method: 'GET',
+        headers,
+        retry: 1,
+        retryDelay: 1000,
+      }).catch(err => {
+        console.error('Error fetching stats:', err)
+        return null
+      }),
+      $fetch(API_ENDPOINTS.DASHBOARD.RECENT_ACTIVITY, {
+        method: 'GET',
+        params: { limit: 5 },
+        headers,
+        retry: 1,
+        retryDelay: 1000,
+      }).catch(err => {
+        console.error('Error fetching recent activity:', err)
+        return []
+      }),
+      $fetch(API_ENDPOINTS.DASHBOARD.ORDERS_DUE_SOON, {
+        method: 'GET',
+        params: { limit: 5 },
+        headers,
+        retry: 1,
+        retryDelay: 1000,
+      }).catch(err => {
+        console.error('Error fetching due orders:', err)
+        return []
+      }),
+    ])
+
+    // Process the results with fallback values
+    const result = {
+      stats:
+        stats.status === 'fulfilled' && stats.value
+          ? stats.value
+          : { totalClients: 0, activeOrders: 0, revenue: 0, newClients: 0 },
+      activities: activities.status === 'fulfilled' && activities.value ? activities.value : [],
+      dueOrders: dueOrders.status === 'fulfilled' && dueOrders.value ? dueOrders.value : [],
+    }
+
+    console.log('Dashboard data fetched successfully:', result)
+    return result
+  } catch (error) {
+    console.error('Error in fetchDashboardData:', error)
+    // Return default values on error
+    return {
+      stats: { totalClients: 0, activeOrders: 0, revenue: 0, newClients: 0 },
+      activities: [],
+      dueOrders: [],
+    }
   }
 }
 
 // Fetch all dashboard data in a single request
-const fetchDashboardData = async () => {
-  try {
-    dashboardStore.setLoading(true)
-    dashboardStore.setError(null)
+const { data: dashboardData, status } = useAsyncData('dashboard-data', fetchDashboardData, {
+  default: () => ({
+    stats: { totalClients: 0, activeOrders: 0, revenue: 0, newClients: 0 },
+    activities: [],
+    dueOrders: [],
+  }),
+  immediate: true,
+})
 
-    const response = await dashboardApi.getDashboardData()
+// Watch for changes in the async data
+watch(
+  [dashboardData, status],
+  ([data, newStatus]) => {
+    console.log('Dashboard data status changed:', { status: newStatus, hasData: !!data?.value })
 
-    if (response.success) {
-      if (response.stats) dashboardStore.setStats(response.stats)
-      if (response.activities) dashboardStore.setRecentActivity(response.activities)
-      if (response.dueOrders) dashboardStore.setDueOrders(response.dueOrders)
-    } else {
-      throw new Error(response.error || 'Failed to fetch dashboard data')
+    if (newStatus === 'success' && data?.value) {
+      console.log('Updating dashboard store with new data')
+      dashboardStore.setStats(data.value.stats)
+      dashboardStore.setRecentActivity(data.value.activities)
+      dashboardStore.setDueOrders(data.value.dueOrders)
+      dashboardStore.setLoading(false)
+    } else if (newStatus === 'error') {
+      console.error('Error fetching dashboard data')
+      const errorMessage = 'Failed to fetch dashboard data. Using cached data if available.'
+      dashboardStore.setError(errorMessage)
+      dashboardStore.setLoading(false)
+      toast.add({
+        title: 'Warning',
+        description: errorMessage,
+        color: 'warning',
+        timeout: 5000,
+      })
+    } else if (newStatus === 'pending') {
+      dashboardStore.setLoading(true)
     }
-  } catch (err: any) {
-    dashboardStore.setError(err.message || 'Failed to fetch dashboard data')
-    console.error('Error fetching dashboard data:', err)
-  } finally {
-    dashboardStore.setLoading(false)
-  }
-}
-
-// Fetch data on mount
-// onMounted(() => {
-//   fetchDashboardData()
-//   // Fetch client growth separately since it depends on the chart period
-//   fetchClientGrowth(chartPeriod.value)
-// })
+  },
+  { immediate: true }
+)
 
 // Add layout for dashboard pages
 definePageMeta({

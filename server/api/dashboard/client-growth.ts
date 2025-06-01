@@ -15,7 +15,7 @@ interface ClientGrowthResponse {
   percentGrowth: number
 }
 
-export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) => {
+export default defineCachedEventHandler(async (event: H3Event<EventHandlerRequest>) => {
   try {
     console.log('Client growth API endpoint called')
 

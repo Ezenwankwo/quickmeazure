@@ -134,7 +134,7 @@ variant="ghost"
 import { computed, ref, watch } from 'vue'
 import type { MeasurementField } from '~/types/measurement'
 import { useMeasurementTemplateStore } from '~/store/modules/measurementTemplate'
-import { useMeasurementTemplateApi } from '~/composables/useMeasurementTemplateApi'
+import { API_ENDPOINTS } from '~/constants/api'
 
 const props = defineProps({
   modelValue: {
@@ -153,7 +153,6 @@ const emit = defineEmits<{
 }>()
 
 const templateStore = useMeasurementTemplateStore()
-const templateApi = useMeasurementTemplateApi()
 const toast = useToast()
 
 const isOpen = computed({
@@ -325,10 +324,16 @@ const onSubmit = async () => {
     }
 
     if (editing.value && props.template?.id) {
-      const response = await templateApi.updateTemplate(Number(props.template.id), templateData)
+      try {
+        const template = await $fetch(
+          API_ENDPOINTS.MEASUREMENTS.TEMPLATE_BY_ID(props.template.id.toString()),
+          {
+            method: 'PATCH',
+            body: templateData,
+          }
+        )
 
-      if (response.success && response.template) {
-        templateStore.updateTemplateInStore(Number(props.template.id), response.template)
+        templateStore.updateTemplateInStore(Number(props.template.id), template)
 
         toast.add({
           title: 'Template updated',
@@ -339,14 +344,17 @@ const onSubmit = async () => {
 
         emit('saved')
         close()
-      } else {
-        throw new Error(response.error || 'Failed to update template')
+      } catch (error) {
+        throw new Error(error.data?.message || 'Failed to update template')
       }
     } else {
-      const response = await templateApi.createTemplate(templateData)
+      try {
+        const template = await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, {
+          method: 'POST',
+          body: templateData,
+        })
 
-      if (response.success && response.template) {
-        templateStore.addTemplate(response.template)
+        templateStore.addTemplate(template)
 
         toast.add({
           title: 'Template created',
@@ -357,8 +365,8 @@ const onSubmit = async () => {
 
         emit('saved')
         close()
-      } else {
-        throw new Error(response.error || 'Failed to create template')
+      } catch (error) {
+        throw new Error(error.data?.message || 'Failed to create template')
       }
     }
   } catch (error: any) {

@@ -10,7 +10,7 @@ interface Order {
   status: string
 }
 
-export default defineEventHandler(async (event: H3Event<EventHandlerRequest>) => {
+export default defineCachedEventHandler(async (event: H3Event<EventHandlerRequest>) => {
   try {
     // Get authenticated user from event context
     const auth = event.context.auth
