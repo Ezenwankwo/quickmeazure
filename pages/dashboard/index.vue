@@ -418,29 +418,65 @@ const getStatusColor = (status: string) => {
   }
 }
 
+// Import the dashboard API composable
+const dashboardApi = useDashboardApi()
+
 // Watch for chart period changes
 watch(chartPeriod, (newPeriod: ChartPeriod) => {
-  dashboardStore.fetchClientGrowth(newPeriod)
+  fetchClientGrowth(newPeriod)
 })
 
-// Fetch dashboard data
+// Fetch client growth data
+const fetchClientGrowth = async (period: ChartPeriod = 'month') => {
+  try {
+    dashboardStore.setLoading(true)
+    dashboardStore.setError(null)
+    dashboardStore.setChartPeriod(period)
+
+    const response = await dashboardApi.getClientGrowth(period)
+
+    if (response.success && response.growthData) {
+      dashboardStore.setClientGrowth(response.growthData)
+    } else {
+      throw new Error(response.error || 'Failed to fetch client growth data')
+    }
+  } catch (err: any) {
+    dashboardStore.setError(err.message || 'Failed to fetch client growth data')
+    console.error('Error fetching client growth data:', err)
+  } finally {
+    dashboardStore.setLoading(false)
+  }
+}
+
+// Fetch all dashboard data in a single request
 const fetchDashboardData = async () => {
   try {
-    await Promise.all([
-      dashboardStore.fetchStats(),
-      dashboardStore.fetchRecentActivity(),
-      dashboardStore.fetchDueOrders(),
-      dashboardStore.fetchClientGrowth(chartPeriod.value),
-    ])
-  } catch (err) {
+    dashboardStore.setLoading(true)
+    dashboardStore.setError(null)
+
+    const response = await dashboardApi.getDashboardData()
+
+    if (response.success) {
+      if (response.stats) dashboardStore.setStats(response.stats)
+      if (response.activities) dashboardStore.setRecentActivity(response.activities)
+      if (response.dueOrders) dashboardStore.setDueOrders(response.dueOrders)
+    } else {
+      throw new Error(response.error || 'Failed to fetch dashboard data')
+    }
+  } catch (err: any) {
+    dashboardStore.setError(err.message || 'Failed to fetch dashboard data')
     console.error('Error fetching dashboard data:', err)
+  } finally {
+    dashboardStore.setLoading(false)
   }
 }
 
 // Fetch data on mount
-onMounted(() => {
-  fetchDashboardData()
-})
+// onMounted(() => {
+//   fetchDashboardData()
+//   // Fetch client growth separately since it depends on the chart period
+//   fetchClientGrowth(chartPeriod.value)
+// })
 
 // Add layout for dashboard pages
 definePageMeta({
@@ -452,9 +488,4 @@ const chartStats = computed(() => ({
   totalGrowth: hasChartData.value ? (clientGrowth.value?.totalGrowth ?? 0) : 0,
   percentGrowth: hasChartData.value ? (clientGrowth.value?.percentGrowth ?? 0) : 0,
 }))
-
-// Add layout for dashboard pages
-definePageMeta({
-  layout: 'dashboard',
-})
 </script>

@@ -192,30 +192,36 @@ const isFormValid = computed(() => {
   return !!style.value.name
 })
 
-// Stores
+// Stores and composables
 const authStore = useAuthStore()
 const styleStore = useStyleStore()
+const styleApi = useStyleApi()
 
 // Fetch style data
-onMounted(async () => {
+const fetchStyleData = async () => {
+  const styleId = route.params.id as string
+  if (!styleId) {
+    error.value = 'Style ID is required'
+    return
+  }
+
   try {
-    const styleId = route.params.id as string
     isLoading.value = true
+    error.value = null
 
     // Check if user is authenticated
     if (!authStore.isLoggedIn) {
       error.value = 'Authentication required. Please log in.'
-      isLoading.value = false
       navigateTo('/auth/login')
       return
     }
 
-    // Fetch style data using the store
-    const styleData = await styleStore.fetchStyleById(styleId)
+    // Fetch style data using the API
+    const response = await styleApi.getStyleById(styleId)
 
-    if (styleData) {
+    if (response.success && response.data) {
       style.value = {
-        ...styleData,
+        ...response.data,
         imageFile: null,
       }
 
@@ -223,16 +229,42 @@ onMounted(async () => {
       if (style.value.imageUrl) {
         imagePreview.value = style.value.imageUrl
       }
+
+      // Update the style in the store for consistency
+      styleStore.currentStyle = response.data
     } else {
-      error.value = 'Style not found'
+      error.value = response.error || 'Style not found'
+      toast.add({
+        title: 'Error',
+        description: error.value,
+        color: 'error',
+      })
     }
   } catch (err: any) {
     console.error('Error loading style details:', err)
-    error.value = err.message || 'Failed to load style details'
+    error.value = 'Failed to load style details. Please try again.'
+    toast.add({
+      title: 'Error',
+      description: error.value,
+      color: 'error',
+    })
   } finally {
     isLoading.value = false
   }
-})
+}
+
+// Initial data fetch
+onMounted(fetchStyleData)
+
+// Refresh data when route changes
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      fetchStyleData()
+    }
+  }
+)
 
 // Trigger file input click
 const triggerFileInput = () => {
@@ -300,25 +332,33 @@ const updateStyle = async () => {
       styleData.imageFile = style.value.imageFile
     }
 
-    // Update the style using the store
-    await styleStore.updateStyle(style.value.id, styleData)
+    // Update the style using the API
+    const response = await styleApi.updateStyle(style.value.id, styleData)
 
-    // Show success notification
-    toast.add({
-      title: 'Style Updated',
-      description: 'Your style has been updated successfully',
-      color: 'green',
-    })
+    if (response.success && response.data) {
+      // Update the style in the store for consistency
+      styleStore.currentStyle = response.data
 
-    // Navigate to the style detail page
-    router.push(`/styles/${style.value.id}/detail`)
+      // Show success notification
+      toast.add({
+        title: 'Style Updated',
+        description: 'Your style has been updated successfully',
+        color: 'green',
+      })
+
+      // Navigate to the style detail page
+      router.push(`/styles/${style.value.id}/detail`)
+    } else {
+      throw new Error(response.error || 'Failed to update style')
+    }
   } catch (err: any) {
     console.error('Error updating style:', err)
 
+    const errorMessage = err.message || 'Failed to update style. Please try again.'
     toast.add({
       title: 'Error',
-      description: err.message || 'Failed to update style. Please try again.',
-      color: 'red',
+      description: errorMessage,
+      color: 'error',
     })
   } finally {
     isSaving.value = false

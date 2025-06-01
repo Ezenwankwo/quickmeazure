@@ -454,6 +454,7 @@ size="sm"
 <script setup lang="ts">
 // Import stores and utilities
 import { useClientStore } from '~/store/modules/client'
+import { useClientApi } from '~/composables/useClientApi'
 import { onMounted, onUnmounted } from 'vue'
 
 // Composable
@@ -489,16 +490,15 @@ const search = ref('')
 const currentPage = ref(1)
 const searchTimeout = ref<NodeJS.Timeout | null>(null)
 const isMounted = ref(false)
-
-// Use client store
-const clientStore = useClientStore()
-
-// Expose store state to template
-const { isLoading } = storeToRefs(clientStore)
-const _itemsPerPage = ref(10) // Prefix with underscore to indicate it's intentionally unused
 const isFilterOpen = ref(false)
 const isDeleteModalOpen = ref(false)
 const clientToDelete = ref<Client | null>(null)
+const isLoading = ref(false)
+const _error = ref<string | null>(null) // Prefix with underscore to indicate it's intentionally unused
+
+// Initialize store and API
+const clientStore = useClientStore()
+const clientApi = useClientApi()
 
 // Data
 const filteredClients = ref<Client[]>([])
@@ -659,96 +659,99 @@ const deleteClient = async () => {
   if (!clientToDelete.value) return
 
   isDeleting.value = true
+  isLoading.value = true
 
   try {
-    await clientStore.deleteClient(clientToDelete.value.id)
+    const response = await clientApi.deleteClient(clientToDelete.value.id)
+    if (response.success) {
+      // Update the store
+      clientStore.removeClient(clientToDelete.value.id)
 
-    // Show success notification
-    useToast().add({
-      title: 'Client deleted',
-      description: `${clientToDelete.value.name} has been deleted`,
-      color: 'primary',
-    })
+      useToast().add({
+        title: 'Success',
+        description: 'Client deleted successfully',
+        color: 'green',
+      })
 
-    // Close modal and reset state
-    isDeleteModalOpen.value = false
-    clientToDelete.value = null
-
-    // Refresh the clients list
-    filterClients()
-  } catch (error) {
-    console.error('Error deleting client:', error)
-
+      // Refresh the clients list
+      await fetchClients()
+    } else {
+      throw new Error(response.error || 'Failed to delete client')
+    }
+  } catch (err) {
+    console.error('Error deleting client:', err)
     useToast().add({
       title: 'Error',
-      description: error.value || 'Failed to delete client. Please try again.',
+      description: err.message || 'Failed to delete client. Please try again.',
       color: 'error',
     })
   } finally {
     isDeleting.value = false
+    isLoading.value = false
+    isDeleteModalOpen.value = false
+    clientToDelete.value = null
   }
 }
 
-// Component lifecycle hooks
-onMounted(() => {
-  isMounted.value = true
-  // Initial data fetch
-  fetchClients()
-})
+// // Component lifecycle hooks
+// onMounted(() => {
+//   isMounted.value = true
+//   // Initial data fetch
+//   fetchClients()
+// })
 
 onUnmounted(() => {
   isMounted.value = false
   // Clear any pending timeouts
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value)
-    searchTimeout.value = null
   }
 })
-
-// No mock data - we'll use the real API
 
 // Function to fetch clients from the API
 const fetchClients = async () => {
   try {
-    const [sortField, sortOrder] = sortBy.value.split('-')
+    isLoading.value = true
+    _error.value = null
 
-    const filterParams = {
-      search: search.value,
-      sortField,
-      sortOrder,
-      page: currentPage.value,
-      perPage: ITEMS_PER_PAGE,
-      hasMeasurements: filters.value.hasMeasurements,
-      hasOrders: filters.value.hasOrders,
+    // Destructure sort values but don't use them yet (prefix with underscore)
+    const [_sortField, _sortOrder] = sortBy.value.split('-')
+
+    // Use the client API to fetch clients
+    const response = await clientApi.getClients(
+      currentPage.value,
+      ITEMS_PER_PAGE,
+      search.value
+      // Add other filters as needed
+    )
+
+    if (response.success) {
+      // Update the store with the new data
+      clientStore.setClients(response.clients, response.total)
+
+      // Update local pagination state
+      totalItems.value = response.total
+      totalPages.value = Math.ceil(totalItems.value / ITEMS_PER_PAGE)
+
+      // Update filtered clients list
+      filteredClients.value = response.clients.map(client => formatClientData(client))
+    } else {
+      throw new Error(response.error || 'Failed to load clients')
     }
-
-    await clientStore.fetchClients(filterParams)
-
-    // Update local pagination state based on store
-    totalItems.value = clientStore.totalCount
-    totalPages.value = Math.ceil(totalItems.value / ITEMS_PER_PAGE)
-
-    // Update filtered clients list
-    filteredClients.value = clientStore.clients.map(client => formatClientData(client))
-  } catch (error) {
-    console.error('Error fetching clients:', error)
+  } catch (err) {
+    console.error('Error fetching clients:', err)
+    _error.value = err.message
 
     useToast().add({
       title: 'Error',
-      description: clientStore.error || 'Failed to load clients. Please refresh the page.',
+      description: _error.value || 'Failed to load clients. Please refresh the page.',
       color: 'error',
     })
 
     filteredClients.value = []
+  } finally {
+    isLoading.value = false
   }
-}
-
-const formatDate = timestamp => {
-  const date = new Date(timestamp)
-  const month = date.toLocaleString('en-US', { month: 'short' })
-  const day = date.getDate().toString().padStart(2, '0')
-  const year = date.getFullYear()
-  return `${month} ${day}, ${year}`
 }
 
 const getVisiblePageNumbers = () => {

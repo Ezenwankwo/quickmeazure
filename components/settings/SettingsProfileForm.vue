@@ -207,10 +207,14 @@ class="block text-sm font-medium text-gray-700"
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '~/store/modules/user'
-import type { User } from '~/store/types'
+import { useUserApi } from '~/composables/useUserApi'
+import { useToast } from '#imports'
+import type { User } from '~/types/auth'
 
-// Get the user store
+// Get stores and composables
 const userStore = useUserStore()
+const userApi = useUserApi()
+const toast = useToast()
 
 // Original profile data to compare changes
 const originalProfile = ref<Partial<User>>({})
@@ -306,36 +310,44 @@ const services = [
 const isSaving = ref(false)
 
 // Fetch profile data from the user store and API
-const fetchProfile = async () => {
+async function fetchProfile() {
   try {
-    // First check if we have profile data in the store
-    if (userStore.profile) {
-      // Use the store data to populate the form
-      updateFormFromProfile(userStore.profile)
-      originalProfile.value = { ...userStore.profile }
+    loading.value = true
+
+    // Fetch profile data using the user API composable
+    const { data, error } = await userApi.fetchProfile()
+
+    if (error) {
+      throw new Error(error)
     }
 
-    // Fetch the latest data from the API using the store function
-    const result = await userStore.fetchProfile()
+    if (data) {
+      // Update the user store with the fetched data
+      userStore.updateProfile(data)
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to fetch profile')
-    }
+      // Update the form with the fetched data
+      updateFormFromProfile(data)
 
-    if (result.data) {
-      // Update the form with the latest data
-      // (The store is already updated by the fetchProfile function)
-      updateFormFromProfile(result.data)
-      originalProfile.value = { ...result.data }
+      // Store a copy of the original profile for change detection
+      originalProfile.value = { ...data }
+
+      toast.add({
+        title: 'Profile loaded',
+        description: 'Your profile has been loaded successfully',
+        color: 'primary',
+        icon: 'i-heroicons-check-circle',
+      })
     }
-  } catch (err) {
-    console.error('Error fetching profile:', err)
-    useToast().add({
+  } catch (error: any) {
+    console.error('Failed to fetch profile:', error)
+    toast.add({
       title: 'Error loading profile',
-      description: 'Please try refreshing the page',
+      description: error.message || 'Failed to load profile',
       color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
+  } finally {
+    loading.value = false
   }
 }
 
@@ -355,33 +367,52 @@ const updateFormFromProfile = (profileData: any) => {
 }
 
 // Save profile
-const saveProfile = async () => {
-  isSaving.value = true
-
+async function saveProfile() {
   try {
-    // Call the store function to update the profile
-    const result = await userStore.updateProfileData(form.value)
+    isSaving.value = true
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to update profile')
+    // Prepare the data to update
+    const updateData = {
+      name: form.value.name,
+      email: form.value.email,
+      businessName: form.value.businessName,
+      phone: form.value.phone,
+      location: form.value.location,
+      specializations: form.value.specializations,
+      services: form.value.services,
+      bio: form.value.bio,
     }
 
-    // Update the original profile data for comparison
-    if (result.data) {
-      originalProfile.value = { ...result.data }
+    // Call the user API to update the profile
+    const { data, error } = await userApi.updateProfile(updateData)
+
+    if (error) {
+      throw new Error(error)
     }
 
-    useToast().add({
-      title: 'Profile updated',
-      description: 'Your profile information has been saved',
-      icon: 'i-heroicons-check-circle',
-      color: 'primary',
-    })
-  } catch (err) {
-    console.error('Error saving profile:', err)
-    useToast().add({
+    if (data) {
+      // Update the user store with the updated data
+      userStore.updateProfile(data)
+
+      // Update the form with the updated data
+      updateFormFromProfile(data)
+
+      // Update the original profile
+      originalProfile.value = { ...data }
+
+      // Show success message
+      toast.add({
+        title: 'Profile updated',
+        description: 'Your profile has been saved successfully',
+        color: 'primary',
+        icon: 'i-heroicons-check-circle',
+      })
+    }
+  } catch (error: any) {
+    console.error('Failed to save profile:', error)
+    toast.add({
       title: 'Error saving profile',
-      description: 'Please try again',
+      description: error.message || 'Failed to save profile',
       color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
@@ -391,72 +422,84 @@ const saveProfile = async () => {
 }
 
 // Handle avatar upload
-const handleAvatarUpload = () => {
-  // Create a file input element
-  const fileInput = document.createElement('input')
-  fileInput.type = 'file'
-  fileInput.accept = 'image/*'
+async function handleAvatarUpload() {
+  try {
+    const fileInput = document.createElement('input')
+    fileInput.type = 'file'
+    fileInput.accept = 'image/*'
 
-  // Handle file selection
-  fileInput.onchange = async event => {
-    const target = event.target as HTMLInputElement
-    const file = target.files?.[0]
+    fileInput.onchange = async e => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
 
-    if (!file) return
-
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      useToast().add({
-        title: 'File too large',
-        description: 'Please select an image under 5MB',
-        color: 'error',
-        icon: 'i-heroicons-exclamation-triangle',
-      })
-      return
-    }
-
-    try {
-      // Show loading state
-      isSaving.value = true
-
-      // Use the user store to upload the avatar
-      const result = await userStore.uploadAvatar(file)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to upload avatar')
-      }
-
-      // Update the form with the new avatar URL
-      if (result.data?.avatarUrl) {
-        form.value.avatar = result.data.avatarUrl
-
-        // The user store is already updated by the uploadAvatar function
-
-        useToast().add({
-          title: 'Avatar updated',
-          description: 'Your profile photo has been updated',
-          color: 'primary',
-          icon: 'i-heroicons-check-circle',
+      // Check file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.add({
+          title: 'File too large',
+          description: 'Please select an image smaller than 2MB',
+          color: 'error',
+          icon: 'i-heroicons-exclamation-triangle',
         })
+        return
       }
-    } catch (err) {
-      console.error('Error uploading avatar:', err)
-      useToast().add({
-        title: 'Upload failed',
-        description: 'Please try again',
-        color: 'error',
-        icon: 'i-heroicons-exclamation-triangle',
-      })
-    } finally {
-      isSaving.value = false
-    }
-  }
 
-  // Trigger the file input click
-  fileInput.click()
+      try {
+        isSaving.value = true
+
+        // Upload the avatar using the user API composable
+        const { data, error } = await userApi.uploadAvatar(file)
+
+        if (error) {
+          throw new Error(error)
+        }
+
+        if (data?.avatarUrl) {
+          // Update the form with the new avatar URL
+          form.value.avatar = data.avatarUrl
+
+          // Update the user store with the new avatar URL
+          userStore.updateProfile({ avatar: data.avatarUrl })
+
+          // Update the original profile
+          if (originalProfile.value) {
+            originalProfile.value.avatar = data.avatarUrl
+          }
+
+          // Show success message
+          toast.add({
+            title: 'Avatar updated',
+            description: 'Your profile picture has been updated',
+            color: 'primary',
+            icon: 'i-heroicons-check-circle',
+          })
+        }
+      } catch (error: any) {
+        console.error('Error uploading avatar:', error)
+        toast.add({
+          title: 'Upload failed',
+          description: error.message || 'Failed to upload avatar',
+          color: 'error',
+          icon: 'i-heroicons-exclamation-triangle',
+        })
+      } finally {
+        isSaving.value = false
+      }
+    }
+
+    // Trigger the file input click
+    fileInput.click()
+  } catch (error) {
+    console.error('Error handling avatar upload:', error)
+    toast.add({
+      title: 'Error',
+      description: 'An unexpected error occurred while handling the avatar upload',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-triangle',
+    })
+  }
 }
 
-// Lifecycle
+// Lifecycle hooks
 onMounted(async () => {
   await fetchProfile()
 })

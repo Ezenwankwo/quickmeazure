@@ -291,43 +291,68 @@
     <div v-else class="text-center py-12">
       <UIcon name="i-heroicons-face-frown" class="mx-auto h-12 w-12 text-gray-400" />
       <h3 class="mt-2 text-lg font-medium text-gray-900">Order not found</h3>
-      <p class="mt-1 text-gray-500">
-        The order you are looking for doesn't exist or you don't have permission to view it.
+      <p class="mt-1 text-sm text-gray-500">
+        The order you're looking for doesn't exist or has been deleted.
       </p>
       <div class="mt-6">
-        <UButton to="/orders" color="primary"> Go back to Orders </UButton>
+        <UButton to="/orders" color="primary">Go back to Orders</UButton>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useOrderApi } from '~/composables/useOrderApi'
+import { useToast } from '#imports'
+import { ref, onMounted } from 'vue'
+import type { Order } from '~/types/order'
+
 // Get the order ID from the route
-import { useOrderStore } from '~/store/modules/order'
-import { storeToRefs } from 'pinia'
-// Type imports can be added back when needed
-
 const route = useRoute()
-const orderId = route.params.id
+const orderId = route.params.id as string
 
-// Initialize store
-const orderStore = useOrderStore()
-const { currentOrder, isLoading } = storeToRefs(orderStore)
-// Error handling is done through try/catch blocks
+// Initialize composables
+const orderApi = useOrderApi()
+const toast = useToast()
 
-// Local state
-const isUpdating = ref(false)
+// State
+const isLoading = ref(true)
+const order = ref<Order | null>(null)
+const error = ref<string | null>(null)
 
-// Alias for template
-const order = computed(() => currentOrder.value)
+// Fetch order data
+const fetchOrder = async () => {
+  isLoading.value = true
+  error.value = null
 
-// Set page metadata
-useHead({
-  title: 'Order Details',
-})
+  try {
+    const response = await orderApi.getOrderById(orderId)
+
+    if (response.success && response.data) {
+      order.value = response.data
+    } else {
+      throw new Error(response.error || 'Failed to fetch order')
+    }
+  } catch (err) {
+    console.error('Error fetching order:', err)
+    error.value = err.message || 'An error occurred while fetching the order'
+
+    toast.add({
+      title: 'Error',
+      description: error.value,
+      color: 'red',
+    })
+
+    if (err.response?.status === 404) {
+      navigateTo('/orders')
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
 
 // Utility functions
-const getInitials = name => {
+const getInitials = (name: string) => {
   if (!name) return ''
   return name
     .split(' ')
@@ -337,7 +362,7 @@ const getInitials = name => {
     .substring(0, 2)
 }
 
-const formatDate = timestamp => {
+const formatDate = (timestamp: string) => {
   if (!timestamp) return ''
   const date = new Date(timestamp)
   return new Intl.DateTimeFormat('en-US', {
@@ -347,7 +372,7 @@ const formatDate = timestamp => {
   }).format(date)
 }
 
-const formatPrice = amount => {
+const formatPrice = (amount: number) => {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
@@ -357,7 +382,7 @@ const formatPrice = amount => {
 }
 
 // Check if an order is overdue
-const isOverdue = dueDate => {
+const isOverdue = (dueDate: string) => {
   if (!dueDate) return false
   const now = new Date()
   const due = new Date(dueDate)
@@ -365,7 +390,7 @@ const isOverdue = dueDate => {
 }
 
 // Check if an order is due soon (within the next 3 days)
-const isDueSoon = dueDate => {
+const isDueSoon = (dueDate: string) => {
   if (!dueDate) return false
   const now = new Date()
   const due = new Date(dueDate)
@@ -375,41 +400,35 @@ const isDueSoon = dueDate => {
 
 // Update order status
 const updateOrderStatus = async (newStatus: string) => {
-  if (isUpdating.value) return
-  isUpdating.value = true
+  if (!order.value) return
 
   try {
-    await orderStore.updateOrderStatus(orderId, newStatus)
+    const response = await orderApi.updateOrderStatus(order.value.id, newStatus as any)
 
-    // Show success message
-    useToast().add({
-      title: 'Status Updated',
-      description: `Order status changed to ${newStatus}`,
-      color: 'green',
-    })
-  } catch (error: any) {
-    console.error('Error updating order status:', error)
+    if (response.success && response.order) {
+      order.value = response.order
 
-    useToast().add({
+      toast.add({
+        title: 'Success',
+        description: `Order status updated to ${newStatus}`,
+        color: 'green',
+      })
+    } else {
+      throw new Error(response.error || 'Failed to update order status')
+    }
+  } catch (err) {
+    console.error('Error updating order status:', err)
+
+    toast.add({
       title: 'Error',
-      description: error.message || 'Failed to update order status',
+      description: err.message || 'Failed to update order status. Please try again.',
       color: 'red',
     })
-  } finally {
-    isUpdating.value = false
   }
 }
 
 // Fetch order data on component mount
-onMounted(async () => {
-  try {
-    await orderStore.fetchOrderById(orderId)
-  } catch (error: any) {
-    useToast().add({
-      title: 'Error',
-      description: error.message || 'Failed to load order details',
-      color: 'red',
-    })
-  }
+onMounted(() => {
+  fetchOrder()
 })
 </script>

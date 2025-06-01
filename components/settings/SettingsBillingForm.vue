@@ -242,21 +242,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import DeleteModal from '~/components/DeleteModal.vue'
 import PlanSelectionModal from '~/components/plans/PlanSelectionModal.vue'
 import { useSubscriptionStore } from '~/store/modules/subscription'
+import { useSubscriptionApi } from '~/composables/useSubscriptionApi'
 import { useAuthStore } from '~/store/modules/auth'
 import { useUserStore } from '~/store/modules/user'
 
-// Initialize stores
+// Initialize stores and composables
 const subscriptionStore = useSubscriptionStore()
+const subscriptionApi = useSubscriptionApi()
 const authStore = useAuthStore()
-// User store is imported for future use
 const _userStore = useUserStore()
 
-// Define missing refs
-const tempSelectedPlan = ref('')
+// Define loading state for plan changes
 const changePlanLoading = ref(false)
 
 // Access toast composable
@@ -353,29 +353,42 @@ const hasExistingPaymentMethod = computed(() => {
 const refreshSubscription = async () => {
   try {
     console.log('Refreshing subscription data...')
-    // Fetch plans and status separately to better handle errors
-    try {
-      await subscriptionStore.fetchSubscriptionStatus()
-      console.log('Subscription status fetched successfully')
-    } catch (statusErr) {
-      console.error('Error fetching subscription status:', statusErr)
-      // Handle status fetch error
+
+    // Fetch all subscription data using the API
+    const [
+      { data: statusData },
+      { data: plansData },
+      { data: billingData },
+      { data: paymentMethodsData },
+    ] = await Promise.all([
+      subscriptionApi.getSubscriptionStatus(),
+      subscriptionApi.getPlans(),
+      subscriptionApi.getBillingHistory(),
+      subscriptionApi.getPaymentMethods(),
+    ])
+
+    // Update the store with the fetched data
+    if (statusData) {
+      subscriptionStore.setStatus(statusData)
+      // Set current plan if available
+      if (statusData.planId) {
+        const plan = plansData?.find((p: any) => p.id === statusData.planId)
+        if (plan) {
+          subscriptionStore.setCurrentPlan(plan)
+        }
+      }
     }
 
-    try {
-      await subscriptionStore.fetchBillingHistory()
-      console.log('Billing history fetched successfully')
-    } catch (billingErr) {
-      console.error('Error fetching billing history:', billingErr)
-      // Continue even if billing history fails
+    if (plansData) {
+      subscriptionStore.setPlans(plansData)
     }
 
-    try {
-      await subscriptionStore.fetchPaymentMethods()
-      console.log('Payment methods fetched successfully')
-    } catch (paymentErr) {
-      console.error('Error fetching payment methods:', paymentErr)
-      // Continue even if payment methods fail
+    if (billingData) {
+      subscriptionStore.setBillingHistory(billingData)
+    }
+
+    if (paymentMethodsData) {
+      subscriptionStore.setPaymentMethods(paymentMethodsData)
     }
 
     // Only show success toast if we're not in the initial mount
@@ -400,99 +413,33 @@ const refreshSubscription = async () => {
 
 // Payment method management - handles both adding and changing payment methods
 const addPaymentMethod = async () => {
-  console.log('addPaymentMethod function called')
-  // Use the auth store that's already initialized at the component level
-
-  console.log('Auth store user:', authStore.user)
-  console.log('Auth store isLoggedIn:', authStore.isLoggedIn)
-  console.log('Auth token available:', !!authStore.token)
-
-  // For testing purposes, simulate a successful payment
-  // This bypasses the Paystack integration which is having issues with email validation
-
-  // Show loading toast
-  const loadingToast = toast.add({
-    title: 'Processing',
-    description: 'Processing payment method...',
-    color: 'neutral',
-    timeout: 0,
-  })
-
   try {
-    // Simulate payment processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    // Close loading toast
-    if (loadingToast) loadingToast.close()
-
-    // Mock successful payment response
-    const mockPaymentResponse = {
-      reference: `QM-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
-      last4: '1234',
-      expiryMonth: '12',
-      expiryYear: '2025',
-      brand: 'Visa',
-    }
-
-    console.log('Mock payment successful:', mockPaymentResponse)
-
-    // Store the mock response in localStorage for processing
-    localStorage.setItem('lastPaystackResponse', JSON.stringify(mockPaymentResponse))
-
-    // Show success toast
-    toast.add({
-      title: 'Payment Successful',
-      description: 'Processing your payment method...',
-      color: 'green',
-      timeout: 3000,
+    const { success, error } = await subscriptionApi.updatePaymentMethod({
+      // Pass payment method details from your form
+      // Example: token, card details, etc.
     })
 
-    // Extract card details from the mock response
-    const cardDetails = {
-      type: 'card',
-      last4: mockPaymentResponse.last4 || '1234',
-      expiryMonth: mockPaymentResponse.expiryMonth || '12',
-      expiryYear: mockPaymentResponse.expiryYear || '2025',
-      brand: mockPaymentResponse.brand || 'Visa',
-      providerId: mockPaymentResponse.reference,
-      metadata: {
-        email: authStore.user?.email || 'user@example.com',
-        authorization_code: 'mock_auth_code',
-        status: 'success',
-        message: 'Transaction successful',
-      },
+    if (success) {
+      await refreshSubscription()
+      toast.add({
+        title: 'Success',
+        description: 'Payment method updated successfully',
+        color: 'success',
+      })
+    } else if (error) {
+      throw new Error(error)
     }
-
-    console.log('Creating payment method with card details:', cardDetails)
-
-    // Add payment method to the database
-    await subscriptionStore.addPaymentMethod(mockPaymentResponse.reference, cardDetails)
-
-    // Refresh payment methods
-    await refreshSubscription()
-
-    // Show success toast with appropriate message based on whether this is an add or update
-    toast.add({
-      title: 'Success',
-      description: hasExistingPaymentMethod.value
-        ? 'Payment method updated successfully'
-        : 'Payment method added successfully',
-      color: 'primary',
-    })
-  } catch (error) {
-    console.error('Error adding payment method:', error)
-    if (loadingToast) loadingToast.close()
-
+  } catch (error: any) {
+    console.error('Error updating payment method:', error)
     toast.add({
       title: 'Error',
-      description: error?.message || 'Failed to add payment method',
+      description: error.message || 'Failed to update payment method',
       color: 'error',
     })
+  } finally {
+    // Reset loading state if needed
   }
 }
-
-// We no longer need payment method removal functionality since we're only allowing changing payment methods
-// Users can only have one payment method at a time, which they can update but not delete
 
 // Invoice viewing
 const viewInvoice = id => {
@@ -531,84 +478,32 @@ const handlePlanFetchError = error => {
 const confirmPlanChange = async (planId: string) => {
   try {
     changePlanLoading.value = true
-
-    // Verify user is logged in and has email
-    if (!authStore.isLoggedIn) {
-      throw new Error('You must be logged in to change your plan')
-    }
-
-    // Ensure user data is loaded
-    if (!authStore.user || !authStore.user.email) {
-      console.log('User email not found in auth store, attempting to get user data')
-
-      try {
-        // First try to refresh the session
-        const refreshResult = await authStore.refreshSession()
-        console.log('Session refresh result:', refreshResult)
-
-        // If refresh failed but we're still logged in, try to get user data directly
-        if (!refreshResult.success && authStore.isLoggedIn) {
-          console.log('Refresh failed but still logged in, fetching user profile directly')
-          // Try to fetch the user profile directly as a fallback
-          const userStore = useUserStore()
-          await userStore.fetchProfile()
-
-          // If user store has the email, update auth store
-          if (userStore.profile && userStore.profile.email) {
-            if (!authStore.user) {
-              authStore.user = {
-                id: userStore.profile.id,
-                email: userStore.profile.email,
-              }
-            } else {
-              authStore.user.email = userStore.profile.email
-            }
-          }
-        }
-      } catch (userErr) {
-        console.error('Error refreshing session or fetching user profile:', userErr)
-        // Continue with the plan change if we have a plan ID
-      }
-
-      // If we still don't have user email after trying to refresh
-      if (!authStore.user?.email) {
-        throw new Error(
-          'Could not verify your account information. Please try logging out and back in.'
-        )
-      }
-    }
-
-    console.log('User email available:', authStore.user.email)
-
-    // Proceed with the plan change
-    await subscriptionStore.changePlan(planId)
-
-    // Refresh subscription data
-    await refreshSubscription()
-
-    toast.add({
-      title: 'Success',
-      description: 'Your subscription plan has been updated successfully.',
-      color: 'green',
-      icon: 'i-heroicons-check-circle',
+    const { success, error } = await subscriptionApi.changePlan({
+      planId,
+      // Add any additional parameters required by your API
     })
-  } catch (error) {
+
+    if (success) {
+      await refreshSubscription()
+      toast.add({
+        title: 'Success',
+        description: 'Plan changed successfully',
+        color: 'success',
+      })
+      showPlanSelectionModal.value = false
+    } else if (error) {
+      throw new Error(error)
+    }
+  } catch (error: any) {
     console.error('Error changing plan:', error)
     toast.add({
       title: 'Error',
-      description: error.message || 'Failed to update subscription plan.',
-      color: 'red',
-      icon: 'i-heroicons-exclamation-triangle',
+      description: error.message || 'Failed to change plan',
+      color: 'error',
     })
   } finally {
     changePlanLoading.value = false
-    showPlanSelectionModal.value = false
   }
-}
-
-// Close plan selection modal
-const closePlanSelection = () => {
-  showPlanSelectionModal.value = false
 }
 
 // Toggle plan selection modal
@@ -616,17 +511,6 @@ const showChangePlanDialog = () => {
   // Show the modal - the PlanSelectionModal will handle fetching plans
   showPlanSelectionModal.value = true
 }
-
-// Watch for modal open to set the selected plan
-watch(
-  () => showPlanSelectionModal.value,
-  newVal => {
-    if (newVal) {
-      // Initialize tempSelectedPlan with current plan value when modal opens
-      tempSelectedPlan.value = currentPlan.value?.name?.toLowerCase() || 'growth'
-    }
-  }
-)
 
 // Show cancel subscription modal
 const showCancelModal = ref(false)
@@ -636,44 +520,65 @@ const cancelSubscription = () => {
   showCancelModal.value = true
 }
 
+// Cancel subscription
 const confirmCancelSubscription = async () => {
   try {
     cancelLoading.value = true
-    await subscriptionStore.cancelSubscription(false)
-    showCancelModal.value = false
-    toast.add({
-      title: 'Subscription Canceled',
-      description: 'Your subscription has been canceled',
-      color: 'success',
-    })
-  } catch (_err) {
+    const { success, error } = await subscriptionApi.cancelSubscription({
+      // Add any parameters required by your API
+      // For example: immediate: false to cancel at the end of the billing period
+    } as any)
+
+    if (success) {
+      await refreshSubscription()
+      toast.add({
+        title: 'Subscription Cancelled',
+        description: 'Your subscription has been cancelled',
+        color: 'success',
+      })
+      showCancelModal.value = false
+    } else if (error) {
+      throw new Error(error)
+    }
+  } catch (error: any) {
+    console.error('Error cancelling subscription:', error)
     toast.add({
       title: 'Error',
-      description: 'Failed to cancel subscription',
-      color: 'red',
+      description: error.message || 'Failed to cancel subscription',
+      color: 'error',
     })
+  } finally {
+    cancelLoading.value = false
   }
 }
 
+// Reactivate subscription
 const reactivateSubscription = async () => {
   try {
-    await subscriptionStore.reactivateSubscription()
-    toast.add({
-      title: 'Subscription Reactivated',
-      description: 'Your subscription has been reactivated',
-      color: 'green',
-    })
-  } catch (_err) {
+    const { success, error } = await subscriptionApi.resumeSubscription({} as any)
+
+    if (success) {
+      await refreshSubscription()
+      toast.add({
+        title: 'Subscription Reactivated',
+        description: 'Your subscription has been reactivated',
+        color: 'success',
+      })
+    } else if (error) {
+      throw new Error(error)
+    }
+  } catch (error: any) {
+    console.error('Error reactivating subscription:', error)
     toast.add({
       title: 'Error',
-      description: 'Failed to reactivate subscription',
-      color: 'red',
+      description: error.message || 'Failed to reactivate subscription',
+      color: 'error',
     })
   }
 }
 
 // Utility functions
-const formatDate = dateString => {
+const formatDate = (dateString: string) => {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', {
     year: 'numeric',

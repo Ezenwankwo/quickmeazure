@@ -1,15 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { Style, StyleFilterOptions } from '~/types/style'
+import { ref, computed } from 'vue'
 
-const API_BASE = '/api'
-
-// Helper function to handle API errors
-const handleApiError = (error: any, defaultMessage: string) => {
-  console.error('API Error:', error)
-  const message = error.data?.message || error.message || defaultMessage
-  return { error: message, data: null }
-}
+// Types
+import type { Style, StyleFilter } from '~/types/style'
 
 export const useStyleStore = defineStore('style', () => {
   // State
@@ -18,175 +11,119 @@ export const useStyleStore = defineStore('style', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const totalCount = ref(0)
-  const filters = ref<StyleFilterOptions>({
+  const filters = ref<StyleFilter>({
     search: '',
-    sortBy: 'updatedAt',
+    status: 'all',
+    sortBy: 'createdAt',
     sortOrder: 'desc',
+  })
+  const pagination = ref({
+    page: 1,
+    pageSize: 10,
   })
 
   // Getters
-  const getStyleById = (id: number) => {
-    return styles.value.find(style => style.id === id) || null
+  const filteredStyles = computed(() => {
+    return styles.value.filter(style => {
+      const matchesSearch =
+        !filters.value.search ||
+        style.name.toLowerCase().includes(filters.value.search.toLowerCase()) ||
+        style.description?.toLowerCase().includes(filters.value.search.toLowerCase())
+
+      const matchesStatus = filters.value.status === 'all' || style.status === filters.value.status
+
+      return matchesSearch && matchesStatus
+    })
+  })
+
+  const sortedAndPaginatedStyles = computed(() => {
+    const sorted = [...filteredStyles.value].sort((a, b) => {
+      let comparison = 0
+      const aValue = a[filters.value.sortBy as keyof Style]
+      const bValue = b[filters.value.sortBy as keyof Style]
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue)
+      } else if (aValue instanceof Date && bValue instanceof Date) {
+        comparison = aValue.getTime() - bValue.getTime()
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue
+      }
+
+      return filters.value.sortOrder === 'asc' ? comparison : -comparison
+    })
+
+    const start = (pagination.value.page - 1) * pagination.value.pageSize
+    return sorted.slice(start, start + pagination.value.pageSize)
+  })
+
+  // State mutation methods
+  const setStyles = (newStyles: Style[]) => {
+    styles.value = newStyles
   }
 
-  // Actions
-  const fetchStyles = async (customFilters: Partial<StyleFilterOptions> = {}) => {
-    try {
-      isLoading.value = true
-      error.value = null
+  const addStyle = (style: Style) => {
+    styles.value.unshift(style)
+    totalCount.value += 1
+  }
 
-      const queryParams = new URLSearchParams()
-      const activeFilters = { ...filters.value, ...customFilters }
-
-      Object.entries(activeFilters).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
-          queryParams.append(key, String(value))
-        }
-      })
-
-      const { data, error: fetchError } = await useAsyncData<{
-        data: Style[]
-        total: number
-      }>(`styles-${queryParams.toString()}`, () =>
-        $fetch(`${API_BASE}/styles?${queryParams.toString()}`)
-      )
-
-      if (fetchError.value) {
-        throw new Error(fetchError.value.message || 'Failed to fetch styles')
-      }
-
-      if (data.value) {
-        styles.value = data.value.data || []
-        totalCount.value = data.value.total || 0
-      }
-
-      return styles.value
-    } catch (err: any) {
-      error.value = err.message || 'Failed to fetch styles'
-      console.error('Error fetching styles:', err)
-      return []
-    } finally {
-      isLoading.value = false
+  const updateStyleInStore = (updatedStyle: Style) => {
+    const index = styles.value.findIndex(s => s.id === updatedStyle.id)
+    if (index !== -1) {
+      styles.value[index] = updatedStyle
+    }
+    if (currentStyle.value?.id === updatedStyle.id) {
+      currentStyle.value = updatedStyle
     }
   }
 
-  const fetchStyleById = async (id: number) => {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const { data, error: fetchError } = await useAsyncData<Style>(`style-${id}`, () =>
-        $fetch(`${API_BASE}/styles/${id}`)
-      )
-
-      if (fetchError.value) {
-        throw new Error(fetchError.value.message || 'Failed to fetch style')
-      }
-
-      if (data.value) {
-        currentStyle.value = data.value
-      }
-
-      return currentStyle.value
-    } catch (err: any) {
-      error.value = err.message || 'Failed to fetch style'
-      console.error('Error fetching style:', err)
-      return null
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  const createStyle = async (styleData: Partial<Style>) => {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const data = await $fetch<Style>('/api/styles', {
-        method: 'POST',
-        body: styleData,
-      })
-
-      if (data) {
-        styles.value.unshift(data)
-        totalCount.value += 1
-      }
-      return data
-    } catch (err: any) {
-      const { error: apiError } = handleApiError(err, 'Failed to create style')
-      error.value = apiError
-      console.error('Error creating style:', err)
-      return null
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  const updateStyle = async (id: number, styleData: Partial<Style>) => {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const data = await $fetch<Style>(`/api/styles/${id}`, {
-        method: 'PATCH',
-        body: styleData,
-      })
-
-      if (data) {
-        const index = styles.value.findIndex(s => s.id === id)
-        if (index !== -1) {
-          styles.value[index] = data
-        }
-        if (currentStyle.value?.id === id) {
-          currentStyle.value = data
-        }
-      }
-      return data
-    } catch (err: any) {
-      const { error: apiError } = handleApiError(err, 'Failed to update style')
-      error.value = apiError
-      console.error('Error updating style:', err)
-      return null
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  const deleteStyle = async (id: number) => {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      await $fetch(`/api/styles/${id}`, {
-        method: 'DELETE',
-      })
-
-      styles.value = styles.value.filter(style => style.id !== id)
+  const removeStyle = (styleId: string) => {
+    const index = styles.value.findIndex(s => s.id === styleId)
+    if (index !== -1) {
+      styles.value.splice(index, 1)
       totalCount.value = Math.max(0, totalCount.value - 1)
-
-      if (currentStyle.value?.id === id) {
-        currentStyle.value = null
-      }
-      return true
-    } catch (err: any) {
-      const { error: apiError } = handleApiError(err, 'Failed to delete style')
-      error.value = apiError
-      console.error('Error deleting style:', err)
-      return false
-    } finally {
-      isLoading.value = false
+    }
+    if (currentStyle.value?.id === styleId) {
+      currentStyle.value = null
     }
   }
 
-  const setFilters = (newFilters: Partial<StyleFilterOptions>) => {
-    filters.value = { ...filters.value, ...newFilters }
+  const setCurrentStyle = (style: Style | null) => {
+    currentStyle.value = style
   }
 
-  const resetFilters = () => {
+  const setLoading = (loading: boolean) => {
+    isLoading.value = loading
+  }
+
+  const setError = (message: string | null) => {
+    error.value = message
+  }
+
+  const setFilters = (newFilters: Partial<StyleFilter>) => {
+    filters.value = { ...filters.value, ...newFilters }
+    pagination.value.page = 1 // Reset to first page when filters change
+  }
+
+  const setPagination = (page: number, pageSize: number) => {
+    pagination.value = { page, pageSize }
+  }
+
+  const resetState = () => {
+    styles.value = []
+    currentStyle.value = null
+    isLoading.value = false
+    error.value = null
+    totalCount.value = 0
     filters.value = {
       search: '',
-      sortBy: 'updatedAt',
+      status: 'all',
+      sortBy: 'createdAt',
       sortOrder: 'desc',
+    }
+    pagination.value = {
+      page: 1,
+      pageSize: 10,
     }
   }
 
@@ -198,17 +135,22 @@ export const useStyleStore = defineStore('style', () => {
     error,
     totalCount,
     filters,
+    pagination,
 
     // Getters
-    getStyleById,
+    filteredStyles,
+    sortedAndPaginatedStyles,
 
     // Actions
-    fetchStyles,
-    fetchStyleById,
-    createStyle,
-    updateStyle,
-    deleteStyle,
+    setStyles,
+    addStyle,
+    updateStyleInStore,
+    removeStyle,
+    setCurrentStyle,
+    setLoading,
+    setError,
     setFilters,
-    resetFilters,
+    setPagination,
+    resetState,
   }
 })

@@ -205,9 +205,10 @@ size="sm">
 // Router and utilities
 import { useRouter, useRoute } from 'vue-router'
 
-// Stores
+// Stores and composables
 import { useAuthStore } from '~/store/modules/auth'
 import { useStyleStore } from '~/store/modules/style'
+import { useStyleApi } from '~/composables/useStyleApi'
 
 // Types
 import type { Style } from '~/types/style'
@@ -216,10 +217,11 @@ import type { Style } from '~/types/style'
 const router = useRouter()
 const route = useRoute()
 
-// Composable and stores
+// Composable, stores, and API
 const routes = useAppRoutes()
 const authStore = useAuthStore()
 const styleStore = useStyleStore()
+const styleApi = useStyleApi()
 const toast = useToast()
 
 // Constants
@@ -254,47 +256,80 @@ const error = ref<string | null>(null)
 const confirmDelete = ref(false)
 
 // Fetch style data
-onMounted(async () => {
+const fetchStyleData = async () => {
   try {
     const styleId = route.params.id as string
+    if (!styleId) {
+      error.value = 'Style ID is required'
+      return
+    }
+
     isLoading.value = true
+    error.value = null
 
     // Check if user is authenticated
     if (!authStore.isLoggedIn) {
       error.value = 'Authentication required. Please log in.'
-      isLoading.value = false
       navigateTo('/auth/login')
       return
     }
 
-    try {
-      // Fetch style data using the store
-      const styleData = await styleStore.fetchStyleById(styleId)
+    // Fetch style data using the API
+    const response = await styleApi.getStyleById(styleId)
 
-      if (styleData) {
-        style.value = styleData
-        // Fetch related orders (still using direct API call for now)
+    if (response.success && response.data) {
+      style.value = response.data
+
+      // Update the style in the store for consistency
+      styleStore.currentStyle = response.data
+
+      // Fetch related orders (still using direct API call for now)
+      try {
         const relatedOrdersData = await $fetch(`/api/orders?styleId=${styleId}`, {
           headers: {
-            ...authStore.getAuthHeaders(),
+            ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
         })
         relatedOrders.value = relatedOrdersData || []
-      } else {
-        error.value = 'Style not found'
+      } catch (err) {
+        console.error('Error fetching related orders:', err)
+        // Don't fail the whole page if orders fail to load
       }
-    } catch (err: any) {
-      console.error('Error fetching style:', err)
-      error.value = err.message || 'Failed to load style details'
+    } else {
+      error.value = response.error || 'Style not found'
+      toast.add({
+        title: 'Error',
+        description: error.value,
+        color: 'error',
+      })
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error in style detail page:', err)
-    error.value = 'An unexpected error occurred'
+    error.value = 'An unexpected error occurred while loading style details'
+    toast.add({
+      title: 'Error',
+      description: error.value,
+      color: 'error',
+    })
   } finally {
     isLoading.value = false
   }
-})
+}
+
+// Initial data fetch
+onMounted(fetchStyleData)
+
+// Refresh data when route changes
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      fetchStyleData()
+    }
+  }
+)
 
 // Format date for display
 const formatDate = dateString => {
@@ -337,22 +372,33 @@ const deleteStyle = async () => {
   try {
     isDeleting.value = true
 
-    // Delete the style using the store
-    await styleStore.deleteStyle(style.value.id)
+    // Delete the style using the API
+    const response = await styleApi.deleteStyle(style.value.id)
 
-    toast.add({
-      title: 'Success',
-      description: 'Style deleted successfully',
-      color: 'green',
-    })
+    if (response.success) {
+      toast.add({
+        title: 'Success',
+        description: 'Style deleted successfully',
+        color: 'green',
+      })
 
-    router.push(STYLES_PATH)
+      // Clear the current style from the store
+      if (styleStore.currentStyle?.id === style.value.id) {
+        styleStore.currentStyle = null
+      }
+
+      // Navigate back to styles list
+      router.push(STYLES_PATH)
+    } else {
+      throw new Error(response.error || 'Failed to delete style')
+    }
   } catch (err: any) {
     console.error('Error deleting style:', err)
 
+    const errorMessage = err.message || 'Failed to delete style. Please try again.'
     toast.add({
       title: 'Error',
-      description: err.message || 'Failed to delete style. Please try again.',
+      description: errorMessage,
       color: 'error',
     })
   } finally {

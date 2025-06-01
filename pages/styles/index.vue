@@ -234,11 +234,13 @@ class="px-4 sm:px-6 py-2">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useAuthStore } from '~/store/modules/auth'
 import { useStyleStore } from '~/store/modules/style'
+import { useStyleApi } from '~/composables/useStyleApi'
 
 // Composable
 const routes = useAppRoutes()
 const authStore = useAuthStore()
 const styleStore = useStyleStore()
+const styleApi = useStyleApi()
 
 // Constants
 const NEW_STYLE_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.NEW] as string
@@ -265,14 +267,19 @@ const styleToDelete = ref<{ id: string; name: string } | null>(null)
 const isDeleting = ref(false)
 const currentPage = ref(1)
 
+// Local state
+const isLoading = ref(false)
+const styles = ref<Style[]>([])
+const totalCount = ref(0)
+const itemsPerPage = ref(12)
+
 // Computed
-const isLoading = computed(() => styleStore.isLoading)
-const filteredStyles = computed(() => styleStore.styles) // Use styles from store
+const filteredStyles = computed(() => styles.value)
 const pagination = computed(() => ({
-  total: styleStore.totalCount,
-  page: styleStore.currentPage,
-  limit: styleStore.itemsPerPage,
-  totalPages: Math.ceil(styleStore.totalCount / styleStore.itemsPerPage) || 1,
+  total: totalCount.value,
+  page: currentPage.value,
+  limit: itemsPerPage.value,
+  totalPages: Math.ceil(totalCount.value / itemsPerPage.value) || 1,
 }))
 
 // Sort options
@@ -307,24 +314,39 @@ const loadStyles = async () => {
       return
     }
 
+    isLoading.value = true
+
     // Build filters
     const filters = {
       page: currentPage.value,
-      limit: 12,
+      limit: itemsPerPage.value,
       search: search.value.trim() || undefined,
       sortField: sortBy.value === 'name-asc' || sortBy.value === 'name-desc' ? 'name' : 'createdAt',
       sortOrder: sortBy.value.endsWith('asc') ? 'asc' : 'desc',
     }
 
-    // Fetch styles from the store
-    await styleStore.fetchStyles(filters)
+    // Fetch styles using the API composable
+    const response = await styleApi.getStyles(filters)
 
-    // Update filtered styles
-    filteredStyles.value = [...styleStore.styles]
+    if (response.success) {
+      styles.value = response.data || []
+      totalCount.value = response.total
+    } else if (response.error) {
+      useToast().add({
+        title: 'Error',
+        description: response.error,
+        color: 'error',
+      })
+    }
   } catch (error) {
     console.error('Error loading styles:', error)
-
-    // Error handling is done in the store
+    useToast().add({
+      title: 'Error',
+      description: 'Failed to load styles. Please try again.',
+      color: 'error',
+    })
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -346,16 +368,15 @@ const filterStyles = () => {
   loadStyles()
 }
 
-// Watch for style store errors
+// Watch for auth state changes
 watch(
-  () => styleStore.error,
-  error => {
-    if (error) {
-      useToast().add({
-        title: 'Error',
-        description: error,
-        color: 'error',
-      })
+  () => authStore.isLoggedIn,
+  isLoggedIn => {
+    if (isLoggedIn) {
+      loadStyles()
+    } else {
+      styles.value = []
+      totalCount.value = 0
     }
   }
 )
@@ -391,30 +412,34 @@ const deleteStyle = async () => {
   isDeleting.value = true
 
   try {
-    // Delete the style using the store
-    await styleStore.deleteStyle(styleToDelete.value.id)
+    // Delete the style using the API
+    const response = await styleApi.deleteStyle(styleToDelete.value.id)
 
-    // Show success message
-    useToast().add({
-      title: 'Success',
-      description: 'Style deleted successfully',
-      color: 'primary',
-    })
+    if (response.success) {
+      // Show success message
+      useToast().add({
+        title: 'Success',
+        description: 'Style deleted successfully',
+        color: 'primary',
+      })
 
-    // Reset delete state
-    showDeleteModal.value = false
-    styleToDelete.value = null
+      // Reset delete state
+      showDeleteModal.value = false
+      styleToDelete.value = null
 
-    // Reload styles to update the list if needed
-    if (styleStore.styles.length === 0 && currentPage.value > 1) {
-      currentPage.value--
+      // Reload styles to update the list if needed
+      if (styles.value.length === 0 && currentPage.value > 1) {
+        currentPage.value--
+      }
+      await loadStyles()
+    } else {
+      throw new Error(response.error || 'Failed to delete style')
     }
-    await loadStyles()
   } catch (error) {
     console.error('Error deleting style:', error)
     useToast().add({
       title: 'Error',
-      description: 'Failed to delete style. Please try again.',
+      description: error.message || 'Failed to delete style. Please try again.',
       color: 'error',
     })
   } finally {
@@ -422,13 +447,14 @@ const deleteStyle = async () => {
   }
 }
 
-onMounted(() => {
-  loadStyles()
-})
+// onMounted(() => {
+//   loadStyles()
+// })
 
-// Clean up the style store when the component is unmounted
+// Clean up when the component is unmounted
 onUnmounted(() => {
-  // Reset the style store state if needed
-  styleStore.$reset()
+  // Reset local state if needed
+  styles.value = []
+  totalCount.value = 0
 })
 </script>

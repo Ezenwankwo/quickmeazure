@@ -46,7 +46,7 @@
 
       <!-- Billing Tab -->
       <template #billing>
-        <div class="py-6">
+        <div class="py-6 space-y-6">
           <SettingsBillingForm />
         </div>
       </template>

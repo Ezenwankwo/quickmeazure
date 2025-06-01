@@ -95,11 +95,13 @@ variant="outline"
 import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStyleStore } from '~/store/modules/style'
+import { useStyleApi } from '~/composables/useStyleApi'
 
-// Composable and stores
+// Composable, stores, and API
 const routes = useAppRoutes()
 const router = useRouter()
 const styleStore = useStyleStore()
+const styleApi = useStyleApi()
 const toast = useToast()
 const STYLES_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.STYLES.INDEX] as string
 
@@ -226,18 +228,27 @@ const saveStyle = async () => {
     // Add the image file
     formData.append('image', style.value.imageFile)
 
-    // Create the style using the store
-    const newStyle = await styleStore.createStyle(formData)
+    // Create the style using the API
+    const response = await styleApi.createStyle(formData)
 
-    // Show success notification
-    toast.add({
-      title: 'Style Created',
-      description: 'Your style has been created successfully',
-      color: 'primary',
-    })
+    if (response.success && response.data) {
+      const newStyle = response.data
 
-    // Redirect to the new style's detail page
-    await router.push(`${STYLES_PATH}/${newStyle.id}/detail`)
+      // Update the store with the new style
+      styleStore.currentStyle = newStyle
+
+      // Show success notification
+      toast.add({
+        title: 'Style Created',
+        description: 'Your style has been created successfully',
+        color: 'primary',
+      })
+
+      // Redirect to the new style's detail page
+      await router.push(`${STYLES_PATH}/${newStyle.id}/detail`)
+    } else {
+      throw new Error(response.error || 'Failed to create style')
+    }
   } catch (error: any) {
     console.error('Error creating style:', error)
 
@@ -246,12 +257,14 @@ const saveStyle = async () => {
     if (error.response) {
       const status = error.response.status
       if (status === 413) {
-        errorMessage = 'The image file is too large. Please use a smaller image.'
+        errorMessage = 'The image file is too large. Maximum size is 5MB.'
       } else if (status === 415) {
-        errorMessage = 'The file format is not supported.'
+        errorMessage = 'The file format is not supported. Please use JPG, PNG, or GIF.'
       } else if (error.data?.message) {
         errorMessage = error.data.message
       }
+    } else if (error.message) {
+      errorMessage = error.message
     }
 
     toast.add({

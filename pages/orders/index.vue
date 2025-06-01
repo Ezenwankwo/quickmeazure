@@ -8,7 +8,21 @@
         icon: 'i-heroicons-plus',
         to: NEW_ORDER_PATH,
       }"
-    />
+    >
+      <template #actions>
+        <UButton
+          v-if="isFilterApplied"
+          color="gray"
+          variant="ghost"
+          size="sm"
+          class="text-sm"
+          @click="resetFilters"
+        >
+          <UIcon name="i-heroicons-x-mark" class="w-4 h-4 mr-1" />
+          Clear filters
+        </UButton>
+      </template>
+    </PageHeader>
 
     <!-- Search and Filter with glassy effect -->
     <UCard class="bg-white/80 backdrop-blur-sm border border-gray-100 shadow-sm">
@@ -111,38 +125,45 @@ icon="i-heroicons-arrow-path"
       </div>
     </UCard>
 
+    <!-- Loading state -->
+    <div v-if="orderStore.isLoading" class="flex justify-center py-12">
+      <UButton loading color="primary" variant="ghost" />
+    </div>
+
+    <!-- Error state -->
+    <UAlert
+      v-else-if="orderStore.error"
+      :title="orderStore.error"
+      color="red"
+      variant="subtle"
+      icon="i-heroicons-exclamation-triangle"
+      class="mb-6"
+    />
+
     <!-- Orders Table (desktop) / Cards (mobile) -->
     <UCard class="bg-white">
       <!-- Desktop Table View (hidden on mobile) -->
       <div class="hidden md:block">
-        <!-- Loading state for desktop -->
-        <div v-if="isLoading" class="py-8 space-y-6">
-          <USkeleton class="h-8 w-full" />
-          <USkeleton v-for="i in 5" :key="i" class="h-12 w-full" />
-        </div>
-
-        <!-- Empty state for desktop -->
-        <div v-else-if="paginatedOrders.length === 0" class="py-12 text-center">
-          <UIcon name="i-heroicons-shopping-bag" class="mx-auto h-12 w-12 text-gray-400" />
-          <h3 class="mt-2 text-sm font-semibold text-gray-900">No orders found</h3>
-          <p class="mt-1 text-sm text-gray-500">
+        <!-- Empty state -->
+        <div v-if="!filteredOrders.length" class="text-center py-12">
+          <UIcon name="i-heroicons-document-text" class="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 class="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
+          <p class="text-gray-500 mb-6">
             {{
               search || isFilterApplied
-                ? 'Try adjusting your search or filters'
-                : 'Get started by creating your first order'
+                ? 'Try adjusting your search or filter criteria'
+                : 'Get started by creating a new order'
             }}
           </p>
-          <div class="mt-6">
-            <UButton v-if="!search && !isFilterApplied" to="/orders/new" color="primary">
-              Create order
-            </UButton>
-            <UButton
-v-else
-color="gray"
-variant="outline"
-@click="resetFilters">
-              Reset filters
-            </UButton>
+          <UButton
+:to="NEW_ORDER_PATH"
+color="primary"
+icon="i-heroicons-plus"
+class="mb-4">
+            Create Order
+          </UButton>
+          <div v-if="isFilterApplied" class="mt-4">
+            <UButton color="gray" variant="outline" @click="resetFilters"> Reset filters </UButton>
           </div>
         </div>
 
@@ -283,8 +304,8 @@ variant="outline"
             class="bg-white rounded-lg border border-gray-200 shadow-sm p-4 space-y-4"
           >
             <div class="flex items-center">
-              <div class="w-10 h-10 rounded-full bg-gray-200 animate-pulse mr-3" />
-              <div class="h-6 bg-gray-200 rounded animate-pulse w-1/2" />
+              <div class="w-10 h-10 rounded-full bg-gray-200 animate-pulse mr-3"></div>
+              <div class="h-6 bg-gray-200 rounded animate-pulse w-1/2"></div>
             </div>
             <div class="space-y-2">
               <div class="flex justify-between py-1 border-b border-gray-100">
@@ -486,77 +507,88 @@ icon="i-heroicons-plus">
             Showing {{ Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalItems) }}-{{
               Math.min(currentPage * ITEMS_PER_PAGE, totalItems)
             }}
-            of {{ totalItems }} orders
+            of {{ totalItems }} {{ totalItems === 1 ? 'order' : 'orders' }}
           </div>
 
-          <!-- Pagination -->
-          <div v-if="showPagination" class="flex items-center space-x-1 order-1 sm:order-2">
-            <!-- Previous button -->
-            <UButton
-              variant="ghost"
-              color="gray"
-              :disabled="currentPage === 1"
-              size="sm"
-              icon="i-heroicons-chevron-left"
-              class="rounded-lg"
-              @click="currentPage > 1 && (currentPage--, fetchOrders())"
-            />
+          <!-- Pagination Controls -->
+          <div v-if="_pageCount > 1" class="flex items-center space-x-1 order-1 sm:order-2">
+            <!-- Previous Button -->
+            <UTooltip text="Previous page">
+              <UButton
+                variant="ghost"
+                color="gray"
+                :disabled="currentPage === 1"
+                size="sm"
+                icon="i-heroicons-chevron-left"
+                class="rounded-lg"
+                @click="goToPage(currentPage - 1)"
+              />
+            </UTooltip>
 
-            <!-- First page -->
-            <UButton
-              variant="ghost"
-              color="gray"
-              :class="currentPage === 1 ? 'bg-primary-50 text-primary-700' : ''"
-              size="sm"
-              class="rounded-lg"
-              @click="((currentPage = 1), fetchOrders())"
-            >
-              1
-            </UButton>
+            <!-- First Page (if not in visible pages) -->
+            <template v-if="!getVisiblePageNumbers().includes(1)">
+              <UButton
+                variant="ghost"
+                color="gray"
+                :class="{ 'bg-primary-50 text-primary-700': currentPage === 1 }"
+                size="sm"
+                class="rounded-lg min-w-[2rem]"
+                @click="goToPage(1)"
+              >
+                1
+              </UButton>
+              <span v-if="getVisiblePageNumbers()[0] > 2" class="px-1">...</span>
+            </template>
 
-            <!-- Ellipsis if needed -->
-            <span v-if="currentPage > 3 && pageCount > 5" class="px-1">...</span>
+            <!-- Page Numbers -->
+            <template v-for="page in getVisiblePageNumbers()" :key="page">
+              <UButton
+                v-if="page > 0 && page <= _pageCount"
+                variant="ghost"
+                color="gray"
+                :class="{
+                  'bg-primary-50 text-primary-700 font-medium': currentPage === page,
+                  'hover:bg-gray-100': currentPage !== page,
+                }"
+                size="sm"
+                class="rounded-lg min-w-[2rem]"
+                @click="goToPage(page)"
+              >
+                {{ page }}
+              </UButton>
+            </template>
 
-            <!-- Pages before current -->
-            <UButton
-              v-for="page in getVisiblePageNumbers()"
-              :key="page"
-              variant="ghost"
-              color="gray"
-              :class="currentPage === page ? 'bg-primary-50 text-primary-700' : ''"
-              size="sm"
-              class="rounded-lg"
-              @click="((currentPage = page), fetchOrders())"
-            >
-              {{ page }}
-            </UButton>
+            <!-- Last Page (if not in visible pages) -->
+            <template v-if="!_getVisiblePageNumbers().includes(_pageCount) && _pageCount > 1">
+              <span
+v-if="_getVisiblePageNumbers().slice(-1)[0] < _pageCount - 1"
+class="px-1"
+                >...</span
+              >
+              <UButton
+                variant="ghost"
+                color="gray"
+                :class="{ 'bg-primary-50 text-primary-700': currentPage === _pageCount }"
+                size="sm"
+                class="rounded-lg min-w-[2rem]"
+                @click="goToPage(_pageCount)"
+              >
+                {{ _pageCount }}
+              </UButton>
+            </template>
 
-            <!-- Ellipsis if needed -->
-            <span v-if="currentPage < pageCount - 2 && pageCount > 5" class="px-1">...</span>
-
-            <!-- Last page if not already shown -->
-            <UButton
-              v-if="pageCount > 1 && !getVisiblePageNumbers().includes(pageCount)"
-              variant="ghost"
-              color="gray"
-              :class="currentPage === pageCount ? 'bg-primary-50 text-primary-700' : ''"
-              size="sm"
-              class="rounded-lg"
-              @click="((currentPage = pageCount), fetchOrders())"
-            >
-              {{ pageCount }}
-            </UButton>
-
-            <!-- Next button -->
-            <UButton
-              variant="ghost"
-              color="gray"
-              :disabled="currentPage === pageCount"
-              size="sm"
-              icon="i-heroicons-chevron-right"
-              class="rounded-lg"
-              @click="currentPage < pageCount && (currentPage++, fetchOrders())"
-            />
+            <!-- Next Button -->
+            <UTooltip text="Next page">
+              <UButton
+                variant="ghost"
+                color="gray"
+                :disabled="currentPage >= _pageCount"
+                size="sm"
+                icon="i-heroicons-chevron-right"
+                class="rounded-lg"
+                @click="goToPage(currentPage + 1)"
+              />
+            </UTooltip>
           </div>
         </div>
       </template>
@@ -579,8 +611,9 @@ import { storeToRefs } from 'pinia'
 import type { Order } from '~/types/order'
 import { useAuthStore } from '~/store/modules/auth'
 
-// Stores
+// Stores and composables
 import { useOrderStore } from '~/store/modules/order'
+import { useOrderApi } from '~/composables/useOrderApi'
 
 // Composable
 const routes = useAppRoutes()
@@ -599,15 +632,17 @@ useHead({
   title: 'Orders',
 })
 
-// Stores
+// Stores and composables
 const orderStore = useOrderStore()
-
-// Composable
+const orderApi = useOrderApi()
 const toast = useToast()
 
 // Used in template but not directly in script
 const _router = useRouter()
 const _authStore = useAuthStore()
+
+// Constants
+const ITEMS_PER_PAGE = 10
 
 // Component state
 const search = ref('')
@@ -617,11 +652,11 @@ const showDeleteModal = ref(false)
 const orderToDelete = ref<Order | null>(null)
 const isDeleting = ref(false)
 const currentPage = ref(1)
-const itemsPerPage = 10
+const itemsPerPage = ITEMS_PER_PAGE // Use the constant for consistency
 
 // Computed properties
 const totalItems = computed(() => orderStore.totalCount)
-const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
+const pageCount = computed(() => Math.ceil(totalItems.value / itemsPerPage))
 
 // Check if any filters are applied
 const isFilterApplied = computed(() => {
@@ -822,53 +857,50 @@ const columns = [
   },
 ]
 
-// Constants
-const ITEMS_PER_PAGE = 10
-
 // Computed properties
-const pageCount = computed(() => {
-  return totalPages.value
-})
-
 const paginatedOrders = computed(() => {
-  if (!filteredOrders.value) return []
+  if (!filteredOrders.value || !filteredOrders.value.length) return []
 
+  // If we have server-side pagination, just return the filtered orders
+  // as they're already paginated from the server
+  if (orderStore.orders.length <= ITEMS_PER_PAGE) {
+    return filteredOrders.value
+  }
+
+  // Client-side pagination fallback
   const start = (currentPage.value - 1) * ITEMS_PER_PAGE
   const end = start + ITEMS_PER_PAGE
   return filteredOrders.value.slice(start, end)
 })
 
-const showPagination = computed(() => {
-  return totalPages.value > 1
-})
-
-// This section intentionally left empty as the isFilterApplied computed property is already defined above
+// Pagination is controlled by pageCount computed property
 
 // Fetch orders from API
 const fetchOrders = async () => {
-  isLoading.value = true
+  orderStore.setLoading(true)
 
   try {
     // Build query parameters
-    const params = new URLSearchParams()
-    params.append('page', currentPage.value.toString())
-    params.append('limit', ITEMS_PER_PAGE.toString())
+    const queryParams: any = {
+      page: currentPage.value,
+      limit: ITEMS_PER_PAGE,
+    }
 
     // Add search parameter if provided
     if (search.value.trim()) {
-      params.append('search', search.value)
+      queryParams.search = search.value
     }
 
     // Add sort parameters
     if (sortBy.value) {
       const [field, direction] = sortBy.value.split('-')
-      params.append('sortField', field)
-      params.append('sortOrder', direction)
+      queryParams.sortField = field
+      queryParams.sortOrder = direction
     }
 
     // Add status filter if provided
     if (filters.value.status !== 'all') {
-      params.append('status', filters.value.status)
+      queryParams.status = filters.value.status
     }
 
     // Add due date filters
@@ -878,69 +910,69 @@ const fetchOrders = async () => {
 
       switch (filters.value.dueDate) {
         case 'overdue':
-          params.append('dueDateEnd', today.toISOString().split('T')[0])
+          queryParams.dueDateEnd = today.toISOString().split('T')[0]
           break
         case 'today':
-          params.append('dueDateStart', today.toISOString().split('T')[0])
-          params.append('dueDateEnd', today.toISOString().split('T')[0])
+          queryParams.dueDateStart = today.toISOString().split('T')[0]
+          queryParams.dueDateEnd = today.toISOString().split('T')[0]
           break
         case 'this-week': {
           const endOfWeek = new Date(today)
           endOfWeek.setDate(today.getDate() + (6 - today.getDay()))
-          params.append('dueDateStart', today.toISOString().split('T')[0])
-          params.append('dueDateEnd', endOfWeek.toISOString().split('T')[0])
+          queryParams.dueDateStart = today.toISOString().split('T')[0]
+          queryParams.dueDateEnd = endOfWeek.toISOString().split('T')[0]
           break
         }
         case 'this-month': {
           const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-          params.append('dueDateStart', today.toISOString().split('T')[0])
-          params.append('dueDateEnd', endOfMonth.toISOString().split('T')[0])
+          queryParams.dueDateStart = today.toISOString().split('T')[0]
+          queryParams.dueDateEnd = endOfMonth.toISOString().split('T')[0]
           break
         }
       }
     }
 
-    // Make API request with all parameters and auth headers
-    const response = await $fetch(`/api/orders?${params.toString()}`, {
-      headers: {
-        ...authStore.getAuthHeaders(),
-        'Content-Type': 'application/json',
-      },
-    })
+    // Call the API using the new composable
+    const response = await orderApi.getOrders(queryParams)
 
-    // Format the orders data for display
-    orders.value = response.data.map(order => formatOrderData(order))
+    if (response.success && response.data) {
+      // Format the orders data for display
+      const formattedOrders = response.data.map(order => formatOrderData(order))
 
-    // Update pagination data from server response
-    filteredOrders.value = orders.value
+      // Update store with the new data
+      orderStore.setOrders(formattedOrders)
 
-    // Update pagination from server response
-    if (response.pagination) {
-      currentPage.value = response.pagination.page
-      totalItems.value = response.pagination.total
-      totalPages.value = response.pagination.totalPages
+      // Update pagination
+      if (response.total !== undefined) {
+        orderStore.setTotalCount(response.total)
+        totalItems.value = response.total
+        // No need to set totalPages here as it's computed from totalItems and ITEMS_PER_PAGE
+      }
+
+      return formattedOrders
+    } else {
+      throw new Error(response.error || 'Failed to fetch orders')
     }
   } catch (error) {
     console.error('Error fetching orders:', error)
-    let errorMessage = 'Failed to load orders. Please refresh the page.'
+    const errorMessage = error.message || 'Failed to load orders. Please refresh the page.'
 
-    // Handle unauthorized errors
-    if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      // Redirect to login
-      navigateTo('/auth/login')
-    }
+    orderStore.setError(errorMessage)
+    orderStore.setOrders([])
 
-    useToast().add({
+    toast.add({
       title: 'Error',
       description: errorMessage,
       color: 'error',
     })
 
-    orders.value = []
-    filteredOrders.value = []
+    if (error.response?.status === 401) {
+      navigateTo('/auth/login')
+    }
+
+    return []
   } finally {
-    isLoading.value = false
+    orderStore.setLoading(false)
   }
 }
 
@@ -1008,9 +1040,15 @@ const formatOrderData = order => {
   }
 }
 
-// Call fetchOrders on component mount
+// Fetch orders when component is mounted
 onMounted(async () => {
-  await orderStore.fetchOrders()
+  // Only fetch if we don't have any orders in the store yet
+  if (orderStore.orders.length === 0) {
+    await fetchOrders()
+  } else {
+    // If we already have orders in the store, just update the filtered list
+    filterOrders()
+  }
 })
 
 // Computed property to check if any filter is applied
@@ -1023,8 +1061,152 @@ const hasActiveFilters = computed(() => {
   )
 })
 
+// Helper function to get visible page numbers for pagination
+const getVisiblePageNumbers = (): number[] => {
+  const visiblePages: number[] = []
+  const total = pageCount.value
+  const current = currentPage.value
+
+  // Always show first page
+  if (total <= 0) return []
+
+  // If 5 or fewer pages, show all
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+
+  // Always include first page
+  visiblePages.push(1)
+
+  // Calculate range of pages to show around current page
+  let startPage: number
+  let endPage: number
+
+  if (current <= 3) {
+    // Near the start
+    startPage = 2
+    endPage = 4
+  } else if (current >= total - 2) {
+    // Near the end
+    startPage = total - 3
+    endPage = total - 1
+  } else {
+    // Somewhere in the middle
+    startPage = current - 1
+    endPage = current + 1
+  }
+
+  // Add ellipsis after first page if needed
+  if (startPage > 2) {
+    visiblePages.push(-1) // Use -1 to represent ellipsis
+  }
+
+  // Add middle pages
+  for (let i = startPage; i <= endPage; i++) {
+    if (i > 1 && i < total) {
+      visiblePages.push(i)
+    }
+  }
+
+  // Add ellipsis before last page if needed
+  if (endPage < total - 1) {
+    visiblePages.push(-1) // Use -1 to represent ellipsis
+  }
+
+  // Always include last page
+  if (total > 1) {
+    visiblePages.push(total)
+  }
+
+  return visiblePages
+}
+
+// Delete order
+const deleteOrder = async () => {
+  if (!orderToDelete.value) return
+
+  isDeleting.value = true
+
+  try {
+    // Call the API using the new composable
+    const response = await orderApi.deleteOrder(orderToDelete.value.id)
+
+    if (response.success) {
+      // Remove order from store
+      orderStore.removeOrder(orderToDelete.value.id)
+
+      // Show success message
+      toast.add({
+        title: 'Success',
+        description: 'Order deleted successfully',
+        color: 'green',
+      })
+    } else {
+      throw new Error(response.error || 'Failed to delete order')
+    }
+  } catch (error) {
+    console.error('Error deleting order:', error)
+
+    toast.add({
+      title: 'Error',
+      description: error.message || 'Failed to delete order. Please try again.',
+      color: 'red',
+    })
+  } finally {
+    isDeleting.value = false
+    showDeleteModal.value = false
+    orderToDelete.value = null
+  }
+}
+
+// Update order status
+const updateOrderStatus = async (order: Order, newStatus: string) => {
+  if (!order || !order.id) return
+
+  try {
+    // Update local state optimistically
+    const updatedOrder = { ...order, status: newStatus }
+    orderStore.updateOrderInList(updatedOrder)
+
+    // Call the API using the new composable
+    const response = await orderApi.updateOrderStatus(order.id, newStatus as any)
+
+    if (response.success && response.order) {
+      // Update store with the updated order
+      orderStore.updateOrderInList(response.order)
+
+      // Show success message
+      toast.add({
+        title: 'Success',
+        description: 'Order status updated successfully',
+        color: 'green',
+      })
+    } else {
+      // Revert optimistic update if API call fails
+      orderStore.updateOrderInList(order)
+      throw new Error(response.error || 'Failed to update order status')
+    }
+  } catch (error) {
+    console.error('Error updating order status:', error)
+
+    // Revert optimistic update
+    orderStore.updateOrderInList(order)
+
+    toast.add({
+      title: 'Error',
+      description: error.message || 'Failed to update order status. Please try again.',
+      color: 'red',
+    })
+  }
+}
+
 // Expose to template
 const _hasActiveFilters = hasActiveFilters
+const _getVisiblePageNumbers = getVisiblePageNumbers
+const _deleteOrder = deleteOrder
+const _updateOrderStatus = updateOrderStatus
+const _pageCount = pageCount
+const _pageSize = itemsPerPage
 
 // Filter and sort orders
 const filterOrders = () => {
@@ -1049,171 +1231,5 @@ const resetFilters = () => {
 const resetSearch = () => {
   search.value = ''
   filterOrders()
-}
-
-// Format date
-const formatDate = timestamp => {
-  return new Date(timestamp).toLocaleDateString('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-  })
-}
-
-// Format price
-const formatPrice = amount => {
-  return `₦${amount.toLocaleString()}`
-}
-
-// Get initials from name
-const getInitials = name => {
-  return name
-    .split(' ')
-    .map(part => part.charAt(0))
-    .join('')
-    .toUpperCase()
-    .substring(0, 2)
-}
-
-// Check if order is overdue
-const isOverdue = dueDate => {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  return dueDate < today
-}
-
-// Check if order is due soon (within 3 days)
-const isDueSoon = dueDate => {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  const threeDaysFromNow = today + 3 * 24 * 60 * 60 * 1000
-  return dueDate >= today && dueDate <= threeDaysFromNow
-}
-
-// Get status color
-const getStatusColor = status => {
-  switch (status) {
-    case 'Pending':
-      return 'neutral'
-    case 'In Progress':
-      return 'primary'
-    case 'Ready for Pickup':
-      return 'warning'
-    case 'Completed':
-      return 'success'
-    case 'Cancelled':
-      return 'error'
-    default:
-      return 'neutral'
-  }
-}
-
-// Confirm delete
-const confirmDelete = order => {
-  orderToDelete.value = order
-  showDeleteModal.value = true
-}
-
-// Delete order
-const deleteOrder = async () => {
-  if (!orderToDelete.value) return
-
-  isDeleting.value = true
-
-  try {
-    await orderStore.deleteOrder(orderToDelete.value.id)
-
-    // Show success notification
-    toast.add({
-      title: 'Order deleted',
-      description: `Order for ${orderToDelete.value.client} has been deleted successfully.`,
-      color: 'primary',
-    })
-
-    // Close modal
-    showDeleteModal.value = false
-    orderToDelete.value = null
-  } catch (error: any) {
-    console.error('Error deleting order:', error)
-
-    toast.add({
-      title: 'Error',
-      description: error.message || 'Failed to delete order. Please try again.',
-      color: 'error',
-    })
-
-    // Handle unauthorized errors
-    if (error.response?.status === 401) {
-      // The store will handle the redirect to login
-      return
-    }
-  } finally {
-    isDeleting.value = false
-  }
-}
-
-// Update order status
-const _updateOrderStatus = async (order: Order, newStatus: string) => {
-  const oldStatus = order.status
-  isUpdatingStatus.value = true
-
-  try {
-    await orderStore.updateOrderStatus(order.id, newStatus)
-
-    // Show success notification
-    toast.add({
-      title: 'Status updated',
-      description: `Order status changed to ${newStatus}`,
-      color: 'primary',
-    })
-  } catch (error: any) {
-    console.error('Error updating order status:', error)
-
-    // Revert the status change on error
-    order.status = oldStatus
-
-    toast.add({
-      title: 'Error',
-      description: error.message || 'Failed to update order status. Please try again.',
-      color: 'error',
-    })
-
-    // Handle unauthorized errors
-    if (error.response?.status === 401) {
-      // The store will handle the redirect to login
-      return
-    }
-  } finally {
-    isUpdatingStatus.value = false
-  }
-}
-
-// Helper function to get visible page numbers
-const getVisiblePageNumbers = () => {
-  const visiblePages = []
-  const totalPages = pageCount.value
-  const current = currentPage.value
-
-  if (totalPages <= 5) {
-    for (let i = 1; i <= totalPages; i++) {
-      visiblePages.push(i)
-    }
-  } else {
-    if (current <= 3) {
-      for (let i = 2; i <= 4; i++) {
-        visiblePages.push(i)
-      }
-    } else if (current >= totalPages - 2) {
-      for (let i = totalPages - 3; i <= totalPages - 1; i++) {
-        visiblePages.push(i)
-      }
-    } else {
-      for (let i = current - 1; i <= current + 1; i++) {
-        visiblePages.push(i)
-      }
-    }
-  }
-
-  return visiblePages
 }
 </script>

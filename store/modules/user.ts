@@ -1,19 +1,16 @@
+import { computed, ref } from 'vue'
+import { defineStore } from 'pinia'
+
 // Types
 import type { User } from '~/types/auth'
 import type { UserPreferences } from '~/types/user'
 import type { SubscriptionPlan } from '~/types/subscription'
 
-// Constants
-import { API_ENDPOINTS } from '~/constants/api'
-
 /**
  * User store for managing user profile data, subscription status, and preferences
- * Separated from auth store to maintain clear separation of concerns
+ * This store handles only state management - all API calls should be made through useUserApi
  */
 export const useUserStore = defineStore('user', () => {
-  // Get runtime config
-  const _config = useRuntimeConfig()
-
   // State
   const profile = ref<User | null>(null)
   const preferences = ref<UserPreferences>({
@@ -27,6 +24,7 @@ export const useUserStore = defineStore('user', () => {
     },
     dashboardLayout: 'default',
   })
+
   const subscriptionDetails = ref<{
     plan: SubscriptionPlan | null
     status: 'active' | 'inactive' | 'trial' | 'expired'
@@ -65,18 +63,21 @@ export const useUserStore = defineStore('user', () => {
 
   // Actions
   /**
-   * Initialize the user store
+   * Initialize the user store with user data
    * @param userData User data from auth store or API
    */
   function init(userData: User | null) {
     profile.value = userData
-
-    // Load subscription details from user data
     if (userData) {
       updateSubscriptionDetails(userData)
     }
+    loadPreferences()
+  }
 
-    // Load user preferences from localStorage
+  /**
+   * Load user preferences from localStorage
+   */
+  function loadPreferences() {
     if (import.meta.client) {
       try {
         const savedPreferences = localStorage.getItem('user-preferences')
@@ -93,7 +94,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * Update user profile data
+   * Update user profile data in the store
    * @param userData Updated user data
    */
   function updateProfile(userData: Partial<User>) {
@@ -111,7 +112,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * Update subscription details based on user data
+   * Update subscription details in the store
    */
   function updateSubscriptionDetails(userData: User) {
     const plan = userData.subscriptionPlan || 'free'
@@ -142,7 +143,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * Update user preferences
+   * Update user preferences in the store and localStorage
    * @param newPreferences Updated preferences
    */
   function updatePreferences(newPreferences: Partial<UserPreferences>) {
@@ -150,8 +151,13 @@ export const useUserStore = defineStore('user', () => {
       ...preferences.value,
       ...newPreferences,
     }
+    savePreferences()
+  }
 
-    // Save to localStorage
+  /**
+   * Save preferences to localStorage
+   */
+  function savePreferences() {
     if (import.meta.client) {
       try {
         localStorage.setItem('user-preferences', JSON.stringify(preferences.value))
@@ -163,6 +169,7 @@ export const useUserStore = defineStore('user', () => {
 
   /**
    * Reset user store state
+   * Preserves preferences as they should persist across sessions
    */
   function reset() {
     profile.value = null
@@ -173,8 +180,6 @@ export const useUserStore = defineStore('user', () => {
       features: [],
       clientLimit: 0,
     }
-
-    // Don't reset preferences as they should persist across sessions
   }
 
   /**
@@ -191,178 +196,6 @@ export const useUserStore = defineStore('user', () => {
    */
   function getRemainingClientSlots(currentClientCount: number): number {
     return Math.max(0, subscriptionDetails.value.clientLimit - currentClientCount)
-  }
-
-  /**
-   * Fetch user profile data from the API using useAsyncData
-   * @returns Promise with the result of the operation
-   */
-  async function fetchProfile() {
-    try {
-      console.log('User store: Fetching profile data...')
-
-      // Use useAsyncData for the profile fetch
-      const { data, error: fetchError } = await useAsyncData(
-        'user-profile',
-        () =>
-          $fetch(API_ENDPOINTS.USERS.ME, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            server: true,
-          }),
-        {
-          server: true,
-          lazy: true,
-          default: () => null,
-        }
-      )
-
-      // Check for errors
-      if (fetchError.value) {
-        throw new Error(fetchError.value.message || 'Failed to fetch profile data')
-      }
-
-      const response = data.value
-
-      if (response) {
-        // Update the store with the fetched profile data
-        updateProfile(response)
-        console.log('User store: Profile data fetched and updated')
-      }
-
-      return {
-        success: true,
-        data: response,
-      }
-    } catch (error: any) {
-      console.error('Profile fetch failed:', error)
-
-      return {
-        success: false,
-        error: error.data?.message || error.message || 'Failed to fetch profile data',
-      }
-    }
-  }
-
-  /**
-   * Update user profile data via API
-   * @param profileData Profile data to update
-   * @returns Promise with the result of the operation
-   */
-  async function updateProfileData(profileData: Partial<User>) {
-    try {
-      console.log('User store: Updating profile data...')
-
-      // Call the profile API endpoint
-      const response = await $fetch(API_ENDPOINTS.USERS.PROFILE, {
-        method: 'PATCH',
-        body: JSON.stringify(profileData),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (response) {
-        // Update the store with the updated profile data
-        updateProfile(response)
-        console.log('User store: Profile data updated successfully')
-      }
-
-      return {
-        success: true,
-        data: response,
-      }
-    } catch (error: any) {
-      console.error('Profile update failed:', error)
-
-      return {
-        success: false,
-        error: error.data?.message || error.message || 'Failed to update profile data',
-      }
-    }
-  }
-
-  /**
-   * Upload user avatar
-   * @param file Avatar image file to upload
-   * @returns Promise with the result of the operation
-   */
-  async function uploadAvatar(file: File) {
-    try {
-      console.log('User store: Uploading avatar...')
-
-      // Create FormData for file upload
-      const formData = new FormData()
-      formData.append('avatar', file)
-
-      // Call the avatar upload API endpoint
-      const response = await $fetch(API_ENDPOINTS.USERS.UPDATE_AVATAR, {
-        method: 'POST',
-        body: formData,
-        // Note: Don't set Content-Type header here, let the browser set it with the correct boundary
-      })
-
-      if (response?.avatarUrl) {
-        // Update only the avatar in the profile
-        updateProfile({ avatar: response.avatarUrl })
-        console.log('User store: Avatar updated successfully')
-      }
-
-      return {
-        success: true,
-        data: response,
-      }
-    } catch (error: any) {
-      console.error('Avatar upload failed:', error)
-
-      return {
-        success: false,
-        error: error.data?.message || error.message || 'Failed to upload avatar',
-      }
-    }
-  }
-
-  /**
-   * Change user password
-   * @param currentPassword Current password for verification
-   * @param newPassword New password to set
-   */
-  async function changePassword(currentPassword: string, newPassword: string) {
-    try {
-      console.log('User store: Attempting password change...')
-
-      // Call the change-password API endpoint
-      const response = await $fetch(API_ENDPOINTS.USERS.UPDATE_PASSWORD, {
-        method: 'POST',
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      console.log('User store: Password change response:', response)
-
-      return {
-        success: true,
-        message: 'Password updated successfully',
-      }
-    } catch (error: any) {
-      console.error('Password change failed:', error)
-
-      return {
-        success: false,
-        error:
-          error.data?.message ||
-          error.message ||
-          'An unexpected error occurred during password change',
-      }
-    }
   }
 
   /**
@@ -426,15 +259,13 @@ export const useUserStore = defineStore('user', () => {
     init,
     updateProfile,
     updateSubscriptionDetails,
-    getFeaturesByPlan,
-    getClientLimitByPlan,
     updatePreferences,
+    loadPreferences,
+    savePreferences,
     reset,
     hasFeatureAccess,
     getRemainingClientSlots,
-    fetchProfile,
-    updateProfileData,
-    uploadAvatar,
-    changePassword,
+    getFeaturesByPlan,
+    getClientLimitByPlan,
   }
 })

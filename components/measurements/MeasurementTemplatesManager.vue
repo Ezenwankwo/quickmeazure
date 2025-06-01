@@ -140,19 +140,38 @@ import { onMounted, ref, computed, watch } from 'vue'
 import { useToast } from '#imports'
 import type { MeasurementTemplate } from '~/types/measurement'
 import { useMeasurementTemplateStore } from '~/store/modules/measurementTemplate'
+import { useMeasurementTemplateApi } from '~/composables/useMeasurementTemplateApi'
 
 // Components
 import MeasurementTemplateCard from './MeasurementTemplateCard.vue'
 import MeasurementTemplateForm from './MeasurementTemplateForm.vue'
 
-// Template state
+// Template state and API
 const templateStore = useMeasurementTemplateStore()
+const templateApi = useMeasurementTemplateApi()
 const toast = useToast()
 
 // Fetch templates on mount
-onMounted(() => {
-  templateStore.fetchTemplates()
-})
+const fetchTemplates = async () => {
+  try {
+    templateStore.setLoading(true)
+    const response = await templateApi.getTemplates()
+
+    if (response.success && response.templates) {
+      templateStore.setTemplates(response.templates)
+    } else {
+      throw new Error(response.error || 'Failed to fetch templates')
+    }
+  } catch (error: any) {
+    templateStore.setError(error.message || 'Failed to fetch templates')
+    console.error('Error fetching templates:', error)
+  } finally {
+    templateStore.setLoading(false)
+  }
+}
+
+// Initial fetch
+onMounted(fetchTemplates)
 
 // UI state
 const activeTemplateTab = ref('active')
@@ -204,52 +223,70 @@ const closeTemplateModal = () => {
 
 const handleTemplateSaved = async () => {
   closeTemplateModal()
-  await templateStore.fetchTemplates()
+  await fetchTemplates()
 }
 
 const archiveTemplate = async (id: number) => {
   try {
-    await templateStore.updateTemplate(id, { archived: true })
+    templateStore.setLoading(true)
+    const response = await templateApi.updateTemplate(id, { archived: true })
 
-    toast.add({
-      title: 'Template archived',
-      description: 'The template has been moved to the archive',
-      icon: 'i-heroicons-check-circle',
-      color: 'primary',
-    })
+    if (response.success && response.template) {
+      templateStore.updateTemplateInStore(id, response.template)
 
-    await templateStore.fetchTemplates()
-  } catch (err: any) {
-    console.error('Error archiving template:', err)
+      toast.add({
+        title: 'Template archived',
+        description: 'The template has been moved to the archive',
+        icon: 'i-heroicons-check-circle',
+        color: 'primary',
+      })
+    } else {
+      throw new Error(response.error || 'Failed to archive template')
+    }
+  } catch (error: any) {
+    console.error('Error archiving template:', error)
+    templateStore.setError(error.message || 'Failed to archive template')
+
     toast.add({
       title: 'Error archiving template',
-      description: err.message || 'Please try again',
+      description: error.message || 'Please try again',
       color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
+  } finally {
+    templateStore.setLoading(false)
   }
 }
 
 const unarchiveTemplate = async (id: number) => {
   try {
-    await templateStore.updateTemplate(id, { archived: false })
+    templateStore.setLoading(true)
+    const response = await templateApi.updateTemplate(id, { archived: false })
 
-    toast.add({
-      title: 'Template restored',
-      description: 'The template has been restored to active templates',
-      icon: 'i-heroicons-check-circle',
-      color: 'primary',
-    })
+    if (response.success && response.template) {
+      templateStore.updateTemplateInStore(id, response.template)
 
-    await templateStore.fetchTemplates()
-  } catch (err: any) {
-    console.error('Error restoring template:', err)
+      toast.add({
+        title: 'Template restored',
+        description: 'The template has been restored to active templates',
+        icon: 'i-heroicons-check-circle',
+        color: 'primary',
+      })
+    } else {
+      throw new Error(response.error || 'Failed to restore template')
+    }
+  } catch (error: any) {
+    console.error('Error restoring template:', error)
+    templateStore.setError(error.message || 'Failed to restore template')
+
     toast.add({
       title: 'Error restoring template',
-      description: err.message || 'Please try again',
+      description: error.message || 'Please try again',
       color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
+  } finally {
+    templateStore.setLoading(false)
   }
 }
 
@@ -264,24 +301,30 @@ const deleteTemplate = async () => {
   isDeleting.value = true
 
   try {
-    await templateStore.deleteTemplate(templateToDelete.value.id)
+    const response = await templateApi.deleteTemplate(templateToDelete.value.id)
 
-    toast.add({
-      title: 'Template deleted',
-      description: 'The template has been permanently removed',
-      icon: 'i-heroicons-check-circle',
-      color: 'primary',
-    })
+    if (response.success) {
+      templateStore.removeTemplate(templateToDelete.value.id)
 
-    isDeleteConfirmOpen.value = false
-    templateToDelete.value = null
+      toast.add({
+        title: 'Template deleted',
+        description: 'The template has been permanently removed',
+        icon: 'i-heroicons-check-circle',
+        color: 'primary',
+      })
 
-    await templateStore.fetchTemplates()
-  } catch (err: any) {
-    console.error('Error deleting template:', err)
+      isDeleteConfirmOpen.value = false
+      templateToDelete.value = null
+    } else {
+      throw new Error(response.error || 'Failed to delete template')
+    }
+  } catch (error: any) {
+    console.error('Error deleting template:', error)
+    templateStore.setError(error.message || 'Failed to delete template')
+
     toast.add({
       title: 'Error deleting template',
-      description: err.message || 'Please try again',
+      description: error.message || 'Please try again',
       color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
@@ -291,7 +334,5 @@ const deleteTemplate = async () => {
 }
 
 // Watch for changes in the active tab to refresh data
-watch(activeTemplateTab, async () => {
-  await templateStore.fetchTemplates()
-})
+watch(activeTemplateTab, fetchTemplates)
 </script>

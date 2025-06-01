@@ -237,15 +237,15 @@ required>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useOrderStore } from '~/store/modules/order'
-import { storeToRefs } from 'pinia'
-import type { CreateOrderInput } from '~/types/order'
+import { ref, computed, onMounted } from 'vue'
+import { useOrderApi } from '~/composables/useOrderApi'
+import type { CreateOrderInput, OrderItem } from '~/types/order'
 
 // Composable
 const routes = useAppRoutes()
 const router = useRouter()
+const orderApi = useOrderApi()
+const toast = useToast()
 
 // Constants
 const ORDERS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.INDEX] as string
@@ -267,14 +267,23 @@ const toggleSection = sectionValue => {
 }
 
 // Form state
-const form = ref({
+const form = ref<
+  Omit<CreateOrderInput, 'items' | 'measurements'> & {
+    items: OrderItem[]
+    measurements: Record<string, any>
+  }
+>({
   clientId: '',
+  clientName: '',
   styleId: '',
   status: 'Pending',
   dueDate: '',
   totalAmount: 0,
   depositAmount: 0,
+  balanceAmount: 0,
   notes: '',
+  items: [],
+  measurements: {},
 })
 
 // Computed for balance amount
@@ -322,90 +331,88 @@ const styleOptions = computed(() => {
   }))
 })
 
-// Calculate balance when total or deposit changes
-const calculateBalance = () => {
-  // Form validation to ensure deposit isn't more than total
-  if (form.value.depositAmount > form.value.totalAmount) {
-    form.value.depositAmount = form.value.totalAmount
-  }
-}
+// Component state
+const isLoading = ref(true)
+const isSubmitting = ref(false)
+const error = ref<string | null>(null)
 
-// Fetch clients and styles data
-const fetchData = async () => {
-  try {
-    await orderStore.fetchClients()
-    await orderStore.fetchStyles()
-  } catch (error) {
-    console.error('Error fetching data:', error)
-    useToast().add({
-      title: 'Error',
-      description: 'Failed to load required data. Please refresh the page.',
-      color: 'error',
-    })
-  }
-}
-
-// Save the order
+// Save the new order
 const saveOrder = async () => {
-  // Form validation
-  if (!form.value.clientId || form.value.totalAmount <= 0) {
-    useToast().add({
-      title: 'Validation Error',
-      description: 'Please fill in all required fields.',
-      color: 'error',
-    })
-    return
-  }
+  if (isSubmitting.value) return
 
   isSubmitting.value = true
+  error.value = null
 
   try {
-    // Format due date
-    const dueDate = form.value.dueDate ? new Date(form.value.dueDate) : null
-
-    // Prepare order data
+    // Prepare the order data
     const orderData: CreateOrderInput = {
-      clientId:
-        typeof form.value.clientId === 'object' ? form.value.clientId.value : form.value.clientId,
-      styleId: form.value.styleId
-        ? typeof form.value.styleId === 'object'
-          ? form.value.styleId.value
-          : form.value.styleId
-        : null,
+      clientId: form.value.clientId,
+      clientName: form.value.clientName,
+      styleId: form.value.styleId || null,
       status: form.value.status,
-      dueDate,
-      totalAmount: form.value.totalAmount,
-      depositAmount: form.value.depositAmount || 0,
-      notes: form.value.notes,
+      dueDate: form.value.dueDate ? new Date(form.value.dueDate).toISOString() : null,
+      totalAmount: Number(form.value.totalAmount) || 0,
+      depositAmount: Number(form.value.depositAmount) || 0,
+      balanceAmount: Number(form.value.balanceAmount) || 0,
+      notes: form.value.notes || '',
+      items: form.value.items || [],
+      measurements: form.value.measurements || {},
     }
 
-    // Create the order using the store
-    await orderStore.createOrder(orderData)
+    // Create the order using the API
+    const response = await orderApi.createOrder(orderData)
 
-    // Show success message
-    useToast().add({
-      title: 'Order created',
-      description: 'The order has been created successfully.',
-      color: 'primary',
-    })
+    if (response.success && response.order) {
+      // Show success message
+      toast.add({
+        title: 'Success',
+        description: 'Order created successfully',
+        color: 'green',
+      })
 
-    // Redirect to orders list on success
-    await router.push(ORDERS_PATH)
-  } catch (error: any) {
-    console.error('Error creating order:', error)
+      // Redirect to the new order's detail page
+      await router.push(`/orders/${response.order.id}/detail`)
+    } else {
+      throw new Error(response.error || 'Failed to create order')
+    }
+  } catch (err: any) {
+    console.error('Error creating order:', err)
 
-    useToast().add({
+    toast.add({
       title: 'Error',
-      description: error.message || 'Failed to create order. Please try again.',
-      color: 'error',
+      description: err.message || 'Failed to create order. Please try again.',
+      color: 'red',
     })
   } finally {
     isSubmitting.value = false
   }
 }
 
+// Fetch initial data (clients, styles, etc.)
+const fetchInitialData = async () => {
+  isLoading.value = true
+
+  try {
+    // You might want to fetch clients and styles here if needed
+    // For example:
+    // await clientStore.fetchClients()
+    // await styleStore.fetchStyles()
+  } catch (err) {
+    console.error('Error fetching initial data:', err)
+    error.value = 'Failed to load required data. Please refresh the page.'
+
+    toast.add({
+      title: 'Error',
+      description: error.value,
+      color: 'red',
+    })
+  } finally {
+    isLoading.value = false
+  }
+}
+
 // Fetch data on component mount
 onMounted(() => {
-  fetchData()
+  fetchInitialData()
 })
 </script>

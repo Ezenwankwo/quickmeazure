@@ -92,7 +92,7 @@ icon
             block
             color="primary"
             size="lg"
-            :loading="isSubmitting"
+            :loading="isLoading"
             :disabled="!form.email || !form.password"
             @click.prevent="handleLogin"
           >
@@ -119,21 +119,15 @@ icon
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '~/store/modules/auth'
+
 import type { LoginCredentials as _LoginCredentials } from '~/types/auth'
 import { ROUTE_NAMES } from '~/constants/routes'
 
-// Composable
-const router = useRouter()
+const authApi = useAuthApi()
 const toast = useToast()
-const authStore = useAuthStore()
+const router = useRouter()
 
-const { AUTH, DASHBOARD } = ROUTE_NAMES
-
-// Set layout for this page
-definePageMeta({
-  layout: 'auth',
-})
+const { AUTH } = ROUTE_NAMES
 
 // Form state
 const form = ref({
@@ -144,108 +138,58 @@ const form = ref({
 
 // UI state
 const showPassword = ref(false)
-const isSubmitting = ref(false)
-const loading = ref(false)
-const error = ref('')
+const isLoading = ref(false)
 
 // Form submission handler
-// Make sure the login handler only runs on the client side
-const handleLogin = async () => {
-  // // Skip execution during SSR
-  // if (import.meta.server) return
-
-  isSubmitting.value = true
-  error.value = '' // Reset error display
-
-  try {
-    // Log login attempt (safe now that we're client-side only)
-    console.log('Attempting login with:', {
-      email: form.value.email,
-      passwordLength: form.value.password?.length,
-    })
-
-    // Call the login function from our auth store with our typed credentials
-    const result = await authStore.login(form.value)
-
-    // Log the result
-    console.log('Login result:', {
-      success: result.success,
-      redirected: result.redirected,
-      hasError: !!result.error,
-    })
-
-    if (result.success) {
-      // Show success notification
-      toast.add({
-        title: 'Welcome back!',
-        description: 'You have been logged in successfully.',
-        color: 'primary',
-        icon: 'i-heroicons-check-circle',
-      })
-
-      // Only redirect if not already redirected by the auth service
-      // The auth service redirects users without a subscription to the confirm page
-      if (!result.redirected) {
-        // Redirect to dashboard after successful login
-        await router.push(DASHBOARD.INDEX)
-      }
-    } else {
-      // Set error message for display in the UI
-      error.value = result.error || 'Invalid email or password'
-
-      // Also show toast notification for the error
-      toast.add({
-        title: 'Login Failed',
-        description: result.error || 'Invalid email or password',
-        color: 'error',
-        icon: 'i-heroicons-exclamation-triangle',
-      })
-    }
-  } catch (err) {
-    console.error('Login error:', err)
-    error.value = 'An error occurred. Please try again.'
-
-    // Show toast notification for unexpected errors
+async function handleLogin() {
+  if (!form.value.email || !form.value.password) {
     toast.add({
-      title: 'Login Error',
-      description: 'An unexpected error occurred. Please try again.',
+      title: 'Validation Error',
+      description: 'Please enter both email and password',
       color: 'error',
-      icon: 'i-heroicons-exclamation-triangle',
+      icon: 'i-heroicons-exclamation-circle',
     })
-  } finally {
-    isSubmitting.value = false
+    return
   }
+
+  isLoading.value = true
+
+  const result = await authApi.login({
+    email: form.value.email,
+    password: form.value.password,
+    remember: form.value.rememberMe,
+  })
+
+  if (result.success) {
+    // Show success message
+    toast.add({
+      title: 'Login Successful',
+      description: 'Welcome back!',
+      color: 'primary',
+      icon: 'i-heroicons-check-circle',
+    })
+
+    // Redirect to dashboard or intended route
+    const redirectTo = router.currentRoute.value.query.redirect as string
+    await router.push(redirectTo || '/dashboard')
+  }
+
+  isLoading.value = false
 }
 
 async function handleGoogleLogin() {
   try {
-    error.value = ''
-    loading.value = true
+    isLoading.value = true
 
     // Show notification that Google login is not currently available
     toast.add({
       title: 'Google Login',
       description: 'Google login is currently not available. Please use email and password.',
       color: 'warning',
-      icon: 'i-heroicons-information-circle',
-    })
-
-    // Redirect to registration page
-    await router.push(AUTH.REGISTER)
-  } catch (e) {
-    const errorMessage = 'Google login failed'
-    error.value = errorMessage
-    console.error('Google login error:', e)
-
-    // Show error toast notification
-    toast.add({
-      title: 'Login Error',
-      description: errorMessage,
-      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
-  } finally {
-    loading.value = false
+  } catch (e) {
+    console.error('Google login error:', e)
   }
 }
 </script>

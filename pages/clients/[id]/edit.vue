@@ -332,10 +332,12 @@ const measurements = ref({
   notes: null,
 })
 
-// Use client store
+// Use client store and API
 const toast = useToast()
 const clientStore = useClientStore()
-const { currentClient: client, isLoading, error: clientError } = storeToRefs(clientStore)
+const clientApi = useClientApi()
+const { currentClient: client, error: _clientError } = storeToRefs(clientStore) // Prefix with underscore to indicate intentionally unused
+const isLoading = ref(false)
 
 // UI state
 const isUpdating = ref(false)
@@ -556,139 +558,75 @@ const processMeasurements = () => {
 // Fetch client details
 const fetchClient = async () => {
   try {
-    await clientStore.fetchClientById(clientId)
+    isLoading.value = true
 
-    if (!client.value) {
-      throw new Error('Client not found')
-    }
+    // Fetch client using the API
+    const response = await clientApi.getClientById(clientId)
 
-    // Populate form with client data
-    form.value = {
-      name: client.value.name || '',
-      email: client.value.email || null,
-      phone: client.value.phone || null,
-      address: client.value.address || null,
-    }
+    if (response.success && response.client) {
+      // Update store with the fetched client
+      clientStore.setCurrentClient(response.client)
 
-    // Process measurement data if available
-    if (client.value.measurement) {
-      // If using the new schema with values field
-      if (client.value.measurement.values) {
-        const measurementValues = client.value.measurement.values as Record<string, any>
+      // Update form with client data
+      form.value = {
+        name: response.client.name || '',
+        email: response.client.email || null,
+        phone: response.client.phone || null,
+        address: response.client.address || null,
+      }
 
-        // Set notes
-        measurements.value.notes = client.value.measurement.notes || null
+      // Process measurement data if available
+      if (response.client.measurement) {
+        // If using the new schema with values field
+        if (response.client.measurement.values) {
+          const measurementValues = response.client.measurement.values as Record<string, any>
 
-        // Store all measurement values in a temporary object for later use
-        const tempValues: Record<string, any> = {}
-        Object.entries(measurementValues).forEach(([key, data]) => {
-          if (key !== '_template' && data && typeof data === 'object' && 'value' in data) {
-            tempValues[key] = data.value
+          // Set notes
+          measurements.value.notes = response.client.measurement.notes || null
+
+          // Store all measurement values in a temporary object for later use
+          const tempValues: Record<string, any> = {}
+          Object.entries(measurementValues).forEach(([key, data]) => {
+            if (key !== '_template' && data && typeof data === 'object' && 'value' in data) {
+              tempValues[key] = data.value
+            }
+          })
+
+          // Extract template info if available
+          if (measurementValues._template) {
+            console.log('Found template info:', measurementValues._template)
+
+            // First load templates, then select the one used for this client
+            await loadTemplates(true) // Force refresh to ensure we have the latest templates
+
+            // Set the selected template ID
+            selectedTemplateId.value = measurementValues._template.id
+            console.log('Set selected template ID to:', selectedTemplateId.value)
+
+            // Initialize measurements with template fields
+            initializeMeasurements()
+
+            // Set the measurement values from the client data
+            Object.entries(tempValues).forEach(([key, value]) => {
+              if (measurements.value[key] !== undefined) {
+                measurements.value[key] = value
+              }
+            })
           }
-        })
-
-        // Extract template info if available
-        if (measurementValues._template) {
-          console.log('Found template info:', measurementValues._template)
-
-          // First load templates, then select the one used for this client
-          await loadTemplates(true) // Force refresh to ensure we have the latest templates
-
-          // Set the selected template ID
-          selectedTemplateId.value = measurementValues._template.id
-          console.log('Set selected template ID to:', selectedTemplateId.value)
-
-          // Load the template fields
-          await selectTemplate(measurementValues._template.id)
-
-          // After template is loaded, populate measurement values from our temporary object
-          console.log('Populating measurement values from:', tempValues)
-
-          // Process all fields from the template
-          const allFields = [
-            ...(upperBodyFields.value || []),
-            ...(lowerBodyFields.value || []),
-            ...(otherFields.value || []),
-          ]
-
-          // Populate measurements from template fields
-          allFields.forEach((field: { key: string }) => {
-            if (field.key in tempValues) {
-              const measurementsValue = measurements.value as Record<string, any>
-              measurementsValue[field.key] = tempValues[field.key]
-            }
-          })
-
-          // Add any additional fields that weren't in the template
-          Object.entries(tempValues).forEach(([key, value]) => {
-            if (!(key in measurements.value)) {
-              measurements.value[key as keyof typeof measurements.value] = value
-            }
-          })
+        } else if (response.client.measurement.measurements) {
+          // Handle old schema with direct measurements
+          selectedTemplateId.value = response.client.measurement.templateId || null
+          measurements.value = {
+            ...measurements.value,
+            ...response.client.measurement.measurements,
+          }
         }
       }
-      // Legacy schema (before migration)
-      else {
-        // Set notes
-        measurements.value.notes = client.value.measurement.notes || null
-
-        // Map legacy fields to new structure
-        const legacyFields = [
-          'height',
-          'weight',
-          'chest',
-          'waist',
-          'hips',
-          'inseam',
-          'sleeve',
-          'shoulder',
-          'neck',
-          'bicep',
-          'wrist',
-          'thigh',
-          'calf',
-          'ankle',
-        ] as const
-
-        legacyFields.forEach(field => {
-          const measurement = client.value?.measurement as Record<string, any> | undefined
-          if (measurement?.[field] !== null && measurement?.[field] !== undefined) {
-            // Use type assertion to ensure type safety
-            const measurementsValue = measurements.value as Record<string, any>
-            measurementsValue[field] = measurement[field]
-          }
-        })
-
-        // Map additional measurements
-        const additionalMeasurements = (client.value?.measurement as any)
-          ?.additionalMeasurements as Record<string, any> | undefined
-        if (additionalMeasurements) {
-          Object.entries(additionalMeasurements).forEach(([key, value]) => {
-            if (value !== undefined) {
-              const measurementsValue = measurements.value as Record<string, any>
-              measurementsValue[key] = value
-            }
-          })
-        }
-      }
+    } else {
+      throw new Error(response.error || 'Failed to load client data')
     }
-
-    // Update page title with client name
-    useHead({
-      title: `Edit ${client.value.name}`,
-    })
   } catch (error) {
     console.error('Error fetching client:', error)
-    let errorMessage = 'Failed to load client details'
-
-    // Handle specific error cases
-    if (error.response?.status === 404) {
-      errorMessage = 'Client not found'
-    } else if (error.response?.status === 401) {
-      errorMessage = 'Your session has expired. Please log in again.'
-      // Redirect to login
-      navigateTo('/auth/login')
-    }
 
     useToast().add({
       title: 'Error',
@@ -703,6 +641,7 @@ const fetchClient = async () => {
 // Update client
 const updateClient = async () => {
   isUpdating.value = true
+  isLoading.value = true
 
   try {
     // Process measurements if template is selected
@@ -717,34 +656,43 @@ const updateClient = async () => {
       measurement: measurementData as any, // Cast to any to avoid type issues
     }
 
-    // Update client via store
-    await clientStore.updateClient(clientId, updateData)
+    // Update client via API
+    const response = await useClientApi().updateClient(clientId, updateData)
 
-    // Show success message
-    toast.add({
-      title: 'Success',
-      description: 'Client updated successfully',
-      color: 'primary',
-    })
+    if (response.success) {
+      // Update the store with the updated client data
+      clientStore.updateClientInStore(response.client)
 
-    // Redirect to client detail page
-    navigateTo(`/clients/${clientId}`)
+      // Show success message
+      toast.add({
+        title: 'Success',
+        description: 'Client updated successfully',
+        color: 'primary',
+      })
+
+      // Redirect to client detail page
+      navigateTo(`/clients/${clientId}`)
+    } else {
+      throw new Error(response.error || 'Failed to update client')
+    }
   } catch (error) {
     console.error('Error updating client:', error)
 
     toast.add({
       title: 'Error',
-      description: clientError.value || 'Failed to update client. Please try again.',
+      description: error.message || 'Failed to update client. Please try again.',
       color: 'error',
     })
   } finally {
     isUpdating.value = false
+    isLoading.value = false
   }
 }
 
 // Delete client
 const deleteClient = async () => {
   isDeleting.value = true
+  isLoading.value = true
 
   try {
     // Show confirmation dialog
@@ -760,28 +708,36 @@ const deleteClient = async () => {
       return
     }
 
-    // Delete client
-    await clientStore.deleteClient(clientId)
+    // Delete client via API
+    const response = await useClientApi().deleteClient(clientId)
 
-    // Show success message
-    toast.add({
-      title: 'Success',
-      description: 'Client deleted successfully',
-      color: 'primary',
-    })
+    if (response.success) {
+      // Remove client from store
+      clientStore.removeClient(clientId)
 
-    // Redirect to clients list
-    navigateTo('/clients')
+      // Show success message
+      toast.add({
+        title: 'Success',
+        description: 'Client deleted successfully',
+        color: 'primary',
+      })
+
+      // Redirect to clients list
+      navigateTo('/clients')
+    } else {
+      throw new Error(response.error || 'Failed to delete client')
+    }
   } catch (error) {
     console.error('Error deleting client:', error)
 
     toast.add({
       title: 'Error',
-      description: clientError.value || 'Failed to delete client. Please try again.',
+      description: error.message || 'Failed to delete client. Please try again.',
       color: 'error',
     })
   } finally {
     isDeleting.value = false
+    isLoading.value = false
   }
 }
 

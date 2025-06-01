@@ -131,9 +131,10 @@ variant="ghost"
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { MeasurementField } from '~/types/measurement'
 import { useMeasurementTemplateStore } from '~/store/modules/measurementTemplate'
+import { useMeasurementTemplateApi } from '~/composables/useMeasurementTemplateApi'
 
 const props = defineProps({
   modelValue: {
@@ -152,6 +153,7 @@ const emit = defineEmits<{
 }>()
 
 const templateStore = useMeasurementTemplateStore()
+const templateApi = useMeasurementTemplateApi()
 const toast = useToast()
 
 const isOpen = computed({
@@ -307,6 +309,7 @@ const onSubmit = async () => {
   }
 
   try {
+    isSubmitting.value = true
     const templateData = {
       name: form.value.name,
       description: '',
@@ -322,33 +325,54 @@ const onSubmit = async () => {
     }
 
     if (editing.value && props.template?.id) {
-      await templateStore.updateTemplate(Number(props.template.id), templateData)
-      toast.add({
-        title: 'Template updated',
-        description: 'Your measurement template has been updated',
-        icon: 'i-heroicons-check-circle',
-        color: 'primary',
-      })
-    } else {
-      await templateStore.createTemplate(templateData)
-      toast.add({
-        title: 'Template created',
-        description: 'Your new measurement template has been created',
-        icon: 'i-heroicons-check-circle',
-        color: 'primary',
-      })
-    }
+      const response = await templateApi.updateTemplate(Number(props.template.id), templateData)
 
-    emit('saved')
-    close()
+      if (response.success && response.template) {
+        templateStore.updateTemplateInStore(Number(props.template.id), response.template)
+
+        toast.add({
+          title: 'Template updated',
+          description: 'Your measurement template has been updated',
+          icon: 'i-heroicons-check-circle',
+          color: 'primary',
+        })
+
+        emit('saved')
+        close()
+      } else {
+        throw new Error(response.error || 'Failed to update template')
+      }
+    } else {
+      const response = await templateApi.createTemplate(templateData)
+
+      if (response.success && response.template) {
+        templateStore.addTemplate(response.template)
+
+        toast.add({
+          title: 'Template created',
+          description: 'Your new measurement template has been created',
+          icon: 'i-heroicons-check-circle',
+          color: 'primary',
+        })
+
+        emit('saved')
+        close()
+      } else {
+        throw new Error(response.error || 'Failed to create template')
+      }
+    }
   } catch (error: any) {
     console.error('Error saving template:', error)
+    templateStore.setError(error.message || 'Failed to save template')
+
     toast.add({
       title: 'Error saving template',
       description: error.message || 'An error occurred while saving the template',
       color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
+  } finally {
+    isSubmitting.value = false
   }
 }
 

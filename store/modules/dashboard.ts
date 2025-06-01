@@ -7,8 +7,6 @@ import type {
   ChartPeriod,
   Order,
 } from '~/types/dashboard'
-import { API_ENDPOINTS } from '~/constants/api'
-import { useAuthStore } from './auth'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   // State
@@ -25,128 +23,38 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const error = ref<string | null>(null)
   const chartPeriod = ref<ChartPeriod>('month')
 
-  // Get auth store for authentication headers
-  const authStore = useAuthStore()
-
   // Getters
   const hasChartData = computed(() => {
     return clientGrowth.value.labels.length > 0 && clientGrowth.value.data.length > 0
   })
 
-  // Actions
-  const fetchStats = async () => {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const { data } = await useAsyncData<DashboardStats>('dashboard-stats', () =>
-        $fetch(API_ENDPOINTS.DASHBOARD.STATS, {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authStore.getAuthHeaders(),
-          },
-        })
-      )
-
-      if (data.value) {
-        stats.value = data.value
-      }
-
-      return stats.value
-    } catch (err: any) {
-      error.value = err.message || 'Failed to fetch dashboard statistics'
-      console.error('Error fetching dashboard stats:', err)
-      throw err
-    } finally {
-      isLoading.value = false
-    }
+  // Actions (simple state mutations)
+  const setStats = (newStats: DashboardStats | null) => {
+    stats.value = newStats
   }
 
-  const fetchRecentActivity = async (limit = 5) => {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const { data } = await useAsyncData<ActivityItem[]>(`recent-activity-${limit}`, () =>
-        $fetch(API_ENDPOINTS.DASHBOARD.RECENT_ACTIVITY, {
-          query: { limit },
-          headers: {
-            'Content-Type': 'application/json',
-            ...authStore.getAuthHeaders(),
-          },
-        })
-      )
-
-      if (data.value) {
-        recentActivity.value = data.value
-      }
-
-      return recentActivity.value
-    } catch (err: any) {
-      error.value = err.message || 'Failed to fetch recent activity'
-      console.error('Error fetching recent activity:', err)
-      throw err
-    } finally {
-      isLoading.value = false
-    }
+  const setRecentActivity = (activities: ActivityItem[]) => {
+    recentActivity.value = activities
   }
 
-  const fetchDueOrders = async () => {
-    try {
-      isLoading.value = true
-      error.value = null
-
-      const { data } = await useAsyncData<Order[]>('due-orders', () =>
-        $fetch(API_ENDPOINTS.DASHBOARD.ORDERS_DUE_SOON, {
-          headers: {
-            'Content-Type': 'application/json',
-            ...authStore.getAuthHeaders(),
-          },
-        })
-      )
-
-      if (data.value) {
-        dueOrders.value = data.value
-      }
-
-      return dueOrders.value
-    } catch (err: any) {
-      error.value = err.message || 'Failed to fetch due orders'
-      console.error('Error fetching due orders:', err)
-      throw err
-    } finally {
-      isLoading.value = false
-    }
+  const setDueOrders = (orders: Order[]) => {
+    dueOrders.value = orders
   }
 
-  const fetchClientGrowth = async (period: ChartPeriod = 'month') => {
-    try {
-      isLoading.value = true
-      error.value = null
-      chartPeriod.value = period
+  const setClientGrowth = (growthData: ClientGrowthData) => {
+    clientGrowth.value = growthData
+  }
 
-      const { data } = await useAsyncData<ClientGrowthData>(`client-growth-${period}`, () =>
-        $fetch(API_ENDPOINTS.DASHBOARD.CLIENT_GROWTH, {
-          query: { period },
-          headers: {
-            'Content-Type': 'application/json',
-            ...authStore.getAuthHeaders(),
-          },
-        })
-      )
+  const setChartPeriod = (period: ChartPeriod) => {
+    chartPeriod.value = period
+  }
 
-      if (data.value) {
-        clientGrowth.value = data.value
-      }
+  const setLoading = (loading: boolean) => {
+    isLoading.value = loading
+  }
 
-      return clientGrowth.value
-    } catch (err: any) {
-      error.value = err.message || 'Failed to fetch client growth data'
-      console.error('Error fetching client growth data:', err)
-      throw err
-    } finally {
-      isLoading.value = false
-    }
+  const setError = (err: string | null) => {
+    error.value = err
   }
 
   // Reset store state
@@ -177,11 +85,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
     // Getters
     hasChartData,
 
-    // Actions
-    fetchStats,
-    fetchRecentActivity,
-    fetchDueOrders,
-    fetchClientGrowth,
+    // Actions (state mutations)
+    setStats,
+    setRecentActivity,
+    setDueOrders,
+    setClientGrowth,
+    setChartPeriod,
+    setLoading,
+    setError,
     $reset,
   }
 })

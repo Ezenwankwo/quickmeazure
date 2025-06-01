@@ -1,15 +1,17 @@
 // Types
-import type { User, LoginCredentials, RegistrationData } from '~/types/auth'
+import type { User } from '~/types/auth'
 
 // Stores
 import { useUserStore } from './user'
-import type { AuthHeaders } from '~/types/api'
 
 // Constants
-import { API_ENDPOINTS, type ApiResponse } from '~/constants/api'
+import { STORAGE_KEYS } from '~/constants/storage'
 
 // Utils
-import { STORAGE_KEYS, getFromStorage, setToStorage, removeFromStorage } from '~/utils/storage'
+import { getFromStorage, setToStorage, removeFromStorage } from '~/utils/storage'
+
+// Composables
+import { useAuthApi } from '~/composables/useAuthApi'
 
 /**
  * Auth store for managing authentication state
@@ -230,332 +232,124 @@ export const useAuthStore = defineStore(
     }
 
     /**
-     * Login user with email and password
+     * Set user authentication state after successful login
      */
-    async function login(credentials: LoginCredentials) {
-      const { email, password, remember = false } = credentials
-      try {
-        console.log('Auth store: Attempting login...')
-
-        // Call the login API endpoint
-        const response = await $fetch<
-          ApiResponse<{
-            user: User
-            token: string
-            refreshToken?: string
-          }>
-        >(API_ENDPOINTS.AUTH.LOGIN, {
-          method: 'POST',
-          body: JSON.stringify({ email, password, remember }),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-
-        console.log('Auth store: Login response received:', {
-          success: response?.success,
-          hasData: !!response?.data,
-        })
-
-        // Check if the response is valid - be more flexible with the response format
-        if (!response) {
-          throw new Error('No response received from server')
-        }
-
-        // Handle case where response is not in expected format but still contains data
-        if (!response.data && response.success === undefined) {
-          // Try to interpret the response as the data itself
-          response.data = response as any
-          response.success = true
-        } else if (!response.success || !response.data) {
-          throw new Error(response?.error || 'Authentication failed')
-        }
-
-        // Extract response data
-        const { token: authToken, user: userData, refreshToken: authRefreshToken } = response.data
-
-        if (!authToken) {
-          throw new Error('No token received from server')
-        }
-
-        // Store user and token in auth store (for backward compatibility)
-        user.value = userData
-        token.value = authToken
-        refreshToken.value = authRefreshToken || null
-
-        // Initialize user store with user data
-        const userStore = useUserStore()
-        userStore.init(userData)
-
-        // Calculate session expiry based on remember setting
-        const now = Date.now()
-        sessionExpiry.value = remember
-          ? now + EXTENDED_SESSION_DURATION // 30 days if remember me is checked
-          : now + SESSION_DURATION // 8 hours for normal session
-
-        // Reset last activity time
-
-        // Set up session timeout
-        setupSessionTimeout()
-
-        // Save to localStorage
-        persistAuthState()
-
-        // Check if user has a subscription
-        if (userData.subscriptionPlan === 'free' || !userData.subscriptionPlan) {
-          navigateTo('/auth/confirm')
-          return { success: true, redirected: true }
-        }
-
-        return { success: true }
-      } catch (error: any) {
-        console.error('Login failed:', error)
-        // Clear any partial auth state
-        clearAuthState()
-
-        // Show error toast (safely handled without direct import)
-        if (import.meta.client) {
-          console.error(
-            'Login failed:',
-            error.data?.message || error.message || 'An error occurred during login'
-          )
-        }
-
-        return {
-          success: false,
-          error: error.data?.message || error.data?.statusMessage || error.message,
-        }
+    function setAuthState({
+      user: userData,
+      token: authToken,
+      refreshToken: authRefreshToken,
+      remember = false,
+    }: {
+      user: User
+      token: string
+      refreshToken?: string
+      remember?: boolean
+    }) {
+      if (!authToken) {
+        throw new Error('No token provided')
       }
+
+      // Store user and token in auth store
+      user.value = userData
+      token.value = authToken
+      refreshToken.value = authRefreshToken || null
+
+      // Initialize user store with user data
+      const userStore = useUserStore()
+      userStore.init(userData)
+
+      // Calculate session expiry based on remember setting
+      const now = Date.now()
+      sessionExpiry.value = remember
+        ? now + EXTENDED_SESSION_DURATION // 30 days if remember me is checked
+        : now + SESSION_DURATION // 8 hours for normal session
+
+      // Set up session timeout
+      setupSessionTimeout()
+
+      // Save to localStorage
+      persistAuthState()
+
+      return { success: true, user: userData }
     }
 
     /**
-     * Register a new user
+     * Set user data after successful registration
      */
-    async function register(userData: RegistrationData) {
-      const { name, email, password, plan = 'free' } = userData
-      try {
-        // Call the register API endpoint
-        const response = await $fetch<ApiResponse<{ user: User; token: string }>>(
-          API_ENDPOINTS.AUTH.REGISTER,
-          {
-            method: 'POST',
-            body: JSON.stringify({ name, email, password, subscriptionPlan: plan }),
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
-        )
-
-        // Store user and token
-        user.value = response.user
-        token.value = response.token
-
-        // Calculate session expiry (default to 8 hours)
-        const now = Date.now()
-        sessionExpiry.value = now + 8 * 60 * 60 * 1000
-
-        // Save to storage
-        if (import.meta.client) {
-          setToStorage(STORAGE_KEYS.AUTH, {
-            token: response.token,
-            refreshToken: response.refreshToken,
-            user: response.user,
-            expiresAt: sessionExpiry.value,
-          })
-          setToStorage('lastLoginTime', now.toString())
-        }
-
-        return { success: true, user: response.user }
-      } catch (error: any) {
-        console.error('Registration failed:', error)
-
-        // Extract error message from the response
-        let errorMessage = 'Registration failed'
-        const statusCode = error.statusCode || error.status || 500
-
-        if (error.data) {
-          // Handle structured error responses
-          if (error.data.message) {
-            errorMessage = error.data.message
-          } else if (error.data.statusMessage) {
-            errorMessage = error.data.statusMessage
-          }
-        }
-
-        // Add appropriate context based on status code
-        if (statusCode === 409) {
-          errorMessage =
-            'Email is already registered. Please use a different email or login instead.'
-        }
-
-        return {
-          success: false,
-          error: errorMessage,
-          statusCode,
-        }
-      }
+    function setUser(userData: User) {
+      user.value = userData
+      return { success: true, user: userData }
     }
 
     /**
-     * Logout the current user
+     * Logout the current user (client-side only)
      */
-    async function logout() {
-      try {
-        console.log('Starting logout process')
+    function logout() {
+      console.log('Starting client-side logout process')
 
-        // Mark this as an intentional logout if not already set
-        if (import.meta.client && !getFromStorage('intentionalLogout')) {
-          setToStorage('intentionalLogout', 'true')
-        }
-
-        // Clear session timeout
-        clearSessionTimeout()
-
-        // Call server logout endpoint first, while we still have the token
-        if (token.value) {
-          try {
-            console.log('Calling server logout API endpoint')
-            await $fetch(API_ENDPOINTS.AUTH.LOGOUT, {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token.value}`,
-                'X-Refresh-Token': refreshToken.value || '',
-                'Content-Type': 'application/json',
-              },
-            })
-            console.log('Server logout completed')
-          } catch (apiError) {
-            console.error('API logout error (non-critical):', apiError)
-          }
-        }
-
-        // Clear all auth state
-        clearAuthState()
-
-        // Reset user store state
-        const userStore = useUserStore()
-        userStore.reset()
-        console.log('Logout completed successfully')
-
-        // Clear the intentional logout flag after successful logout
-        if (import.meta.client) {
-          setTimeout(() => {
-            removeFromStorage('intentionalLogout')
-          }, 1000) // Small delay to ensure other operations complete
-        }
-
-        return { success: true }
-      } catch (error) {
-        console.error('Logout error:', error)
-
-        // Ensure all state is cleared even on error
-        clearAuthState()
-
-        return { success: true, error }
+      // Mark this as an intentional logout if not already set
+      if (import.meta.client && !getFromStorage('intentionalLogout')) {
+        setToStorage('intentionalLogout', 'true')
       }
+
+      // Clear session timeout
+      clearSessionTimeout()
+
+      // Clear all auth state
+      clearAuthState()
+
+      // Reset user store state
+      const userStore = useUserStore()
+      userStore.reset()
+      console.log('Client-side logout completed')
+
+      // Clear the intentional logout flag after successful logout
+      if (import.meta.client) {
+        setTimeout(() => {
+          removeFromStorage('intentionalLogout')
+        }, 1000) // Small delay to ensure other operations complete
+      }
+
+      return { success: true }
     }
 
     /**
-     * Refresh the user's session
+     * Set a new token and optionally update the refresh token
      */
-    async function refreshSession() {
-      // Prevent multiple simultaneous refresh attempts
-      if (isRefreshing.value) {
-        console.log('Token refresh already in progress, skipping')
-        return { success: false, error: 'Refresh already in progress' }
+    function setToken(newToken: string, newRefreshToken?: string) {
+      if (!newToken) {
+        console.error('Cannot set empty token')
+        return { success: false, error: 'Cannot set empty token' }
       }
 
-      try {
-        // Set refreshing flag
-        isRefreshing.value = true
+      console.log('Updating auth token')
+      token.value = newToken
 
-        // Set flag in storage to prevent multiple tabs from refreshing simultaneously
-        if (import.meta.client) {
-          setToStorage('isHandlingTokenRefresh', 'true')
-        }
-
-        console.log('Refreshing session token')
-
-        // Use $fetch directly for the refresh token request
-        const response = await $fetch<
-          ApiResponse<{ token: string; refreshToken?: string; user?: User }>
-        >(API_ENDPOINTS.AUTH.REFRESH, {
-          method: 'POST',
-          headers: {
-            Authorization: token.value ? `Bearer ${token.value}` : '',
-            'X-Refresh-Token': refreshToken.value || '',
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-        })
-
-        // Check if the response is valid
-        if (!response || !response.success || !response.data || !response.data.token) {
-          throw new Error(response?.error || 'Invalid response from token refresh')
-        }
-
-        console.log('Token refresh successful')
-
-        // Update token
-        token.value = response.data.token
-
-        // Update refresh token if provided
-        if (response.data.refreshToken) {
-          refreshToken.value = response.data.refreshToken
-        }
-
-        // Get user store instance
-        const userStore = useUserStore()
-
-        // Update user data if provided
-        if (response.data.user) {
-          // Update auth store user (for backward compatibility)
-          user.value = response.data.user
-
-          // Update user store
-          userStore.updateProfile(response.data.user)
-        } else if (token.value) {
-          // Extract user from token if not explicitly provided
-          const userData = parseJwtToken(token.value)
-          if (userData) {
-            // Update auth store user (for backward compatibility)
-            user.value = userData
-
-            // Update user store
-            userStore.updateProfile(userData)
-          }
-        }
-
-        // Update expiry (default to standard session duration)
-        const now = Date.now()
-        sessionExpiry.value = now + SESSION_DURATION
-        // Persist updated auth state
-        persistAuthState()
-
-        // Clear refresh handling flag
-        if (import.meta.client) {
-          removeFromStorage('isHandlingTokenRefresh')
-        }
-
-        return { success: true }
-      } catch (error: any) {
-        console.error('Error refreshing session:', error)
-
-        // Clear refresh handling flag
-        if (import.meta.client) {
-          removeFromStorage('isHandlingTokenRefresh')
-        }
-
-        // If refresh fails with 401/403, the session is likely invalid
-        if (error.status === 401 || error.status === 403) {
-          console.log('Session invalid during refresh, logging out')
-          handleSessionExpiry()
-        }
-
-        return { success: false, error: error.message || 'Failed to refresh session' }
-      } finally {
-        isRefreshing.value = false
+      // Update refresh token if provided
+      if (newRefreshToken) {
+        refreshToken.value = newRefreshToken
       }
+
+      return { success: true }
+    }
+
+    /**
+     * Update the user profile in the auth store
+     */
+    function updateUserProfile(userData: User) {
+      if (!userData) {
+        console.error('Cannot update user profile with empty data')
+        return { success: false, error: 'Invalid user data' }
+      }
+
+      console.log('Updating user profile in auth store')
+      user.value = userData
+
+      // Update user store if needed
+      const userStore = useUserStore()
+      userStore.updateProfile(userData)
+
+      return { success: true }
     }
 
     /**
@@ -676,6 +470,40 @@ export const useAuthStore = defineStore(
       }
     }
 
+    /**
+     * Refresh the authentication session by getting a new access token
+     */
+    async function refreshSession() {
+      // Skip if already refreshing
+      if (isRefreshing.value) {
+        console.log('Refresh already in progress, skipping...')
+        return { success: false, error: 'Refresh already in progress' }
+      }
+
+      // Set refreshing flag
+      isRefreshing.value = true
+
+      try {
+        // Use the auth API composable to refresh the token
+        const authApi = useAuthApi()
+        const result = await authApi.refreshToken()
+
+        if (result.success) {
+          console.log('Session refreshed successfully')
+          return { success: true }
+        } else {
+          console.error('Failed to refresh session:', result.error)
+          return { success: false, error: result.error || 'Failed to refresh session' }
+        }
+      } catch (error) {
+        console.error('Error refreshing session:', error)
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+      } finally {
+        // Always clear the refreshing flag
+        isRefreshing.value = false
+      }
+    }
+
     // Return public store interface
     return {
       // State
@@ -683,16 +511,21 @@ export const useAuthStore = defineStore(
       token,
       refreshToken,
       sessionExpiry,
+      isRefreshing,
+      sessionTimeoutId,
 
-      // Computed
+      // Getters
       isLoggedIn,
       isSubscriptionActive,
       status,
 
       // Actions
       init,
-      login,
-      register,
+      clearAuthState,
+      setAuthState,
+      setUser,
+      setToken,
+      updateUserProfile,
       logout,
       refreshSession,
       handleSessionExpiry,

@@ -230,7 +230,7 @@
 
         <!-- Main Content -->
         <main class="flex-1 min-w-0 overflow-hidden">
-          <slot />
+          <slot></slot>
         </main>
       </div>
     </div>
@@ -313,15 +313,22 @@ import { formatDistanceToNow } from 'date-fns'
 import { ROUTE_NAMES } from '~/constants/routes'
 import { useSubscriptionStore } from '~/store/modules/subscription'
 import { useAuthStore } from '~/store/modules/auth'
+import { useAuthApi } from '~/composables/useAuthApi'
 import { useNotificationStore } from '~/store/modules/notification'
-import { useRoute } from 'vue-router'
+import { useNotificationApi } from '~/composables/useNotificationApi'
+import { useRouter, useRoute } from 'vue-router'
+import { useToast } from '#imports' // Nuxt UI toast
 
-// Get current route
+// Get current route and router
 const route = useRoute()
+const router = useRouter()
 
-// Get stores
+// Get stores and composables
 const authStore = useAuthStore()
+const authApi = useAuthApi()
 const notificationStore = useNotificationStore()
+const notificationApi = useNotificationApi()
+const toast = useToast()
 
 // Destructure route names for easy access
 const { DASHBOARD } = ROUTE_NAMES
@@ -337,6 +344,25 @@ const formatNotificationDate = date => {
     return formatDistanceToNow(dateObj, { addSuffix: true })
   } catch (_error) {
     return 'Unknown date'
+  }
+}
+
+// Fetch notifications
+const fetchNotifications = async () => {
+  try {
+    notificationStore.setLoading(true)
+    const response = await notificationApi.getNotifications()
+
+    if (response.success && response.notifications) {
+      notificationStore.setNotifications(response.notifications)
+    } else {
+      throw new Error(response.error || 'Failed to fetch notifications')
+    }
+  } catch (error: any) {
+    notificationStore.setError(error.message || 'Failed to fetch notifications')
+    console.error('Error fetching notifications:', error)
+  } finally {
+    notificationStore.setLoading(false)
   }
 }
 
@@ -370,14 +396,61 @@ const markNotificationAsRead = async id => {
   }
 }
 
-// Mark all notifications as read
+/**
+ * Mark all notifications as read
+ */
 const markAllNotificationsAsRead = async () => {
   try {
-    await notificationStore.markAllAsRead()
-  } catch (_error) {
-    console.error('Failed to mark all notifications as read:', _error)
+    notificationStore.setLoading(true)
+    const response = await notificationApi.markAllAsRead()
+
+    if (response.success) {
+      // Update local state optimistically
+      notificationStore.markAllRead()
+
+      // Show success message
+      toast.add({
+        title: 'Success',
+        description: 'All notifications marked as read',
+        color: 'green',
+      })
+    } else {
+      throw new Error(response.error || 'Failed to mark all notifications as read')
+    }
+  } catch (error: any) {
+    console.error('Error marking all notifications as read:', error)
+    notificationStore.setError(error.message || 'Failed to mark all notifications as read')
+
+    // Show error toast
+    toast.add({
+      title: 'Error',
+      description: 'Failed to mark all notifications as read',
+      color: 'red',
+    })
+  } finally {
+    notificationStore.setLoading(false)
   }
 }
+
+// Fetch notifications when component mounts
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    fetchNotifications()
+
+    // Set up polling for new notifications every 5 minutes
+    const pollInterval = setInterval(
+      () => {
+        if (authStore.isLoggedIn) {
+          fetchNotifications()
+        }
+      },
+      5 * 60 * 1000
+    ) // 5 minutes
+
+    // Clean up interval on component unmount
+    return () => clearInterval(pollInterval)
+  }
+})
 
 // Close dropdown on route change
 watch(route, () => {
@@ -393,27 +466,19 @@ const handleLogout = async () => {
       localStorage.setItem('intentionalLogout', 'true')
     }
 
-    // Use the subscription store to clear cached data
+    // Clear cached data from stores
     const subscriptionStore = useSubscriptionStore()
     subscriptionStore.clearCache()
 
-    // Logout using the auth store
-    await authStore.logout()
+    // Logout using the auth API
+    await authApi.logout()
 
-    // Use navigateTo with onFinish callback to clean up the flag after navigation completes
-    navigateTo('/auth/login', {
-      onFinish: () => {
-        // Clean up the flag after navigation is complete
-        if (import.meta.client) {
-          setTimeout(() => {
-            localStorage.removeItem('intentionalLogout')
-          }, 500) // Small delay to ensure all components have finished processing
-        }
-      },
-    })
+    // Redirect to login page
+    router.push('/auth/login')
   } catch (error) {
     console.error('Error logging out:', error)
-    // Clean up the flag in case of error
+  } finally {
+    // Clean up the flag in all cases
     if (import.meta.client) {
       localStorage.removeItem('intentionalLogout')
     }

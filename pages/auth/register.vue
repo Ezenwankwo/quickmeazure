@@ -260,13 +260,9 @@ required
 size="lg" />
             <label for="terms" class="ml-2 block text-sm text-gray-700">
               I agree to the
-              <ULink :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.LEGAL.TERMS]" class="font-medium">
-                terms
-              </ULink>
+              <ULink :to="ROUTE_PATHS[LEGAL.TERMS]" class="font-medium"> terms </ULink>
               and
-              <ULink :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.LEGAL.PRIVACY]" class="font-medium">
-                privacy policies
-              </ULink>
+              <ULink :to="ROUTE_PATHS[LEGAL.PRIVACY]" class="font-medium"> privacy policies </ULink>
               <span class="text-red-500">*</span>
             </label>
           </div>
@@ -292,9 +288,7 @@ size="lg" />
         <div class="text-center my-4">
           <p class="text-sm text-gray-600">
             Already have an account?
-            <ULink :to="routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.LOGIN]" class="font-medium">
-              Sign in
-            </ULink>
+            <ULink :to="ROUTE_PATHS[AUTH.LOGIN]" class="font-medium"> Sign in </ULink>
           </p>
         </div>
       </form>
@@ -304,15 +298,15 @@ size="lg" />
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useAppRoutes } from '~/composables/useRoutes'
-import { useAuthStore } from '~/store'
-import type { RegistrationData } from '~/store/types'
+import { useRouter } from 'vue-router'
+import { ROUTE_NAMES, ROUTE_PATHS } from '~/constants/routes'
 
-const routes = useAppRoutes()
 const router = useRouter()
 const toast = useToast()
+const authApi = useAuthApi()
 
-const LOGIN_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.LOGIN] as string
+// Constants
+const { AUTH, LEGAL } = ROUTE_NAMES
 
 const name = ref('')
 const email = ref('')
@@ -323,8 +317,6 @@ const isLoading = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const formErrors = ref({})
-
-const authStore = useAuthStore()
 
 const hasLowerCase = (str: string) => /[a-z]/.test(str)
 const hasUpperCase = (str: string) => /[A-Z]/.test(str)
@@ -426,24 +418,17 @@ async function handleRegister() {
   isLoading.value = true
 
   try {
-    const registrationData: RegistrationData = {
+    const result = await authApi.register({
       name: name.value,
       email: email.value,
       password: password.value,
-    }
-
-    const result = await authStore.register(registrationData)
+    })
 
     if (result.success) {
-      toast.add({
-        title: 'Registration Successful',
-        description: 'Your account has been created!',
-        color: 'primary',
-        icon: 'i-heroicons-check-circle',
-      })
-
+      // Redirect to login page
       await router.push(LOGIN_PATH)
     } else {
+      // Handle specific error cases
       const errorMessage = result.error || 'Registration failed'
 
       if (
@@ -457,23 +442,13 @@ async function handleRegister() {
         formErrors.value.email = errorMessage
       } else if (errorMessage.toLowerCase().includes('password')) {
         formErrors.value.password = errorMessage
-      } else {
-        // Show general error toast
-        toast.add({
-          title: 'Registration Error',
-          description: errorMessage,
-          color: 'error',
-          icon: 'i-heroicons-exclamation-triangle',
-        })
       }
     }
   } catch (error) {
     console.error('Registration error:', error)
-
-    // Show error toast
     toast.add({
       title: 'Registration Error',
-      description: 'An unexpected error occurred. Please try again.',
+      description: 'An unexpected error occurred during registration.',
       color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
