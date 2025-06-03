@@ -308,8 +308,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { formatDistanceToNow } from 'date-fns'
+import { API_ENDPOINTS } from '~/constants/api'
 import { ROUTE_NAMES } from '~/constants/routes'
 import { useSubscriptionStore } from '~/store/modules/subscription'
 import { useAuthStore } from '~/store/modules/auth'
@@ -347,24 +348,43 @@ const formatNotificationDate = date => {
   }
 }
 
-// Fetch notifications
-const fetchNotifications = async () => {
-  try {
-    notificationStore.setLoading(true)
-    const response = await notificationApi.getNotifications()
-
-    if (response.success && response.notifications) {
-      notificationStore.setNotifications(response.notifications)
-    } else {
+// Fetch notifications using useAsyncData
+const {
+  pending: notificationsLoading,
+  error: notificationsError,
+  refresh: refreshNotifications,
+} = await useAsyncData(
+  'notifications',
+  async () => {
+    try {
+      const response = await notificationApi.getNotifications()
+      if (response.success && response.notifications) {
+        notificationStore.setNotifications(response.notifications)
+        return response.notifications
+      }
       throw new Error(response.error || 'Failed to fetch notifications')
+    } catch (error: any) {
+      notificationStore.setError(error.message || 'Failed to fetch notifications')
+      console.error('Error fetching notifications:', error)
+      throw error
     }
-  } catch (error: any) {
-    notificationStore.setError(error.message || 'Failed to fetch notifications')
-    console.error('Error fetching notifications:', error)
-  } finally {
-    notificationStore.setLoading(false)
+  },
+  {
+    server: true,
+    lazy: true,
   }
-}
+)
+
+// Watch for changes in loading and error states
+watch(notificationsLoading, loading => {
+  notificationStore.setLoading(loading)
+})
+
+watch(notificationsError, error => {
+  if (error) {
+    notificationStore.setError(error.message)
+  }
+})
 
 // Get icon based on notification type and severity
 const getNotificationIcon = notification => {
@@ -388,11 +408,38 @@ const getNotificationIcon = notification => {
 }
 
 // Mark notification as read
-const markNotificationAsRead = async id => {
+const markNotificationAsRead = async (id: string) => {
   try {
-    await notificationStore.markAsRead(id)
-  } catch (_error) {
-    console.error('Failed to mark notification as read:', _error)
+    notificationStore.setLoading(true)
+    const response = await $fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${id}/read`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+      },
+      credentials: 'include',
+    })
+
+    if (response.success) {
+      // Update local state
+      notificationStore.updateNotification(id, { read: true })
+
+      // Show success message
+      toast.add({
+        title: 'Success',
+        description: 'Notification marked as read',
+        color: 'green',
+      })
+    }
+  } catch (error: any) {
+    console.error('Failed to mark notification as read:', error)
+    toast.add({
+      title: 'Error',
+      description: error.message || 'Failed to mark notification as read',
+      color: 'red',
+    })
+  } finally {
+    notificationStore.setLoading(false)
   }
 }
 
@@ -402,10 +449,17 @@ const markNotificationAsRead = async id => {
 const markAllNotificationsAsRead = async () => {
   try {
     notificationStore.setLoading(true)
-    const response = await notificationApi.markAllAsRead()
+    const response = await $fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/mark-all-read`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+      },
+      credentials: 'include',
+    })
 
     if (response.success) {
-      // Update local state optimistically
+      // Update local state
       notificationStore.markAllRead()
 
       // Show success message
@@ -414,6 +468,9 @@ const markAllNotificationsAsRead = async () => {
         description: 'All notifications marked as read',
         color: 'green',
       })
+
+      // Refresh notifications
+      await refreshNotifications()
     } else {
       throw new Error(response.error || 'Failed to mark all notifications as read')
     }
@@ -424,7 +481,7 @@ const markAllNotificationsAsRead = async () => {
     // Show error toast
     toast.add({
       title: 'Error',
-      description: 'Failed to mark all notifications as read',
+      description: error.message || 'Failed to mark all notifications as read',
       color: 'red',
     })
   } finally {
@@ -432,25 +489,18 @@ const markAllNotificationsAsRead = async () => {
   }
 }
 
-// Fetch notifications when component mounts
-onMounted(() => {
-  if (authStore.isLoggedIn) {
-    fetchNotifications()
-
-    // Set up polling for new notifications every 5 minutes
-    const pollInterval = setInterval(
-      () => {
-        if (authStore.isLoggedIn) {
-          fetchNotifications()
-        }
-      },
-      5 * 60 * 1000
-    ) // 5 minutes
-
-    // Clean up interval on component unmount
-    return () => clearInterval(pollInterval)
+// Refresh notifications when auth state changes
+watch(
+  () => authStore.isLoggedIn,
+  isLoggedIn => {
+    if (isLoggedIn) {
+      refreshNotifications()
+    } else {
+      // Clear notifications when logging out
+      notificationStore.setNotifications([])
+    }
   }
-})
+)
 
 // Close dropdown on route change
 watch(route, () => {
@@ -470,8 +520,13 @@ const handleLogout = async () => {
     const subscriptionStore = useSubscriptionStore()
     subscriptionStore.clearCache()
 
-    // Logout using the auth API
-    await authApi.logout()
+    // Logout using direct $fetch call
+    await $fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
 
     // Redirect to login page
     router.push('/auth/login')
