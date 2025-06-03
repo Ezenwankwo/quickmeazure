@@ -17,9 +17,9 @@
       </template>
     </ClientOnly>
 
-    <!-- PWA Install Prompt - Added at the app level to avoid hydration issues -->
+    <!-- PWA Install Prompt - Only show in production -->
     <ClientOnly>
-      <InstallPrompt />
+      <InstallPrompt v-if="!isDev" />
     </ClientOnly>
   </UApp>
 </template>
@@ -30,4 +30,7 @@ import InstallPrompt from '~/components/InstallPrompt.vue'
 
 // Get the current layout
 const { layout } = useLayout()
+
+// Check if we're in development mode
+const isDev = import.meta.dev
 </script>

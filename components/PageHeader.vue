@@ -4,13 +4,7 @@
       <div>
         <h1 class="text-xl sm:text-2xl font-bold text-gray-800 group">
           {{ title }}
-          <span
-            class="block h-1 w-20 sm:w-24 bg-primary-500 mt-1 group-hover:w-28 sm:group-hover:w-32 transition-all duration-300"
-          />
         </h1>
-        <p v-if="subtitle" class="text-sm sm:text-base text-gray-500 mt-1">
-          {{ subtitle }}
-        </p>
       </div>
       <slot name="actions">
         <UButton
@@ -36,14 +30,6 @@ defineProps({
   title: {
     type: String,
     required: true,
-  },
-
-  /**
-   * Optional subtitle to display below the title
-   */
-  subtitle: {
-    type: String,
-    default: '',
   },
 
   /**

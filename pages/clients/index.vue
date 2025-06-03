@@ -2,9 +2,8 @@
   <div class="space-y-6">
     <PageHeader
       title="Clients"
-      subtitle="Manage your customer database"
       :primary-action="{
-        label: 'Add New Client',
+        label: 'Add Client',
         icon: 'i-heroicons-plus',
         to: routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW],
       }"
@@ -455,7 +454,7 @@ size="sm"
 // Import stores and utilities
 import { useClientStore } from '~/store/modules/client'
 import { useAuthStore } from '~/store/modules/auth'
-import { onMounted, onUnmounted } from 'vue'
+import { onUnmounted } from 'vue'
 
 // Composable
 const routes = useAppRoutes()

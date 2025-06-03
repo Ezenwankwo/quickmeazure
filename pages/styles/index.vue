@@ -2,10 +2,9 @@
   <div class="space-y-8">
     <!-- Header with animated underline effect -->
     <PageHeader
-      title="Style Catalog"
-      subtitle="Browse and manage your design collection"
+      title="Styles"
       :primary-action="{
-        label: 'Add New Style',
+        label: 'Add Style',
         icon: 'i-heroicons-plus',
         to: NEW_STYLE_PATH,
       }"

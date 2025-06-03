@@ -2,9 +2,8 @@
   <div class="space-y-6">
     <PageHeader
       title="Orders"
-      subtitle="Manage your customer orders and track payments"
       :primary-action="{
-        label: 'Create New Order',
+        label: 'Create Order',
         icon: 'i-heroicons-plus',
         to: NEW_ORDER_PATH,
       }"
