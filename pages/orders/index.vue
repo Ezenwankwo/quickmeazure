@@ -4,7 +4,6 @@
       title="Orders"
       :primary-action="{
         label: 'Create Order',
-        icon: 'i-heroicons-plus',
         to: NEW_ORDER_PATH,
       }"
     >

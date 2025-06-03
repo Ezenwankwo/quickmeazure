@@ -4,7 +4,6 @@
       title="Clients"
       :primary-action="{
         label: 'Add Client',
-        icon: 'i-heroicons-plus',
         to: routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW],
       }"
     />

@@ -1,6 +1,6 @@
 <template>
-  <div class="border-b pb-4 mb-6 sm:mb-8">
-    <div class="flex flex-col sm:flex-row justify-between gap-4 sm:items-center">
+  <div class="pb-4 mb-6 sm:mb-8">
+    <div class="flex flex-row justify-between gap-4 sm:items-center">
       <div>
         <h1 class="text-xl sm:text-2xl font-bold text-gray-800 group">
           {{ title }}
@@ -10,8 +10,8 @@
         <UButton
           v-if="primaryAction"
           :to="primaryAction.to"
-          :icon="primaryAction.icon"
           color="primary"
+          size="lg"
           class="self-start sm:self-auto px-3 sm:px-4 py-1.5 sm:py-2 shadow-sm hover:shadow-md transition-shadow"
           @click="primaryAction.onClick && primaryAction.onClick()"
         >
@@ -41,7 +41,6 @@ defineProps({
     // Expected shape:
     // {
     //   label: 'Button Text',
-    //   icon: 'i-heroicons-plus',
     //   to: '/some/route',  // optional, for router-link
     //   onClick: () => {}   // optional, for click handler
     // }

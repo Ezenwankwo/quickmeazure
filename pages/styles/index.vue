@@ -5,7 +5,6 @@
       title="Styles"
       :primary-action="{
         label: 'Add Style',
-        icon: 'i-heroicons-plus',
         to: NEW_STYLE_PATH,
       }"
     />
