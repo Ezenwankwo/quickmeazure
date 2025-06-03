@@ -12,7 +12,7 @@
     />
 
     <!-- Dashboard Content -->
-    <template>
+    <div class="space-y-6">
       <!-- Stats Overview -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <UCard class="bg-white">
@@ -22,10 +22,12 @@
               <UIcon name="i-heroicons-users" class="text-primary-500" />
             </div>
           </template>
-          <div class="text-3xl font-bold">{{ stats?.totalClients || 0 }}</div>
+          <div class="text-3xl font-bold">{{ dashboardData?.stats?.totalClients || 0 }}</div>
           <template #footer>
             <div class="text-sm text-gray-500">
-              <span class="text-green-500 font-medium">+{{ stats?.newClientsThisMonth || 0 }}</span>
+              <span class="text-green-500 font-medium"
+                >+{{ dashboardData?.stats?.newClientsThisMonth || 0 }}</span
+              >
               this month
             </div>
           </template>
@@ -38,11 +40,13 @@
               <UIcon name="i-heroicons-shopping-bag" class="text-primary-500" />
             </div>
           </template>
-          <div class="text-3xl font-bold">{{ stats?.activeOrders || 0 }}</div>
+          <div class="text-3xl font-bold">{{ dashboardData?.stats?.activeOrders || 0 }}</div>
           <template #footer>
             <div class="text-sm text-gray-500">
-              <span class="font-medium">{{ stats?.completedOrdersThisMonth || 0 }}</span> completed
-              this month
+              <span class="font-medium">{{
+                dashboardData?.stats?.completedOrdersThisMonth || 0
+              }}</span>
+              completed this month
             </div>
           </template>
         </UCard>
@@ -54,11 +58,15 @@
               <UIcon name="i-heroicons-currency-dollar" class="text-primary-500" />
             </div>
           </template>
-          <div class="text-3xl font-bold">₦{{ formatNumber(stats?.totalRevenue || 0) }}</div>
+          <div class="text-3xl font-bold">
+            ₦{{ formatNumber(dashboardData?.stats?.totalRevenue || 0) }}
+          </div>
           <template #footer>
             <div class="text-sm text-gray-500">
-              <span class="text-green-500 font-medium">+{{ stats?.revenueGrowth || 0 }}%</span> vs
-              last month
+              <span class="text-green-500 font-medium"
+                >+{{ dashboardData?.stats?.revenueGrowth || 0 }}%</span
+              >
+              vs last month
             </div>
           </template>
         </UCard>
@@ -70,17 +78,23 @@
               <UIcon name="i-heroicons-credit-card" class="text-primary-500" />
             </div>
           </template>
-          <div class="text-xl py-1 font-bold">{{ stats?.subscriptionPlan || 'Free Plan' }}</div>
+          <div class="text-xl py-1 font-bold">
+            {{ dashboardData?.stats?.subscriptionPlan || 'Free Plan' }}
+          </div>
           <template #footer>
             <div class="text-sm text-gray-500">
-              <template v-if="stats?.clientsRemaining === Infinity"> Unlimited clients </template>
-              <template v-else> {{ stats?.clientsRemaining || 0 }} clients remaining </template>
+              <span v-if="dashboardData?.stats?.clientsRemaining === Infinity"
+                >Unlimited clients</span
+              >
+              <span v-else
+                >{{ dashboardData?.stats?.clientsRemaining || 0 }} clients remaining</span
+              >
             </div>
           </template>
         </UCard>
       </div>
 
-      <!-- Recent Activity and Due Orders -->
+      <!-- Recent Activity and Orders -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Recent Activity -->
         <UCard class="bg-white">
@@ -98,9 +112,9 @@ size="xs">
           </template>
 
           <div class="space-y-4">
-            <div v-if="recentActivity.length > 0">
+            <template v-if="dashboardData?.activities?.length">
               <div
-                v-for="activity in recentActivity"
+                v-for="activity in dashboardData?.activities"
                 :key="activity.id"
                 class="flex items-start space-x-3 py-2"
               >
@@ -109,19 +123,16 @@ size="xs">
                 >
                   <UIcon :name="activity.icon || 'i-heroicons-bell'" class="text-primary-600" />
                 </div>
-                <div class="flex-1 min-w-0">
+                <div>
                   <p class="text-sm font-medium text-gray-900">
                     {{ activity.message || 'Activity' }}
                   </p>
                   <p class="text-xs text-gray-500">{{ activity.time || 'Recently' }}</p>
                 </div>
               </div>
-            </div>
-            <div v-else-if="!isLoading" class="text-center py-4">
+            </template>
+            <div v-else class="text-center py-4">
               <p class="text-gray-500">No recent activity</p>
-            </div>
-            <div v-if="isLoading" class="text-center py-4">
-              <UIcon name="i-heroicons-arrow-path" class="animate-spin text-primary-500" />
             </div>
           </div>
         </UCard>
@@ -139,15 +150,7 @@ size="xs"> View all </UButton>
             </div>
           </template>
 
-          <div v-if="isLoading" class="text-center py-8">
-            <UIcon
-              name="i-heroicons-arrow-path"
-              class="animate-spin text-primary-500 mx-auto mb-2"
-            />
-            <p class="text-sm text-gray-500">Loading orders...</p>
-          </div>
-
-          <div v-else-if="safeOrders.length === 0" class="text-center py-8">
+          <div v-if="!dashboardData?.dueOrders?.length" class="text-center py-8">
             <p class="text-gray-500">No orders due soon</p>
           </div>
 
@@ -187,7 +190,7 @@ size="xs"> View all </UButton>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="order in safeOrders" :key="order.id">
+                  <tr v-for="order in dashboardData?.dueOrders" :key="order.id">
                     <td class="px-3 py-2 whitespace-nowrap">
                       <div class="font-medium text-gray-900">{{ order.client }}</div>
                     </td>
@@ -250,32 +253,38 @@ size="xs"> View all </UButton>
             >
             <span class="text-gray-600"
               >Growth:
-              <span class="font-medium text-green-600">+{{ chartStats.percentGrowth }}%</span></span
-            >
+              <span class="font-medium text-green-600">+{{ chartStats.percentGrowth }}%</span>
+            </span>
           </div>
         </template>
       </UCard>
-    </template>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// Import composables
-import { onMounted, computed, watch } from 'vue'
+// Import composables and UI components
+import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useDashboardStore } from '~/store/modules/dashboard'
-import { useAppRoutes } from '~/composables/useRoutes'
-import { useAuthStore } from '~/store/modules/auth'
 import { API_ENDPOINTS } from '~/constants/api'
+import { useDashboardStore } from '~/store/modules/dashboard'
+import { useAuthStore } from '~/store/modules/auth'
 import type { ChartPeriod } from '~/types/dashboard'
 
-type _ChartPeriod = ChartPeriod // Workaround for unused type import
+// Initialize auth store
+const authStore = useAuthStore()
 
 // Initialize stores
 const dashboardStore = useDashboardStore()
-const authStore = useAuthStore()
-const { stats, recentActivity, dueOrders, clientGrowth, isLoading, error, chartPeriod } =
-  storeToRefs(dashboardStore)
+const { chartPeriod, clientGrowth } = storeToRefs(dashboardStore)
+
+// Chart period options
+const chartPeriodOptions = [
+  { label: 'Last 7 days', value: '7days' },
+  { label: 'Last 30 days', value: '30days' },
+  { label: 'Last 90 days', value: '90days' },
+  { label: 'Last year', value: 'year' },
+]
 
 // Routes
 const routes = useAppRoutes()
@@ -287,29 +296,6 @@ useHead({
   title: 'Dashboard',
 })
 
-// Safe version of orders with validation to prevent rendering errors
-const safeOrders = computed(() => {
-  if (!dueOrders.value || !Array.isArray(dueOrders.value)) {
-    return []
-  }
-
-  return dueOrders.value.map(order => ({
-    id: order?.id || 0,
-    client: order?.client || 'Unknown Client',
-    dueDate: order?.dueDate || null,
-    amount: order?.amount || 0,
-    status: order?.status || 'Unknown',
-  }))
-})
-
-// Chart period options
-const chartPeriodOptions = [
-  { label: 'Last 7 days', value: '7days' },
-  { label: 'Last 30 days', value: '30days' },
-  { label: 'Last 90 days', value: '90days' },
-  { label: 'Last year', value: 'year' },
-]
-
 // Helper computed property to check if we have chart data to display
 const hasChartData = computed(() => {
   return (
@@ -319,16 +305,29 @@ const hasChartData = computed(() => {
   )
 })
 
-// Helper function to update chart data when period changes
-const updateChartData = async () => {
+// Update chart data when period changes
+const updateChartData = async (period: ChartPeriod) => {
   try {
-    await dashboardStore.fetchClientGrowth(chartPeriod.value)
+    await dashboardStore.fetchClientGrowth(period)
   } catch (error) {
     console.error('Error updating chart data:', error)
+    toast.add({
+      title: 'Error',
+      description: 'Failed to update chart data',
+      color: 'red',
+      timeout: 3000,
+    })
   }
 }
 
-// Helper functions
+// Update chart data when period changes
+watch(chartPeriod, newPeriod => {
+  if (newPeriod) {
+    dashboardStore.fetchClientGrowth(newPeriod)
+  }
+})
+
+// Format number with thousands separator
 const formatNumber = (number: number) => {
   if (number === null || number === undefined) return '0'
   return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
@@ -407,204 +406,179 @@ const getStatusColor = (status: string) => {
   }
 }
 
-// Toast for notifications
-const toast = useToast()
-
-// Client growth data
-const fetchClientGrowth = async () => {
-  try {
-    const token = authStore.token
-    if (!token) {
-      throw new Error('No authentication token found')
-    }
-
-    return await $fetch(API_ENDPOINTS.DASHBOARD.CLIENT_GROWTH, {
-      method: 'GET',
-      params: { period: chartPeriod.value },
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    })
-  } catch (error) {
-    console.error('Error fetching client growth data:', error)
-    throw error
-  }
-}
-
-const {
-  data: clientGrowthData,
-  status: clientGrowthStatus,
-  refresh: refreshClientGrowth,
-} = useAsyncData('client-growth', fetchClientGrowth, {
-  default: () => ({
-    labels: [],
-    data: [],
-    totalGrowth: 0,
-    percentGrowth: 0,
-  }),
-  watch: [chartPeriod],
-  immediate: true,
-})
-
-// Watch for changes in chart period and refresh data
-watch(
-  chartPeriod,
-  () => {
-    console.log('Chart period changed, refreshing client growth data...')
-    refreshClientGrowth()
-  },
-  { immediate: true }
-)
-
-// Watch for changes in client growth data
-watchEffect(() => {
-  const status = clientGrowthStatus.value
-  const data = clientGrowthData.value
-
-  console.log('Client growth status changed:', { status, hasData: !!data })
-
-  if (status === 'success' && data) {
-    console.log('Setting client growth data:', data)
-    dashboardStore.setClientGrowth(data)
-    dashboardStore.setLoading(false)
-  } else if (status === 'error') {
-    console.error('Error fetching client growth data')
-    const errorMessage = 'Failed to fetch client growth data'
-    dashboardStore.setError(errorMessage)
-    dashboardStore.setLoading(false)
-    toast.add({
-      title: 'Error',
-      description: errorMessage,
-      color: 'error',
-      timeout: 5000,
-    })
-  } else if (status === 'pending') {
-    dashboardStore.setLoading(true)
-  }
-})
+// Client growth data - using store action instead
 
 // Function to fetch dashboard data with proper error handling
 const fetchDashboardData = async () => {
   console.log('Fetching dashboard data...')
-  const token = authStore.token
 
-  if (!token) {
-    console.error('No authentication token found')
-    // Instead of throwing, return default values to prevent infinite loading
+  // Check if we're on client side
+  if (import.meta.client) {
+    const token = authStore.token || localStorage.getItem('auth_token')
+
+    if (!token) {
+      console.error('No authentication token found')
+      return getDefaultDashboardData()
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    }
+
+    try {
+      console.log('Starting dashboard API calls...')
+
+      // First, check if API endpoints are defined
+      if (!API_ENDPOINTS?.DASHBOARD) {
+        console.error('API endpoints not properly configured')
+        return getDefaultDashboardData()
+      }
+
+      const [stats, activities, dueOrders] = await Promise.allSettled([
+        $fetch(API_ENDPOINTS.DASHBOARD.STATS, {
+          method: 'GET',
+          headers,
+          retry: 1,
+          retryDelay: 1000,
+        }).catch(err => {
+          console.error('Error fetching stats:', err)
+          return null
+        }),
+        $fetch(API_ENDPOINTS.DASHBOARD.RECENT_ACTIVITY, {
+          method: 'GET',
+          params: { limit: 5 },
+          headers,
+          retry: 1,
+          retryDelay: 1000,
+        }).catch(err => {
+          console.error('Error fetching recent activity:', err)
+          return []
+        }),
+        $fetch(API_ENDPOINTS.DASHBOARD.ORDERS_DUE_SOON, {
+          method: 'GET',
+          params: { limit: 5 },
+          headers,
+          retry: 1,
+          retryDelay: 1000,
+        }).catch(err => {
+          console.error('Error fetching due orders:', err)
+          return []
+        }),
+      ])
+
+      // Process the results with fallback values
+      const result = {
+        stats: getValidStats(stats),
+        activities: getValidArray(activities, 'activities'),
+        dueOrders: getValidArray(dueOrders, 'dueOrders'),
+        clientGrowth: null,
+      }
+
+      console.log('Dashboard data fetched successfully:', result)
+      return result
+    } catch (error) {
+      console.error('Error in fetchDashboardData:', error)
+      return getDefaultDashboardData()
+    }
+  }
+
+  // Return default data for server-side rendering
+  return getDefaultDashboardData()
+}
+
+// Helper function to get default dashboard data
+const getDefaultDashboardData = () => ({
+  stats: {
+    totalClients: 0,
+    activeOrders: 0,
+    revenue: 0,
+    newClients: 0,
+    newClientsThisMonth: 0,
+    completedOrdersThisMonth: 0,
+    totalRevenue: 0,
+    revenueGrowth: 0,
+    subscriptionPlan: 'Free Plan',
+    clientsRemaining: 5,
+  },
+  activities: [],
+  dueOrders: [],
+  clientGrowth: null,
+})
+
+// Helper function to validate and get stats data
+const getValidStats = statsResult => {
+  if (statsResult.status === 'fulfilled' && statsResult.value) {
     return {
-      stats: { totalClients: 0, activeOrders: 0, revenue: 0, newClients: 0 },
-      activities: [],
-      dueOrders: [],
+      totalClients: statsResult.value.totalClients || 0,
+      activeOrders: statsResult.value.activeOrders || 0,
+      revenue: statsResult.value.revenue || 0,
+      newClients: statsResult.value.newClients || 0,
+      newClientsThisMonth: statsResult.value.newClientsThisMonth || 0,
+      completedOrdersThisMonth: statsResult.value.completedOrdersThisMonth || 0,
+      totalRevenue: statsResult.value.totalRevenue || 0,
+      revenueGrowth: statsResult.value.revenueGrowth || 0,
+      subscriptionPlan: statsResult.value.subscriptionPlan || 'Free Plan',
+      clientsRemaining:
+        statsResult.value.clientsRemaining !== undefined ? statsResult.value.clientsRemaining : 5,
     }
   }
+  return getDefaultDashboardData().stats
+}
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
+// Helper function to validate and get array data
+const getValidArray = (result, type) => {
+  if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+    return result.value
   }
-
-  try {
-    console.log('Starting dashboard API calls...')
-    const [stats, activities, dueOrders] = await Promise.allSettled([
-      $fetch(API_ENDPOINTS.DASHBOARD.STATS, {
-        method: 'GET',
-        headers,
-        retry: 1,
-        retryDelay: 1000,
-      }).catch(err => {
-        console.error('Error fetching stats:', err)
-        return null
-      }),
-      $fetch(API_ENDPOINTS.DASHBOARD.RECENT_ACTIVITY, {
-        method: 'GET',
-        params: { limit: 5 },
-        headers,
-        retry: 1,
-        retryDelay: 1000,
-      }).catch(err => {
-        console.error('Error fetching recent activity:', err)
-        return []
-      }),
-      $fetch(API_ENDPOINTS.DASHBOARD.ORDERS_DUE_SOON, {
-        method: 'GET',
-        params: { limit: 5 },
-        headers,
-        retry: 1,
-        retryDelay: 1000,
-      }).catch(err => {
-        console.error('Error fetching due orders:', err)
-        return []
-      }),
-    ])
-
-    // Process the results with fallback values
-    const result = {
-      stats:
-        stats.status === 'fulfilled' && stats.value
-          ? stats.value
-          : { totalClients: 0, activeOrders: 0, revenue: 0, newClients: 0 },
-      activities: activities.status === 'fulfilled' && activities.value ? activities.value : [],
-      dueOrders: dueOrders.status === 'fulfilled' && dueOrders.value ? dueOrders.value : [],
-    }
-
-    console.log('Dashboard data fetched successfully:', result)
-    return result
-  } catch (error) {
-    console.error('Error in fetchDashboardData:', error)
-    // Return default values on error
-    return {
-      stats: { totalClients: 0, activeOrders: 0, revenue: 0, newClients: 0 },
-      activities: [],
-      dueOrders: [],
-    }
-  }
+  console.warn(`Invalid data received for ${type}, using empty array`)
+  return []
 }
 
 // Fetch all dashboard data in a single request
 const { data: dashboardData, status } = useAsyncData('dashboard-data', fetchDashboardData, {
   default: () => ({
-    stats: { totalClients: 0, activeOrders: 0, revenue: 0, newClients: 0 },
-    activities: [],
+    stats: null,
+    recentActivity: [],
     dueOrders: [],
+    clientGrowth: null,
   }),
   immediate: true,
+  server: false, // Ensure this only runs on client side
 })
+
+// Initialize toast
+const toast = useToast()
 
 // Watch for changes in the async data
 watch(
-  [dashboardData, status],
-  ([data, newStatus]) => {
-    console.log('Dashboard data status changed:', { status: newStatus, hasData: !!data?.value })
+  () => status.value,
+  newStatus => {
+    if (newStatus === 'success' && dashboardData.value) {
+      // Update store with the fetched data
+      dashboardStore.setStats(dashboardData.value.stats || {})
+      dashboardStore.setRecentActivity(dashboardData.value.activities || [])
+      dashboardStore.setDueOrders(dashboardData.value.dueOrders || [])
+      dashboardStore.setError(null)
 
-    if (newStatus === 'success' && data?.value) {
-      console.log('Updating dashboard store with new data')
-      dashboardStore.setStats(data.value.stats)
-      dashboardStore.setRecentActivity(data.value.activities)
-      dashboardStore.setDueOrders(data.value.dueOrders)
-      dashboardStore.setLoading(false)
+      // Fetch client growth data if we have a period selected
+      if (chartPeriod.value) {
+        dashboardStore.fetchClientGrowth(chartPeriod.value)
+      }
     } else if (newStatus === 'error') {
       console.error('Error fetching dashboard data')
       const errorMessage = 'Failed to fetch dashboard data. Using cached data if available.'
       dashboardStore.setError(errorMessage)
-      dashboardStore.setLoading(false)
       toast.add({
         title: 'Warning',
         description: errorMessage,
         color: 'warning',
         timeout: 5000,
       })
-    } else if (newStatus === 'pending') {
-      dashboardStore.setLoading(true)
     }
   },
   { immediate: true }
 )
-
-// Add layout for dashboard pages
-definePageMeta({
-  layout: 'dashboard',
-})
 
 // Chart stats computed property
 const chartStats = computed(() => ({

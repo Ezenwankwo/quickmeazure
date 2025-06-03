@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { useDashboardApi } from '~/composables/useDashboardApi'
 import type {
   DashboardStats,
   ActivityItem,
@@ -10,6 +11,8 @@ import type {
 
 export const useDashboardStore = defineStore('dashboard', () => {
   // State
+  const dashboardApi = useDashboardApi()
+  const isLoading = ref(false)
   const stats = ref<DashboardStats | null>(null)
   const recentActivity = ref<ActivityItem[]>([])
   const dueOrders = ref<Order[]>([])
@@ -19,9 +22,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     totalGrowth: 0,
     percentGrowth: 0,
   })
-  const isLoading = ref(false)
   const error = ref<string | null>(null)
-  const chartPeriod = ref<ChartPeriod>('month')
+  const chartPeriod = ref<ChartPeriod>('30days')
 
   // Getters
   const hasChartData = computed(() => {
@@ -49,10 +51,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     chartPeriod.value = period
   }
 
-  const setLoading = (loading: boolean) => {
-    isLoading.value = loading
-  }
-
   const setError = (err: string | null) => {
     error.value = err
   }
@@ -78,7 +76,6 @@ export const useDashboardStore = defineStore('dashboard', () => {
     recentActivity,
     dueOrders,
     clientGrowth,
-    isLoading,
     error,
     chartPeriod,
 
@@ -91,8 +88,42 @@ export const useDashboardStore = defineStore('dashboard', () => {
     setDueOrders,
     setClientGrowth,
     setChartPeriod,
-    setLoading,
     setError,
     $reset,
+
+    // Async actions
+    async fetchClientGrowth(period: ChartPeriod) {
+      try {
+        isLoading.value = true
+        error.value = null
+
+        const response = await dashboardApi.getClientGrowth(period)
+
+        if (response && response.success && response.growthData) {
+          const growthData = response.growthData
+          setClientGrowth({
+            labels: growthData.labels || [],
+            data: growthData.data || [],
+            totalGrowth: growthData.totalGrowth || 0,
+            percentGrowth: growthData.percentGrowth || 0,
+          })
+          return growthData
+        } else {
+          throw new Error(response?.error || 'Failed to fetch client growth data')
+        }
+      } catch (error) {
+        console.error('Error in fetchClientGrowth:', error)
+        setError(error instanceof Error ? error.message : 'Failed to fetch client growth data')
+        // Return default empty data on error
+        return {
+          labels: [],
+          data: [],
+          totalGrowth: 0,
+          percentGrowth: 0,
+        }
+      } finally {
+        isLoading.value = false
+      }
+    },
   }
 })
