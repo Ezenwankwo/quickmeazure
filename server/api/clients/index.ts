@@ -1,7 +1,7 @@
 // uuid import removed as it's not being used
 import { eq, count, exists, desc, asc, sql, and } from 'drizzle-orm'
 import { db } from '~/server/database'
-import { clients, orders, measurements } from '~/server/database/schema'
+import { clients, orders, measurements, users } from '~/server/database/schema'
 
 // Define event handler for GET requests
 export default defineEventHandler(async event => {
@@ -9,12 +9,14 @@ export default defineEventHandler(async event => {
 
   // Get authenticated user from event context
   const auth = event.context.auth
+  console.log('Auth context:', auth)
   if (!auth || !auth.userId) {
     throw createError({
       statusCode: 401,
       statusMessage: 'Unauthorized',
     })
   }
+  console.log('Authenticated user ID:', auth.userId)
 
   // Handle GET request to fetch all clients
   if (method === 'GET') {
@@ -26,9 +28,18 @@ export default defineEventHandler(async event => {
       const sortField = (query.sortField as string) || 'name'
       const sortOrder = (query.sortOrder as string) || 'asc'
       const search = query.search as string | undefined
-      const hasMeasurementsFilter =
-        query.hasMeasurements !== undefined ? query.hasMeasurements === 'true' : undefined
+
       const hasOrdersFilter = query.hasOrders !== undefined ? query.hasOrders === 'true' : undefined
+
+      // Debug: Log query parameters
+      console.log('Query parameters:', {
+        page,
+        limit,
+        sortField,
+        sortOrder,
+        search,
+        hasOrdersFilter,
+      })
 
       // Validate pagination parameters
       if (isNaN(page) || page < 1) {
@@ -51,8 +62,10 @@ export default defineEventHandler(async event => {
       // Build where conditions for filtering
       const whereConditions = []
 
-      // Always filter by user ID
-      whereConditions.push(eq(clients.userId, auth.userId))
+      // Always filter by user ID (ensure integer comparison)
+      const userIdAsInt = typeof auth.userId === 'string' ? parseInt(auth.userId) : auth.userId
+      whereConditions.push(eq(clients.userId, userIdAsInt))
+      console.log('Where conditions for user ID:', auth.userId, 'converted to:', userIdAsInt)
 
       // Add search condition if provided
       if (search && search.trim() !== '') {
@@ -61,21 +74,6 @@ export default defineEventHandler(async event => {
               lower(${clients.email}) like ${`%${search.toLowerCase()}%`} OR 
               ${clients.phone} like ${`%${search}%`})`
         )
-      }
-
-      // Add measurements filter if provided
-      if (hasMeasurementsFilter !== undefined) {
-        if (hasMeasurementsFilter) {
-          whereConditions.push(
-            exists(db.select().from(measurements).where(eq(measurements.clientId, clients.id)))
-          )
-        } else {
-          whereConditions.push(
-            sql`NOT ${exists(
-              db.select().from(measurements).where(eq(measurements.clientId, clients.id))
-            )}`
-          )
-        }
       }
 
       // Add orders filter if provided
@@ -91,6 +89,11 @@ export default defineEventHandler(async event => {
         }
       }
 
+      // Debug: Log whereConditions before building query
+      console.log('whereConditions array:', whereConditions)
+      console.log('whereConditions length:', whereConditions.length)
+      console.log('userIdAsInt:', userIdAsInt)
+
       // Build base query with all conditions
       const baseQuery = db
         .select({
@@ -101,10 +104,7 @@ export default defineEventHandler(async event => {
           address: clients.address,
           notes: clients.notes,
           createdAt: clients.createdAt,
-          // Check if client has measurements
-          hasMeasurements: exists(
-            db.select().from(measurements).where(eq(measurements.clientId, clients.id))
-          ),
+
           // Check if client has orders
           hasOrders: exists(db.select().from(orders).where(eq(orders.clientId, clients.id))),
         })
@@ -144,24 +144,33 @@ export default defineEventHandler(async event => {
 
       // Apply sorting, pagination, and execute query
       const clientsData = await baseQuery.orderBy(orderByClause).limit(limit).offset(offset)
+      console.log('Query result - clients data:', clientsData)
+      console.log('Number of clients found:', clientsData.length)
 
       // Get total count
-      const countResult = await countQuery
-      const total = countResult[0]?.count || 0
+      const totalCountResult = await countQuery
+      const totalCount = totalCountResult[0]?.count || 0
+      console.log('Total count result:', totalCountResult)
+      console.log('Total count:', totalCount)
 
       // Calculate total pages
-      const totalPages = Math.ceil(total / limit)
+      const totalPages = Math.ceil(totalCount / limit)
 
-      // Return data with pagination info
+      // Additional debugging: Let's check if there are ANY clients in the database
+      const allClientsCount = await db.select({ count: count() }).from(clients)
+      console.log('Total clients in database (all users):', allClientsCount[0]?.count || 0)
+
+      // Check if there are any users in the database
+      const allUsersCount = await db.select({ count: count() }).from(users)
+      console.log('Total users in database:', allUsersCount[0]?.count || 0)
+
       return {
         data: clientsData,
         pagination: {
-          total,
           page,
           limit,
+          totalCount,
           totalPages,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1,
         },
       }
     } catch (error) {
@@ -207,7 +216,7 @@ export default defineEventHandler(async event => {
         const processedMeasurements = {
           clientId,
           // Store all measurements in the values field
-          values: {},
+          values: {} as Record<string, any>,
           notes: body.measurements.notes || null,
           lastUpdated: new Date(),
         }
@@ -225,11 +234,12 @@ export default defineEventHandler(async event => {
           // Process each measurement field
           Object.entries(measurementData).forEach(([key, value]) => {
             // Skip empty values and non-measurement fields
-            if (value === null || value === '' || typeof value === 'object') return
+            if (value === null || value === '' || typeof value === 'object' || value === undefined)
+              return
 
             // Add to values with basic metadata
             processedMeasurements.values[key] = {
-              value: parseFloat(value),
+              value: parseFloat(String(value)),
               unit: 'in', // Default unit
               name: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
             }

@@ -3,9 +3,8 @@
     <!-- Page Header -->
     <PageHeader
       title="Dashboard"
-      subtitle="View your tailor business at a glance"
       :primary-action="{
-        label: 'New Client',
+        label: 'Add Client',
         icon: 'i-heroicons-plus',
         to: NEW_CLIENT_PATH,
       }"

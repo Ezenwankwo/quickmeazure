@@ -4,13 +4,15 @@
 
 export interface Client {
   id: number
-  userId: number
+  userId?: number
   name: string
-  email?: string
-  phone?: string
-  address?: string
-  notes?: string
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  notes?: string | null
+  hasOrders?: boolean
   createdAt: string
+  updatedAt?: string
 }
 
 export interface ClientMeasurement {

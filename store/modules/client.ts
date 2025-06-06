@@ -15,8 +15,21 @@ export const useClientStore = defineStore('client', () => {
    * Set the clients list and total count
    */
   const setClients = (newClients: Client[], total: number) => {
-    clients.value = newClients
+    // Ensure all clients have the required fields with proper types
+    clients.value = newClients.map(client => ({
+      id: client.id,
+      name: client.name || 'Unnamed Client',
+      email: client.email ?? null,
+      phone: client.phone ?? null,
+      address: client.address ?? null,
+      notes: client.notes ?? null,
+
+      hasOrders: Boolean(client.hasOrders),
+      createdAt: client.createdAt,
+      updatedAt: client.updatedAt,
+    }))
     totalCount.value = total
+    console.log('Clients set in store:', clients.value)
   }
 
   /**

@@ -1,30 +1,14 @@
 <template>
   <div class="max-w-5xl mx-auto space-y-6 py-6">
-    <div class="flex items-center justify-between mb-8">
-      <div class="flex items-center">
-        <UButton
-          icon="i-heroicons-arrow-left"
-          color="gray"
-          variant="ghost"
-          :to="getClientPath(clientId)"
-          class="mr-2"
-        />
-        <h1 class="text-2xl font-bold">Edit Client</h1>
-      </div>
-
-      <!-- Save Button at Top Right -->
-      <UButton
-        type="button"
-        color="primary"
-        variant="solid"
-        class="px-6"
-        :loading="isSaving"
-        :disabled="!isFormValid"
-        @click="updateClient"
-      >
-        Save
-      </UButton>
-    </div>
+    <!-- Page Header -->
+    <PageHeader
+      title="Edit Client"
+      :primary-action="{
+        label: 'Save',
+        onClick: updateClient,
+        disabled: !isFormValid,
+      }"
+    />
 
     <div v-if="isLoading" class="flex justify-center py-12">
       <USkeleton class="h-32 w-full" />

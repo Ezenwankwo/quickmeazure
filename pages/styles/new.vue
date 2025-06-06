@@ -1,30 +1,14 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between mb-8">
-      <div class="flex items-center">
-        <UButton
-          icon="i-heroicons-arrow-left"
-          color="gray"
-          variant="ghost"
-          :to="STYLES_PATH"
-          class="mr-2"
-        />
-        <h1 class="text-xl font-bold">Add New Style</h1>
-      </div>
-
-      <!-- Save Button at Top Right -->
-      <UButton
-        type="submit"
-        color="primary"
-        variant="solid"
-        class="px-6"
-        :loading="isSaving"
-        :disabled="!isFormValid"
-        @click="saveStyle"
-      >
-        Save Style
-      </UButton>
-    </div>
+    <!-- Page Header -->
+    <PageHeader
+      title="Add New Style"
+      :primary-action="{
+        label: 'Save Style',
+        onClick: saveStyle,
+        disabled: !isFormValid,
+      }"
+    />
 
     <UCard class="bg-white">
       <form class="space-y-6" @submit.prevent="saveStyle">

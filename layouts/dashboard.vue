@@ -1,172 +1,32 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-4">
+  <div class="min-h-screen bg-gray-50 overflow-x-hidden">
     <!-- Top Navigation Bar -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm">
-      <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-        <div class="flex items-center">
-          <ULink :to="DASHBOARD.INDEX" class="flex items-center space-x-2">
-            <UIcon name="i-heroicons-scissors" class="text-primary-600 text-2xl" />
-            <span class="text-xl font-bold text-primary-600">QuickMeazure</span>
-          </ULink>
-        </div>
-
-        <ClientOnly>
-          <!-- Navigation for authenticated users -->
-          <div class="flex items-center space-x-2 sm:space-x-4">
-            <!-- Notification Drawer -->
-            <UDrawer v-model="isNotificationsOpen" direction="right">
-              <template #default>
-                <UChip :text="notificationStore.unreadCount" size="3xl">
-                  <UButton
-                    icon="i-heroicons-bell"
-                    color="neutral"
-                    variant="subtle"
-                    aria-label="Notifications"
-                  />
-                </UChip>
-              </template>
-
-              <template #content>
-                <div class="p-4 min-w-96">
-                  <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-semibold">Notifications</h2>
-                    <UButton
-                      icon="i-heroicons-x-mark"
-                      color="gray"
-                      variant="ghost"
-                      @click="isNotificationsOpen = false"
-                    />
-                  </div>
-
-                  <div class="space-y-3">
-                    <div
-                      v-for="notification in notificationStore.notifications"
-                      :key="notification.id"
-                      class="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                      @click="markNotificationAsRead(notification.id)"
-                    >
-                      <div class="flex items-start gap-3">
-                        <UIcon
-                          :name="getNotificationIcon(notification)"
-                          class="text-primary-600 mt-0.5 size-5"
-                        />
-                        <div class="flex-1">
-                          <div class="font-medium">
-                            {{ notification.title }}
-                          </div>
-                          <p class="text-sm text-gray-600">
-                            {{ notification.message }}
-                          </p>
-                          <div class="text-xs text-gray-500 mt-1">
-                            {{ formatNotificationDate(notification.createdAt) }}
-                          </div>
-                          <div v-if="notification.actionUrl" class="mt-2">
-                            <UButton
-                              size="xs"
-                              :to="notification.actionUrl"
-                              class="text-xs"
-                              @click.stop
-                            >
-                              {{ notification.actionText || 'View' }}
-                            </UButton>
-                          </div>
-                        </div>
-                        <UBadge
-                          v-if="!notification.read"
-                          color="primary"
-                          variant="solid"
-                          size="xs"
-                          class="ml-2"
-                        >
-                          New
-                        </UBadge>
-                      </div>
-                    </div>
-
-                    <div
-                      v-if="notificationStore.notifications.length === 0"
-                      class="text-center py-8 text-gray-500"
-                    >
-                      <UIcon name="i-heroicons-inbox" class="mx-auto mb-2 size-8" />
-                      <p>No notifications</p>
-                    </div>
-
-                    <div v-if="notificationStore.notifications.length > 0" class="pt-3 border-t">
-                      <UButton
-                        block
-                        color="gray"
-                        variant="soft"
-                        size="sm"
-                        @click="markAllNotificationsAsRead"
-                      >
-                        Mark all as read
-                      </UButton>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </UDrawer>
-
-            <div class="relative dropdown-container">
-              <UButton
-                color="gray"
-                variant="ghost"
-                class="truncate max-w-[100px] sm:max-w-none"
-                trailing-icon="i-heroicons-chevron-down"
-                @click="isDropdownOpen = !isDropdownOpen"
-              >
-                <span class="hidden sm:inline">{{ authStore.user?.name || 'User' }}</span>
-                <UIcon name="i-heroicons-user-circle" class="sm:hidden text-lg" />
-              </UButton>
-
-              <div
-                v-if="isDropdownOpen"
-                class="absolute right-0 mt-1 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-gray-300 ring-opacity-5 focus:outline-none z-10"
-              >
-                <div class="py-1">
-                  <ULink
-                    :to="DASHBOARD.SETTINGS"
-                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    <UIcon name="i-heroicons-cog-6-tooth" class="mr-2" />Settings
-                  </ULink>
-                  <ULink
-                    to="/activity"
-                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    <UIcon name="i-heroicons-clock" class="mr-2" />Activity Log
-                  </ULink>
-                  <div class="border-t border-gray-200 my-1" />
-                  <button
-                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    @click="handleLogout"
-                  >
-                    <UIcon name="i-heroicons-arrow-right-on-rectangle" class="mr-2" />Logout
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </ClientOnly>
-      </div>
-    </header>
 
     <!-- Main content wrapper -->
-    <div class="container mx-auto px-4 pt-16 pb-20 sm:pb-6">
-      <div class="flex flex-nowrap">
-        <ClientOnly>
-          <!-- Desktop sidebar -->
-          <aside
-            class="hidden md:block w-64 flex-shrink-0 pr-6 sticky top-20 self-start h-[calc(100vh-80px)] overflow-y-auto pb-8"
-          >
-            <nav class="space-y-1">
+    <div class="flex flex-nowrap min-h-screen">
+      <!-- Fixed Sidebar -->
+      <ClientOnly>
+        <aside
+          class="hidden md:flex flex-col w-64 flex-shrink-0 fixed top-0 left-0 h-screen bg-white border-r border-gray-200 z-40"
+        >
+          <!-- Logo at the top -->
+          <div class="px-6 pt-8 pb-6">
+            <ULink :to="DASHBOARD.INDEX" class="flex items-center space-x-2">
+              <UIcon name="i-heroicons-scissors" class="text-primary-600 text-2xl" />
+              <span class="text-xl font-bold text-primary-600">QuickMeazure</span>
+            </ULink>
+          </div>
+
+          <!-- Navigation Menu -->
+          <div class="flex-1 flex flex-col justify-between pt-12 pb-4">
+            <nav class="flex-1 flex flex-col gap-1 px-4 overflow-y-auto">
               <NuxtLink
                 :to="DASHBOARD.INDEX"
-                class="rounded-lg px-2.5 py-1.5 text-sm flex items-center gap-1.5 font-medium justify-start hover:bg-gray-100 transition-colors"
+                class="rounded-lg px-3 py-2.5 text-sm flex items-center gap-3 font-medium justify-start hover:bg-gray-100 transition-all duration-200 hover:translate-x-1"
                 :class="
                   route.path === DASHBOARD.INDEX
-                    ? 'bg-primary-50 font-semibold text-primary-700 border-l-3 border-primary-600 pl-2'
-                    : 'text-gray-500'
+                    ? 'bg-primary-50/80 font-semibold text-primary-700 shadow-sm border-l-4 border-primary-500 -ml-1'
+                    : 'text-gray-600 hover:text-gray-900'
                 "
               >
                 <UIcon name="i-heroicons-home" class="size-5 shrink-0" />
@@ -175,37 +35,38 @@
 
               <NuxtLink
                 :to="DASHBOARD.CLIENTS.INDEX"
-                class="rounded-lg px-2.5 py-1.5 text-sm flex items-center gap-1.5 font-medium justify-start hover:bg-gray-100 transition-colors"
+                class="rounded-lg px-3 py-2.5 text-sm flex items-center gap-3 font-medium justify-start hover:bg-gray-100 transition-all duration-200 hover:translate-x-1"
                 :class="
                   route.path.startsWith(DASHBOARD.CLIENTS.INDEX) && route.path !== '/clients/new'
-                    ? 'bg-primary-50 font-semibold text-primary-700 border-l-3 border-primary-600 pl-2'
-                    : 'text-gray-500'
+                    ? 'bg-primary-50/80 font-semibold text-primary-700 shadow-sm border-l-4 border-primary-500 -ml-1'
+                    : 'text-gray-600 hover:text-gray-900'
                 "
               >
                 <UIcon name="i-heroicons-users" class="size-5 shrink-0" />
                 <span class="truncate">Clients</span>
               </NuxtLink>
 
-              <NuxtLink
-                :to="DASHBOARD.CLIENTS.NEW"
-                class="rounded-lg px-2.5 py-1.5 text-sm flex items-center gap-1.5 font-medium justify-start hover:bg-gray-100 transition-colors"
+              <a
+                :href="DASHBOARD.CLIENTS.NEW"
+                class="rounded-lg px-3 py-2.5 text-sm flex items-center gap-3 font-medium justify-start hover:bg-gray-100 transition-all duration-200 hover:translate-x-1 cursor-pointer"
                 :class="
                   route.path === DASHBOARD.CLIENTS.NEW
-                    ? 'bg-primary-50 font-semibold text-primary-700 border-l-3 border-primary-600 pl-2'
-                    : 'text-gray-500'
+                    ? 'bg-primary-50/80 font-semibold text-primary-700 shadow-sm border-l-4 border-primary-500 -ml-1'
+                    : 'text-gray-600 hover:text-gray-900'
                 "
+                @click="navigateToMeasure"
               >
                 <UIcon name="i-heroicons-variable" class="size-5 shrink-0" />
                 <span class="truncate">Measure</span>
-              </NuxtLink>
+              </a>
 
               <NuxtLink
                 :to="DASHBOARD.STYLES.INDEX"
-                class="rounded-lg px-2.5 py-1.5 text-sm flex items-center gap-1.5 font-medium justify-start hover:bg-gray-100 transition-colors"
+                class="rounded-lg px-3 py-2.5 text-sm flex items-center gap-3 font-medium justify-start hover:bg-gray-100 transition-all duration-200 hover:translate-x-1"
                 :class="
                   route.path.startsWith(DASHBOARD.STYLES.INDEX)
-                    ? 'bg-primary-50 font-semibold text-primary-700 border-l-3 border-primary-600 pl-2'
-                    : 'text-gray-500'
+                    ? 'bg-primary-50/80 font-semibold text-primary-700 shadow-sm border-l-4 border-primary-500 -ml-1'
+                    : 'text-gray-600 hover:text-gray-900'
                 "
               >
                 <UIcon name="i-heroicons-swatch" class="size-5 shrink-0" />
@@ -214,29 +75,100 @@
 
               <NuxtLink
                 :to="DASHBOARD.ORDERS.INDEX"
-                class="rounded-lg px-2.5 py-1.5 text-sm flex items-center gap-1.5 font-medium justify-start hover:bg-gray-100 transition-colors"
+                class="rounded-lg px-3 py-2.5 text-sm flex items-center gap-3 font-medium justify-start hover:bg-gray-100 transition-all duration-200 hover:translate-x-1"
                 :class="
                   route.path.startsWith(DASHBOARD.ORDERS.INDEX)
-                    ? 'bg-primary-50 font-semibold text-primary-700 border-l-3 border-primary-600 pl-2'
-                    : 'text-gray-500'
+                    ? 'bg-primary-50/80 font-semibold text-primary-700 shadow-sm border-l-4 border-primary-500 -ml-1'
+                    : 'text-gray-600 hover:text-gray-900'
                 "
               >
                 <UIcon name="i-heroicons-shopping-bag" class="size-5 shrink-0" />
                 <span class="truncate">Orders</span>
               </NuxtLink>
-            </nav>
-          </aside>
-        </ClientOnly>
 
-        <!-- Main Content -->
-        <main class="flex-1 min-w-0 overflow-hidden">
-          <slot></slot>
-        </main>
+              <!-- Notifications -->
+              <button
+                class="w-full rounded-lg px-3 py-2.5 text-sm flex items-center gap-3 font-medium justify-start hover:bg-gray-100 transition-all duration-200 hover:translate-x-1 text-gray-600 hover:text-gray-900"
+                :class="{
+                  'bg-primary-50/80 font-semibold text-primary-700 shadow-sm border-l-4 border-primary-500 -ml-1':
+                    route.path.startsWith(DASHBOARD.NOTIFICATIONS),
+                }"
+                @click="isNotificationsOpen = true"
+              >
+                <UIcon name="i-heroicons-bell" class="size-5 shrink-0" />
+                <span class="truncate">Notifications</span>
+                <UChip
+                  v-if="notificationStore.unreadCount > 0"
+                  :text="notificationStore.unreadCount.toString()"
+                  size="xs"
+                  color="primary"
+                  class="ml-auto"
+                />
+              </button>
+
+              <!-- Settings -->
+              <NuxtLink
+                :to="DASHBOARD.SETTINGS"
+                class="rounded-lg px-3 py-2.5 text-sm flex items-center gap-3 font-medium justify-start hover:bg-gray-100 transition-all duration-200 hover:translate-x-1 text-gray-600 hover:text-gray-900"
+                :class="{
+                  'bg-primary-50/80 font-semibold text-primary-700 shadow-sm border-l-4 border-primary-500 -ml-1':
+                    route.path.startsWith(DASHBOARD.SETTINGS),
+                }"
+              >
+                <UIcon name="i-heroicons-cog-6-tooth" class="size-5 shrink-0" />
+                <span class="truncate">Settings</span>
+              </NuxtLink>
+            </nav>
+          </div>
+
+          <!-- User Section at the bottom -->
+          <div class="px-6 py-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3">
+                <div class="flex-shrink-0">
+                  <div
+                    class="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center"
+                  >
+                    <UIcon name="i-heroicons-user" class="h-6 w-6 text-primary-600" />
+                  </div>
+                </div>
+                <div class="text-sm">
+                  <template v-if="authStore.user?.name">
+                    <div class="font-medium text-gray-900">
+                      {{ authStore.user.name.split(' ')[0] || 'User' }}
+                    </div>
+                    <div class="text-gray-900">
+                      {{ authStore.user.name.split(' ').slice(1).join(' ') || '' }}
+                    </div>
+                  </template>
+                  <div v-else class="font-medium text-gray-900">User</div>
+                </div>
+              </div>
+              <UButton
+                color="neutral"
+                variant="ghost"
+                class="hover:bg-red-50 hover:text-red-600"
+                icon="i-heroicons-power"
+                aria-label="Logout"
+                @click="handleLogout"
+              />
+            </div>
+          </div>
+        </aside>
+      </ClientOnly>
+
+      <!-- Main Content -->
+      <div class="flex-1 min-w-0 md:ml-64 pt-24 pb-24 md:pb-8">
+        <div class="container mx-auto px-6">
+          <main class="w-full">
+            <slot></slot>
+          </main>
+        </div>
       </div>
     </div>
 
     <!-- Mobile Footer Navigation -->
-    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden">
+    <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-50">
       <nav class="grid grid-cols-5 gap-1 p-2">
         <NuxtLink
           :to="DASHBOARD.INDEX"
@@ -314,21 +246,25 @@ import { API_ENDPOINTS } from '~/constants/api'
 import { ROUTE_NAMES } from '~/constants/routes'
 import { useSubscriptionStore } from '~/store/modules/subscription'
 import { useAuthStore } from '~/store/modules/auth'
-import { useAuthApi } from '~/composables/useAuthApi'
 import { useNotificationStore } from '~/store/modules/notification'
-import { useNotificationApi } from '~/composables/useNotificationApi'
 import { useRouter, useRoute } from 'vue-router'
-import { useToast } from '#imports' // Nuxt UI toast
 
 // Get current route and router
 const route = useRoute()
 const router = useRouter()
 
+// Navigation methods
+const navigateToMeasure = (e: Event) => {
+  console.log('Navigate to measure clicked', e)
+  e.preventDefault()
+  router.push(ROUTE_NAMES.DASHBOARD.CLIENTS.NEW)
+  return false
+}
+
 // Get stores and composables
 const authStore = useAuthStore()
-const authApi = useAuthApi()
 const notificationStore = useNotificationStore()
-const notificationApi = useNotificationApi()
+
 const toast = useToast()
 
 // Destructure route names for easy access
@@ -348,7 +284,7 @@ const formatNotificationDate = date => {
   }
 }
 
-// Fetch notifications using useAsyncData
+// Fetch notifications directly using useAsyncData
 const {
   pending: notificationsLoading,
   error: notificationsError,
@@ -357,14 +293,16 @@ const {
   'notifications',
   async () => {
     try {
-      const response = await notificationApi.getNotifications()
-      if (response.success && response.notifications) {
-        notificationStore.setNotifications(response.notifications)
-        return response.notifications
-      }
-      throw new Error(response.error || 'Failed to fetch notifications')
+      const { data } = await $fetch('/api/notifications', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authStore.token}`,
+        },
+      })
+
+      return data?.notifications || []
     } catch (error: any) {
-      notificationStore.setError(error.message || 'Failed to fetch notifications')
       console.error('Error fetching notifications:', error)
       throw error
     }

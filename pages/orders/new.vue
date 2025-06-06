@@ -1,31 +1,14 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between mb-8">
-      <div class="flex items-center">
-        <UButton
-          icon="i-heroicons-arrow-left"
-          color="gray"
-          variant="ghost"
-          size="lg"
-          :to="ORDERS_PATH"
-          class="mr-2"
-        />
-        <h1 class="text-xl font-bold">Create New Order</h1>
-      </div>
-
-      <!-- Save Button at Top Right -->
-      <UButton
-        type="submit"
-        color="primary"
-        variant="solid"
-        class="px-6"
-        :loading="isSubmitting"
-        size="lg"
-        @click="saveOrder"
-      >
-        Create Order
-      </UButton>
-    </div>
+    <!-- Page Header -->
+    <PageHeader
+      title="Add Order"
+      :primary-action="{
+        label: 'Create Order',
+        onClick: saveOrder,
+        disabled: isSubmitting,
+      }"
+    />
 
     <UCard class="bg-white">
       <form class="space-y-6" @submit.prevent="saveOrder">

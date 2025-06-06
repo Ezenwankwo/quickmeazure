@@ -92,7 +92,7 @@ icon="i-heroicons-x-mark"
                   size="2xs"
                   color="gray"
                   variant="ghost"
-                  :ui="{ rounded: 'rounded-full' }"
+                  :ui="{ base: 'rounded-full' }"
                   @click="moveFieldUp(index)"
                 />
                 <UButton
@@ -101,7 +101,7 @@ icon="i-heroicons-x-mark"
                   size="2xs"
                   color="gray"
                   variant="ghost"
-                  :ui="{ rounded: 'rounded-full' }"
+                  :ui="{ base: 'rounded-full' }"
                   @click="moveFieldDown(index)"
                 />
               </div>

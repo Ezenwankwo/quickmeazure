@@ -26,7 +26,7 @@
           variant="ghost"
           icon="i-heroicons-ellipsis-vertical"
           size="xs"
-          :ui="{ rounded: 'rounded-full' }"
+          :ui="{ base: 'rounded-full' }"
         />
       </UDropdown>
     </div>

@@ -243,12 +243,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import DeleteModal from '~/components/DeleteModal.vue'
-import PlanSelectionModal from '~/components/plans/PlanSelectionModal.vue'
 import { useSubscriptionStore } from '~/store/modules/subscription'
 import { useAuthStore } from '~/store/modules/auth'
 import { useUserStore } from '~/store/modules/user'
-import { API_ENDPOINTS } from '~/constants/api'
 
 // Initialize stores and composables
 const subscriptionStore = useSubscriptionStore()

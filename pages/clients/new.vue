@@ -1,30 +1,14 @@
 <template>
   <div class="max-w-5xl mx-auto space-y-6 py-6">
-    <div class="flex items-center justify-between mb-8">
-      <div class="flex items-center">
-        <UButton
-          icon="i-heroicons-arrow-left"
-          color="gray"
-          variant="ghost"
-          :to="CLIENTS_PATH"
-          class="mr-2"
-        />
-        <h1 class="text-2xl font-bold">New Client</h1>
-      </div>
-
-      <!-- Save Button at Top Right -->
-      <UButton
-        type="button"
-        color="primary"
-        variant="solid"
-        class="px-6"
-        :loading="isSaving"
-        :disabled="!isFormValid"
-        @click="saveClient"
-      >
-        Save
-      </UButton>
-    </div>
+    <!-- Page Header -->
+    <PageHeader
+      title="Add Client"
+      :primary-action="{
+        label: 'Save',
+        onClick: saveClient,
+        disabled: !isFormValid,
+      }"
+    />
 
     <ClientOnly>
       <UCard class="bg-white shadow border-0">
@@ -311,8 +295,7 @@ class="block text-sm font-medium text-gray-700"
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '~/store/modules/auth'
 import { storeToRefs } from 'pinia'
-import { useAppRoutes } from '~/composables/useRoutes'
-import { useMeasurementTemplatesStore } from '~/store'
+import { useMeasurementTemplateStore } from '~/store'
 
 // Composable
 const routes = useAppRoutes()
@@ -327,9 +310,9 @@ useHead({
 })
 
 // Initialize measurement templates
-const measurementTemplatesStore = useMeasurementTemplatesStore()
-const { templates, loading: templatesLoading } = storeToRefs(measurementTemplatesStore)
-const { fetchTemplates } = measurementTemplatesStore
+const measurementTemplateStore = useMeasurementTemplateStore()
+const { templates, loading: templatesLoading } = storeToRefs(measurementTemplateStore)
+const { fetchTemplates } = measurementTemplateStore
 
 // Fetch templates on component mount and when auth changes
 const authStore = useAuthStore()
@@ -373,9 +356,6 @@ async function loadTemplates(forceRefresh = false) {
     }
   }
 }
-
-// Also fetch on component mount for safety
-onMounted(loadTemplates)
 
 // Selected template
 const selectedTemplateId = ref(null)

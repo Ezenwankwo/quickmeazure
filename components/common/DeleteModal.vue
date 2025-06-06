@@ -39,7 +39,7 @@ defineProps({
   },
   message: {
     type: String,
-    required: true,
+    default: '',
   },
   cancelText: {
     type: String,

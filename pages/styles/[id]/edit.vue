@@ -1,15 +1,14 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center">
-      <UButton
-        icon="i-heroicons-arrow-left"
-        color="gray"
-        variant="ghost"
-        :to="_getStyleDetailPath($route.params.id as string)"
-        class="mr-4"
-      />
-      <h1 class="text-xl font-bold">Edit Style</h1>
-    </div>
+    <!-- Page Header -->
+    <PageHeader
+      title="Edit Style"
+      :primary-action="{
+        label: 'Save Changes',
+        onClick: updateStyle,
+        disabled: isLoading || !!error,
+      }"
+    />
 
     <!-- Loading state -->
     <div v-if="isLoading" class="flex justify-center py-12">

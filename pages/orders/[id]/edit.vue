@@ -1,16 +1,14 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center mb-4">
-      <UButton
-        icon="i-heroicons-arrow-left"
-        color="gray"
-        variant="ghost"
-        size="lg"
-        :to="`/orders/${orderId}/detail`"
-        class="mr-4"
-      />
-      <h1 class="text-xl font-bold">Edit Order</h1>
-    </div>
+    <!-- Page Header -->
+    <PageHeader
+      title="Edit Order"
+      :primary-action="{
+        label: 'Save Changes',
+        onClick: saveOrder,
+        disabled: _isSaving,
+      }"
+    />
 
     <div v-if="isLoading" class="flex justify-center py-12">
       <USkeleton class="h-32 w-full">

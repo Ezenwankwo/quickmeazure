@@ -134,7 +134,7 @@ class="mt-4"
             v-if="totalPages > 1"
             v-model="page"
             :total="totalPages"
-            :ui="{ rounded: 'rounded-lg' }"
+            :ui="{ base: 'rounded-lg' }"
             @update:model-value="fetchActivity"
           />
         </div>
