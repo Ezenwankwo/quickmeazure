@@ -7,77 +7,58 @@ import { useDrizzle, tables, eq, and } from '~/server/utils/drizzle'
  */
 export default defineEventHandler(async event => {
   try {
-    // Get user from auth token
-    const headers = getRequestHeaders(event)
-    const authHeader = headers.authorization || ''
-
-    // Check for token
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Get authenticated user from event context (set by auth middleware)
+    const auth = event.context.auth
+    if (!auth || !auth.userId) {
       throw createError({
         statusCode: 401,
-        message: 'Unauthorized - No valid token provided',
+        statusMessage: 'Unauthorized',
       })
     }
 
-    // Extract and verify token
-    const token = authHeader.split(' ')[1]
-    const config = useRuntimeConfig()
+    console.log('Authenticated user ID:', auth.userId)
+    const userId = auth.userId
 
-    try {
-      const decoded = jwt.verify(token, config.jwtSecret) as { id: string | number }
-      if (!decoded || !decoded.id) {
-        throw new Error('Invalid token payload')
-      }
+    // Get database instance
+    const db = useDrizzle()
 
-      const userId = decoded.id
+    // Read request body (optional cancellation reason)
+    const { reason } = await readBody(event)
 
-      // Get database instance
-      const db = useDrizzle()
+    // Find the active subscription for the user
+    const subscription = await db.query.subscriptions.findFirst({
+      where: and(
+        eq(tables.subscriptions.userId, Number(userId)),
+        eq(tables.subscriptions.status, 'active')
+      ),
+    })
 
-      // Read request body (optional cancellation reason)
-      const { reason } = await readBody(event)
-
-      // Find the active subscription for the user
-      const subscription = await db.query.subscriptions.findFirst({
-        where: and(
-          eq(tables.subscriptions.userId, Number(userId)),
-          eq(tables.subscriptions.status, 'active')
-        ),
-      })
-
-      if (!subscription) {
-        throw createError({
-          statusCode: 404,
-          message: 'No active subscription found',
-        })
-      }
-
-      // Update the subscription status to canceled
-      const canceledSubscription = await db
-        .update(tables.subscriptions)
-        .set({
-          status: 'canceled',
-          canceledAt: new Date(),
-          metadata: {
-            ...((subscription.metadata as Record<string, any>) || {}),
-            cancellationReason: reason || 'User requested cancellation',
-          },
-          updatedAt: new Date(),
-        })
-        .where(eq(tables.subscriptions.id, subscription.id))
-        .returning()
-
-      return {
-        success: true,
-        message: 'Subscription canceled successfully',
-        data: canceledSubscription[0],
-      }
-    } catch (tokenError) {
-      console.error('Token verification error:', tokenError)
+    if (!subscription) {
       throw createError({
-        statusCode: 401,
-        message: 'Unauthorized - Invalid token',
+        statusCode: 404,
+        message: 'No active subscription found',
       })
+    }
+
+    // Update the subscription status to canceled
+    const canceledSubscription = await db
+      .update(tables.subscriptions)
+      .set({
+        status: 'canceled',
+        canceledAt: new Date(),
+        metadata: {
+          ...((subscription.metadata as Record<string, any>) || {}),
+          cancellationReason: reason || 'User requested cancellation',
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(tables.subscriptions.id, subscription.id))
+      .returning()
+
+    return {
+      success: true,
+      message: 'Subscription canceled successfully',
+      data: canceledSubscription[0],
     }
   } catch (error: any) {
     console.error('Error canceling subscription:', error)

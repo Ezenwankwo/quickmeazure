@@ -1,13 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useDashboardApi } from '~/composables/useDashboardApi'
-import type {
-  DashboardStats,
-  ActivityItem,
-  ClientGrowthData,
-  ChartPeriod,
-  Order,
-} from '~/types/dashboard'
+import type { DashboardStats, ActivityItem, ClientGrowthData, ChartPeriod } from '~/types/dashboard'
+import type { Order } from '~/types/order'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   // State
@@ -96,21 +91,15 @@ export const useDashboardStore = defineStore('dashboard', () => {
       try {
         isLoading.value = true
         error.value = null
-
         const response = await dashboardApi.getClientGrowth(period)
-
-        if (response && response.success && response.growthData) {
-          const growthData = response.growthData
-          setClientGrowth({
-            labels: growthData.labels || [],
-            data: growthData.data || [],
-            totalGrowth: growthData.totalGrowth || 0,
-            percentGrowth: growthData.percentGrowth || 0,
-          })
-          return growthData
-        } else {
-          throw new Error(response?.error || 'Failed to fetch client growth data')
-        }
+        const growthData = response.growthData
+        setClientGrowth({
+          labels: growthData.labels || [],
+          data: growthData.data || [],
+          totalGrowth: growthData.totalGrowth || 0,
+          percentGrowth: growthData.percentGrowth || 0,
+        })
+        return growthData
       } catch (error) {
         console.error('Error in fetchClientGrowth:', error)
         setError(error instanceof Error ? error.message : 'Failed to fetch client growth data')

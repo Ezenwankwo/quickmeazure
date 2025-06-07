@@ -13,11 +13,13 @@
       :sort-options="sortOptions"
       :current-page="currentPage"
       :page-size="ITEMS_PER_PAGE"
-      :total-count="localTotalCount"
-      :is-loading="isLoading"
+      :total-items="localTotalCount"
+      :is-loading="pending"
       :has-items="paginatedClients.length > 0"
       :has-active-filters="!!hasActiveFilters"
-      empty-state-icon="i-heroicons-user-group"
+      :is-filter-open="isFilterOpen"
+      :active-filters-count="activeFiltersCount"
+      empty-state-icon="i-heroicons-users"
       :empty-state-title="search || hasActiveFilters ? 'No clients found' : 'No clients yet'"
       :empty-state-description="
         search || hasActiveFilters
@@ -40,49 +42,139 @@
       @sort="handleSort"
       @reset-filters="resetFilters"
       @delete-confirm="deleteClient"
+      @toggle-filter="isFilterOpen = !isFilterOpen"
     >
       <!-- Filters slot -->
       <template #filters>
         <USelect
           v-model="sortBy"
-          :options="sortOptions"
+          :items="sortOptions"
           option-attribute="label"
           placeholder="Sort by"
           size="lg"
           class="w-full sm:w-52"
         />
-
-        <UButton
-          color="neutral"
-          variant="ghost"
-          icon="i-heroicons-funnel"
-          class="flex-shrink-0"
-          :class="{ 'text-primary-600 bg-primary-50': isFilterOpen }"
-          @click="isFilterOpen = !isFilterOpen"
-        >
-          <span class="sr-only">Filters</span>
-          <span
-            v-if="hasActiveFilters"
-            class="absolute -top-1 -right-1 w-2 h-2 bg-primary-500 rounded-full"
-          ></span>
-        </UButton>
       </template>
 
       <!-- Filter panel -->
       <template v-if="isFilterOpen" #filter-panel>
-        <div
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg mt-2"
+        <Transition
+          enter-active-class="transition-all duration-300 ease-out"
+          enter-from-class="opacity-0 transform -translate-y-2"
+          enter-to-class="opacity-100 transform translate-y-0"
+          leave-active-class="transition-all duration-200 ease-in"
+          leave-from-class="opacity-100 transform translate-y-0"
+          leave-to-class="opacity-0 transform -translate-y-2"
         >
-          <UFormField label="Status" name="status">
-            <USelect
-              v-model="filters.status"
-              :options="statusOptions"
-              option-attribute="label"
-              placeholder="Filter by status"
-              @update:model-value="() => refresh()"
-            />
-          </UFormField>
-        </div>
+          <div v-show="isFilterOpen" class="mt-3 overflow-hidden">
+            <div
+              class="bg-gradient-to-br from-white to-gray-50/50 border border-gray-200/60 rounded-xl shadow-sm backdrop-blur-sm"
+            >
+              <!-- Filter Header -->
+              <div class="px-6 py-4 border-b border-gray-100 bg-white/80 rounded-t-xl">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-2 h-2 bg-primary-500 rounded-full"></div>
+                    <h3 class="text-sm font-semibold text-gray-900">Filter Options</h3>
+                  </div>
+                  <div class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    {{ activeFiltersCount }}
+                    active
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filter Content -->
+              <div class="p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <!-- Date Added Filter -->
+                  <div class="space-y-2">
+                    <UFormField label="Date Added" name="date-added-filter">
+                      <template #label>
+                        <div class="flex items-center space-x-2">
+                          <UIcon name="i-heroicons-calendar-days" class="w-4 h-4 text-gray-500" />
+                          <span class="text-sm font-medium text-gray-700">Date Added</span>
+                        </div>
+                      </template>
+                      <USelect
+                        v-model="dateAddedFilter"
+                        :items="dateOptions"
+                        placeholder="Any time"
+                        size="lg"
+                        class="transition-all duration-200 hover:shadow-sm"
+                        :ui="{
+                          base: 'relative block w-full disabled:cursor-not-allowed disabled:opacity-75 focus:outline-none border-0',
+                          placeholder: 'text-gray-400 dark:text-gray-500',
+                        }"
+                        @update:model-value="filterClients"
+                      />
+                    </UFormField>
+                  </div>
+
+                  <!-- Has Orders Filter -->
+                  <div class="space-y-2">
+                    <UFormField label="Has Orders" name="has-orders-filter">
+                      <template #label>
+                        <div class="flex items-center space-x-2">
+                          <UIcon name="i-heroicons-shopping-bag" class="w-4 h-4 text-gray-500" />
+                          <span class="text-sm font-medium text-gray-700">Has Orders</span>
+                        </div>
+                      </template>
+                      <USelect
+                        v-model="hasOrdersFilter"
+                        :items="[
+                          { label: 'All clients', value: 'all' },
+                          { label: 'With orders', value: 'true' },
+                          { label: 'Without orders', value: 'false' },
+                        ]"
+                        placeholder="All clients"
+                        size="lg"
+                        class="transition-all duration-200 hover:shadow-sm"
+                        :ui="{
+                          base: 'relative block w-full disabled:cursor-not-allowed disabled:opacity-75 focus:outline-none border-0',
+                          placeholder: 'text-gray-400 dark:text-gray-500',
+                        }"
+                        @update:model-value="filterClients"
+                      />
+                    </UFormField>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+                  <div class="flex items-center space-x-2 text-xs text-gray-500">
+                    <UIcon name="i-heroicons-information-circle" class="w-4 h-4" />
+                    <span>Filters are applied automatically</span>
+                  </div>
+
+                  <div class="flex items-center space-x-3">
+                    <UButton
+                      color="neutral"
+                      variant="outline"
+                      size="sm"
+                      icon="i-heroicons-arrow-path"
+                      class="transition-all duration-200 hover:bg-gray-100"
+                      @click="resetFilters"
+                    >
+                      Reset
+                    </UButton>
+
+                    <UButton
+                      color="primary"
+                      variant="outline"
+                      size="sm"
+                      icon="i-heroicons-x-mark"
+                      class="transition-all duration-200"
+                      @click="isFilterOpen = false"
+                    >
+                      Close
+                    </UButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </template>
 
       <!-- Main content -->
@@ -95,7 +187,7 @@
               <UTable
                 :data="paginatedClients"
                 :columns="tableColumns"
-                :loading="isLoading"
+                :loading="pending"
                 :empty-state="{
                   icon: 'i-heroicons-user-group',
                   label: 'No clients found',
@@ -106,24 +198,6 @@
                 }"
                 class="w-full"
               >
-                <!-- Name Column -->
-                <template #name-data="{ row }">
-                  <div class="flex items-center">
-                    <UAvatar
-                      :alt="row.original.name || 'Unnamed Client'"
-                      size="md"
-                      class="mr-3"
-                      :text="getInitials(row.original.name)"
-                      :src="null"
-                    />
-                    <div>
-                      <div class="font-medium text-gray-900">
-                        {{ row.original.name || 'Unnamed Client' }}
-                      </div>
-                    </div>
-                  </div>
-                </template>
-
                 <!-- Boolean Columns -->
                 <template #hasOrders-data="{ row }">
                   <UIcon
@@ -177,81 +251,82 @@
 
         <!-- Mobile Card View (shown on mobile) -->
         <div class="sm:hidden space-y-4">
-          <div v-if="isLoading" class="p-8 text-center">
+          <div v-if="pending" class="p-8 text-center">
             <UIcon
               name="i-heroicons-arrow-path"
               class="w-8 h-8 mx-auto animate-spin text-primary-500"
             />
             <p class="mt-2 text-gray-600">Loading clients...</p>
           </div>
-          <div v-else-if="paginatedClients.length === 0" class="w-full">
-            <EmptyState
-              icon="i-heroicons-user-group"
-              :title="search || hasActiveFilters ? 'No matching clients' : 'No clients found'"
-              :description="
-                search || hasActiveFilters
-                  ? 'Try adjusting your search or filters'
-                  : 'Get started by adding your first client'
-              "
-              :primary-action="{
-                label: 'Add Client',
-                to: '/clients/new',
-                icon: 'i-heroicons-plus',
-              }"
-            />
-          </div>
+
           <template v-else>
             <div
               v-for="client in paginatedClients"
               :key="client.id"
-              class="bg-white rounded-lg border border-gray-200 shadow-sm p-4"
+              class="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 p-3"
             >
-              <div class="flex items-start">
+              <div class="flex items-center space-x-3">
                 <UAvatar
                   :alt="client.name"
                   size="lg"
-                  class="mr-3"
                   :text="getInitials(client.name)"
                   :src="null"
+                  class="flex-shrink-0"
                 />
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-lg font-medium text-gray-900 truncate">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-base font-medium text-gray-900 truncate">
                       {{ client.name || 'Unnamed Client' }}
                     </h3>
-                    <UBadge
-                      :label="(client as any).status || 'active'"
-                      :color="
-                        ((client as any).status || 'active') === 'active'
-                          ? 'primary'
-                          : ((client as any).status || 'active') === 'pending'
-                            ? 'warning'
-                            : 'neutral'
-                      "
-                      variant="subtle"
-                      size="sm"
-                      class="capitalize ml-2"
-                    />
+                    <div class="ml-2">
+                      <UDropdownMenu
+                        :items="[
+                          {
+                            label: 'View',
+                            icon: 'i-heroicons-eye',
+                            click: () => navigateTo(getViewClientPath(client.id)),
+                          },
+                          {
+                            label: 'Edit',
+                            icon: 'i-heroicons-pencil',
+                            click: () => navigateTo(getEditClientPath(client.id)),
+                          },
+                          {
+                            type: 'divider',
+                          },
+                          {
+                            label: 'Delete',
+                            icon: 'i-heroicons-trash',
+                            click: () => confirmDelete(client),
+                            color: 'error',
+                          },
+                        ]"
+                        :content="{ align: 'end', side: 'bottom', sideOffset: 8 }"
+                      >
+                        <UButton
+                          color="neutral"
+                          variant="ghost"
+                          size="xs"
+                          icon="i-heroicons-ellipsis-vertical"
+                          class="p-1"
+                        />
+                      </UDropdownMenu>
+                    </div>
                   </div>
-                  <p class="text-sm text-gray-500 truncate">{{ client.email }}</p>
-                  <p class="text-sm text-gray-500">{{ client.phone }}</p>
-                  <div class="flex justify-end mt-3 space-x-2">
-                    <UButton
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      icon="i-heroicons-pencil"
-                      :to="getEditClientPath(client.id)"
-                      class="p-1.5"
-                    />
-                    <UButton
-                      class="p-1.5"
-                      color="error"
-                      variant="ghost"
-                      size="sm"
-                      icon="i-heroicons-trash"
-                      @click="confirmDelete(client)"
-                    />
+
+                  <!-- Contact Information -->
+                  <div class="mt-1 space-y-0.5">
+                    <div v-if="client.email" class="flex items-center space-x-1.5">
+                      <UIcon
+                        name="i-heroicons-envelope"
+                        class="w-3 h-3 text-gray-400 flex-shrink-0"
+                      />
+                      <p class="text-xs text-gray-600 truncate">{{ client.email }}</p>
+                    </div>
+                    <div v-if="client.phone" class="flex items-center space-x-1.5">
+                      <UIcon name="i-heroicons-phone" class="w-3 h-3 text-gray-400 flex-shrink-0" />
+                      <p class="text-xs text-gray-600">{{ client.phone }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -279,12 +354,10 @@
 
 <script setup lang="ts">
 // Import stores and utilities
-import { useClientStore } from '~/store/modules/client'
-import { useAuthStore } from '~/store/modules/auth'
-import { ref, computed, onMounted, watch, h, resolveComponent } from 'vue'
-import { useRoute, useRouter, navigateTo } from '#imports'
+import { ref, computed, watch, h, resolveComponent } from 'vue'
 import { ROUTE_NAMES } from '../../constants/routes'
 import type { Client } from '../../types/client'
+import { useListData } from '../../composables/useListData'
 
 // Resolve UI components
 const UDropdownMenu = resolveComponent('UDropdownMenu')
@@ -295,26 +368,10 @@ const UAvatar = resolveComponent('UAvatar')
 const router = useRouter()
 const route = useRoute()
 
-// Initialize stores
-const clientStore = useClientStore()
-const authStore = useAuthStore()
-
-// Local state
-const search = ref('')
-const currentPage = ref(1)
-const isFilterOpen = ref(false)
+// Delete modal state
 const isDeleteModalOpen = ref(false)
 const clientToDelete = ref<Client | null>(null)
-const isMounted = ref(false)
-
-// Set isMounted to true when component is mounted
-onMounted(() => {
-  isMounted.value = true
-})
-const _isDeleting = ref(false) // Prefix with _ to indicate it's intentionally unused for now
-const sortBy = ref('name-asc')
-const localClients = ref<Client[]>([])
-const localTotalCount = ref(0)
+const _isDeleting = ref(false)
 
 // Route helpers
 const getEditClientPath = (id: number) => `/clients/${id}/edit`
@@ -323,132 +380,50 @@ const getViewClientPath = (id: number) => `/clients/${id}`
 // Constants
 const ITEMS_PER_PAGE = 10
 
-// Filters
-const filters = ref({
-  status: 'all',
-  hasOrders: null as boolean | null,
-  createdAfter: null as string | null,
+// Use unified list data management
+const {
+  state: {
+    items: localClients,
+    totalCount: localTotalCount,
+    currentPage,
+    search,
+    sortBy,
+    isLoading: pending,
+    isFilterOpen,
+    hasActiveFilters,
+    activeFiltersCount,
+  },
+  actions: { handleSearch, handleSort, handlePageChange, resetFilters },
+  setFilter,
+  getFilter,
+} = useListData<Client>({
+  endpoint: '/api/clients',
+  defaultPageSize: ITEMS_PER_PAGE,
+  defaultSortBy: 'name-asc',
+  filterKeys: ['hasOrders', 'dateAdded'],
+  transform: (client: any) => ({
+    ...client,
+    name: client.name || 'Unnamed Client',
+    hasOrders: Boolean(client.hasOrders),
+  }),
+  serverSide: false,
+  sortByMapping: {
+    newest: { sortBy: 'createdAt', sortOrder: 'desc' },
+    oldest: { sortBy: 'createdAt', sortOrder: 'asc' },
+    'name-asc': { sortBy: 'name', sortOrder: 'asc' },
+    'name-desc': { sortBy: 'name', sortOrder: 'desc' },
+  },
 })
 
-// Fetch clients using useAsyncData
-const {
-  pending: isLoading,
-  error: fetchError,
-  refresh,
-} = useAsyncData(
-  'clients',
-  async () => {
-    try {
-      console.log('Fetching clients with params:', {
-        page: currentPage.value,
-        limit: ITEMS_PER_PAGE,
-        search: search.value,
-        status: filters.value.status,
-        sortBy: sortBy.value,
-      })
+// Additional filter refs for easier access
+const hasOrdersFilter = computed({
+  get: () => getFilter('hasOrders') || 'all',
+  set: value => setFilter('hasOrders', value === 'all' ? null : value),
+})
 
-      // Parse sortBy value to extract field and order
-      const [sortField, sortOrder] = sortBy.value.split('-')
-
-      const { data, error } = await useFetch<{
-        data: Client[]
-        pagination: {
-          total: number
-          page: number
-          limit: number
-          totalPages: number
-          hasNextPage: boolean
-          hasPrevPage: boolean
-        }
-      }>('/api/clients', {
-        params: {
-          page: currentPage.value,
-          limit: ITEMS_PER_PAGE,
-          search: search.value,
-          sortField: sortField || 'name',
-          sortOrder: sortOrder || 'asc',
-
-          hasOrders: filters.value.hasOrders,
-        },
-        headers: {
-          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
-        },
-      })
-
-      console.log('Raw API Response:', data.value)
-
-      if (error.value) {
-        console.error('API Error:', error.value)
-        throw error.value
-      }
-
-      if (!data.value) {
-        console.warn('No data received from API')
-        return []
-      }
-
-      // Extract data from the API response structure: {data: [...], pagination: {...}}
-      const apiResponse = data.value
-      const clientsData = apiResponse.data || []
-      const total = apiResponse.pagination?.total || 0
-
-      console.log('Processed clients data:', clientsData)
-      console.log('Total count:', total)
-
-      // Update local refs
-      localClients.value = Array.isArray(clientsData)
-        ? clientsData.map(client => ({
-            id: client.id,
-            name: client.name,
-            email: client.email,
-            phone: client.phone,
-            address: client.address,
-            notes: client.notes,
-
-            hasOrders: Boolean(client.hasOrders),
-            createdAt: client.createdAt,
-            userId: client.userId,
-          }))
-        : []
-      localTotalCount.value = typeof total === 'number' ? total : 0
-
-      // Also update the store
-      clientStore.setClients(localClients.value as Client[], localTotalCount.value)
-
-      return clientsData
-    } catch (error) {
-      console.error('Error in clients data processing:', error)
-      toast.add({
-        title: 'Error',
-        description: 'Failed to load clients. Please try again.',
-        color: 'error',
-      })
-      return []
-    }
-  },
-  {
-    server: true,
-    watch: [
-      () => currentPage.value,
-      () => search.value,
-      () => filters.value.status,
-      () => sortBy.value,
-    ],
-  }
-)
-
-// Initialize toast
-const toast = useToast()
-
-// Watch for fetch errors
-watch(fetchError, error => {
-  if (error) {
-    toast.add({
-      title: 'Error',
-      description: 'Failed to load clients. Please try again.',
-      color: 'error',
-    })
-  }
+const dateAddedFilter = computed({
+  get: () => getFilter('dateAdded') || 'any',
+  set: value => setFilter('dateAdded', value === 'any' ? null : value),
 })
 
 // Sort options
@@ -461,76 +436,48 @@ const sortOptions = [
   { label: 'Highest Spending', value: 'totalSpent-desc' },
 ]
 
-// Status options
-const statusOptions = [
-  { label: 'All Statuses', value: 'all' },
-  { label: 'Active', value: 'active' },
-  { label: 'Inactive', value: 'inactive' },
+// Date options
+const dateOptions = [
+  { label: 'Last 7 days', value: '7days' },
+  { label: 'Last 30 days', value: '30days' },
+  { label: 'Last 3 months', value: '3months' },
+  { label: 'Last year', value: '1year' },
 ]
 
-// Add missing totalCount computed property
-const totalCount = computed(() => localTotalCount.value)
-
-// Total number of items
-const totalItems = computed(() => totalCount.value)
-const _pageCount = computed(() => Math.ceil(totalItems.value / ITEMS_PER_PAGE)) // Prefix with _ to indicate unused
-const hasActiveFilters = computed(() => {
-  return (
-    search.value ||
-    filters.value.status !== 'all' ||
-    filters.value.hasOrders !== null ||
-    filters.value.createdAfter !== null
-  )
-})
-
-// Handle search
-const handleSearch = (query: string) => {
-  search.value = query
+// Additional methods
+const filterClients = () => {
   currentPage.value = 1
-  refresh()
 }
 
-// Handle sort
-const handleSort = (option: { value: string }) => {
-  sortBy.value = option.value
-  refresh()
-}
-
-// Handle page change
-const handlePageChange = (page: number) => {
-  currentPage.value = page
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-// Reset all filters
-const resetFilters = () => {
-  filters.value = {
-    status: 'all', // Change from '' to 'all'
-    hasOrders: null,
-
-    createdAfter: null,
-  }
-  search.value = ''
-  sortBy.value = 'name-asc' // Change from 'name:asc' to 'name-asc'
-  currentPage.value = 1
-  refresh()
-}
-
-// Delete client
 const deleteClient = async () => {
   if (!clientToDelete.value) return
 
+  const toast = useToast()
   _isDeleting.value = true
 
-  // Change _toast.add to toast.add in both places:
   try {
-    await clientStore.removeClient(clientToDelete.value.id)
-    toast.add({
-      title: 'Success',
-      description: 'Client deleted successfully',
-      color: 'primary',
+    const response = await $fetch(`/api/clients/${clientToDelete.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
-    await refresh()
+
+    if (response) {
+      // Remove the client from the list
+      const index = localClients.value.findIndex(c => c.id === clientToDelete.value?.id)
+      if (index !== -1) {
+        localClients.value.splice(index, 1)
+      }
+
+      toast.add({
+        title: 'Client deleted',
+        description: `${clientToDelete.value.name} has been deleted successfully.`,
+        color: 'primary',
+      })
+    } else {
+      throw new Error('Failed to delete client')
+    }
   } catch (error) {
     console.error('Error deleting client:', error)
     toast.add({
@@ -561,7 +508,6 @@ const filteredClients = computed<Client[]>(() => {
 // Computed property for paginated clients
 // Since the API handles pagination, we just return the filtered clients directly
 const paginatedClients = computed<Client[]>(() => {
-  console.log('Returning paginated clients:', filteredClients.value)
   return filteredClients.value
 })
 
@@ -582,9 +528,35 @@ interface TableColumn<T> {
 
 const tableColumns: TableColumn<Client>[] = [
   {
+    id: 'index',
+    header: '#',
+    enableSorting: false,
+    cell: ({ row }) => {
+      // Find the index of this client in the paginatedClients array
+      const index = paginatedClients.value.findIndex(client => client.id === row.original.id)
+      return h(
+        'div',
+        { class: 'font-medium text-neutral-700' },
+        String((currentPage.value - 1) * ITEMS_PER_PAGE + index + 1)
+      )
+    },
+  },
+  {
     accessorKey: 'name',
     header: 'Name',
     enableSorting: true,
+    cell: ({ row }) => {
+      return h('div', { class: 'flex items-center gap-3' }, [
+        h(UAvatar, {
+          alt: row.original.name || 'Unnamed Client',
+          size: 'lg',
+          text: getInitials(row.original.name),
+        }),
+        h('div', undefined, [
+          h('p', { class: 'font-medium text-neutral-700' }, row.original.name || 'Unnamed Client'),
+        ]),
+      ])
+    },
   },
   {
     accessorKey: 'phone',

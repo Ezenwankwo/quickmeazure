@@ -2,14 +2,32 @@
  * Style and product related types
  */
 
+export interface StyleMeasurement {
+  value: number
+  unit?: string
+  notes?: string
+}
+
+export interface StyleTemplate {
+  id: number
+  name: string
+  fields: Array<{
+    id: string
+    name: string
+    type: string
+    required: boolean
+  }>
+}
+
 export interface Style {
   id: number
   userId: number
   name: string
-  description?: string
-  imageUrl?: string
-  category?: string
-  measurements: Record<string, StyleMeasurement>
+  description?: string | null
+  imageUrl?: string | null
+  category?: string | null
+  details?: unknown
+  measurements?: Record<string, StyleMeasurement>
   templateId?: number
   template?: StyleTemplate
   notes?: string
@@ -18,8 +36,8 @@ export interface Style {
     id: number
     name: string
   }
-  createdAt: string
-  updatedAt: string
+  createdAt: Date | string
+  updatedAt?: Date | string | null
 }
 
 export interface StyleFilterOptions {

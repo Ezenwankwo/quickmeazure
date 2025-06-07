@@ -1,4 +1,4 @@
-const API_BASE = '/api' // This can be overridden by runtime config if needed
+export const API_BASE = process.env.NUXT_PUBLIC_API_BASE_URL || '/api'
 
 export const API_ENDPOINTS = {
   // Auth

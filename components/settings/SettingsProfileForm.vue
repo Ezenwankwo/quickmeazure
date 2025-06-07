@@ -31,7 +31,7 @@
               class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <UButton
-                color="white"
+                color="neutral"
                 variant="ghost"
                 size="xs"
                 class="rounded-full p-1"
@@ -145,7 +145,7 @@ class="block text-sm font-medium text-gray-700"
               <UCheckbox
                 :model-value="form.specializations?.includes(specialization.value)"
                 :label="specialization.label"
-                @update:model-value="updateSpecialization(specialization.value, $event)"
+                @update:model-value="updateSpecialization(specialization.value, Boolean($event))"
               />
             </div>
           </div>
@@ -168,7 +168,7 @@ class="block text-sm font-medium text-gray-700"
               <UCheckbox
                 :model-value="form.services?.includes(service.id)"
                 :label="service.name"
-                @update:model-value="updateService(service.id, $event)"
+                @update:model-value="updateService(service.id, Boolean($event))"
               />
             </div>
           </div>
@@ -190,13 +190,11 @@ class="block text-sm font-medium text-gray-700"
         <!-- Form Actions -->
         <div class="flex justify-end py-2">
           <UButton
-            type="submit"
-            :loading="isSaving"
-            :disabled="!formChanged"
-            icon="i-heroicons-check"
-            color="primary"
-          >
-            Save Changes
+type="submit"
+:loading="isSaving"
+:disabled="!formChanged"
+color="primary">
+            Save
           </UButton>
         </div>
       </UForm>
@@ -205,15 +203,12 @@ class="block text-sm font-medium text-gray-700"
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useUserStore } from '~/store/modules/user'
-import { useUserApi } from '~/composables/useUserApi'
-import { useToast } from '#imports'
 import type { User } from '~/types/auth'
 
 // Get stores and composables
 const userStore = useUserStore()
-const userApi = useUserApi()
 const toast = useToast()
 
 // Original profile data to compare changes
@@ -308,48 +303,7 @@ const services = [
 ]
 
 const isSaving = ref(false)
-
-// Fetch profile data from the user store and API
-async function fetchProfile() {
-  try {
-    loading.value = true
-
-    // Fetch profile data using the user API composable
-    const { data, error } = await userApi.fetchProfile()
-
-    if (error) {
-      throw new Error(error)
-    }
-
-    if (data) {
-      // Update the user store with the fetched data
-      userStore.updateProfile(data)
-
-      // Update the form with the fetched data
-      updateFormFromProfile(data)
-
-      // Store a copy of the original profile for change detection
-      originalProfile.value = { ...data }
-
-      toast.add({
-        title: 'Profile loaded',
-        description: 'Your profile has been loaded successfully',
-        color: 'primary',
-        icon: 'i-heroicons-check-circle',
-      })
-    }
-  } catch (error: any) {
-    console.error('Failed to fetch profile:', error)
-    toast.add({
-      title: 'Error loading profile',
-      description: error.message || 'Failed to load profile',
-      color: 'error',
-      icon: 'i-heroicons-exclamation-triangle',
-    })
-  } finally {
-    loading.value = false
-  }
-}
+const loading = ref(false)
 
 // Helper function to update form from profile data
 const updateFormFromProfile = (profileData: any) => {
@@ -365,6 +319,38 @@ const updateFormFromProfile = (profileData: any) => {
     avatar: profileData.avatar || '',
   }
 }
+
+// Load profile data when component mounts
+// Fetch profile data using useAsyncData
+const { data, pending } = await useLazyAsyncData('user-profile', () =>
+  $fetch<User>('/api/profile', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+)
+
+// Update loading state
+loading.value = pending.value
+
+// Watch for data changes and update form
+watch(
+  data,
+  newData => {
+    if (newData) {
+      // Update the user store with the fetched data
+      userStore.updateProfile(newData)
+
+      // Update the form with the fetched data
+      updateFormFromProfile(newData)
+
+      // Store a copy of the original profile for change detection
+      originalProfile.value = { ...newData }
+    }
+  },
+  { immediate: true }
+)
 
 // Save profile
 async function saveProfile() {
@@ -383,12 +369,14 @@ async function saveProfile() {
       bio: form.value.bio,
     }
 
-    // Call the user API to update the profile
-    const { data, error } = await userApi.updateProfile(updateData)
-
-    if (error) {
-      throw new Error(error)
-    }
+    // Call the API to update the profile
+    const { data } = await $fetch('/api/profile', {
+      method: 'PUT',
+      body: updateData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
 
     if (data) {
       // Update the user store with the updated data
@@ -446,12 +434,17 @@ async function handleAvatarUpload() {
       try {
         isSaving.value = true
 
-        // Upload the avatar using the user API composable
-        const { data, error } = await userApi.uploadAvatar(file)
+        // Upload the avatar using direct $fetch
+        const formData = new FormData()
+        formData.append('avatar', file)
 
-        if (error) {
-          throw new Error(error)
-        }
+        const data = await $fetch<{ success: boolean; avatarUrl: string; message: string }>(
+          '/api/users/avatar',
+          {
+            method: 'POST',
+            body: formData,
+          }
+        )
 
         if (data?.avatarUrl) {
           // Update the form with the new avatar URL
@@ -498,9 +491,4 @@ async function handleAvatarUpload() {
     })
   }
 }
-
-// Lifecycle hooks
-onMounted(async () => {
-  await fetchProfile()
-})
 </script>

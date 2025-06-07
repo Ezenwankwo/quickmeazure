@@ -19,32 +19,26 @@ export default defineEventHandler(async event => {
       }
     }
 
-    // Verify user token
-    console.log('Verifying token for payment method deletion endpoint')
-    const authHeader = getHeader(event, 'authorization')
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Get authenticated user from event context (set by auth middleware)
+    const auth = event.context.auth
+    if (!auth || !auth.userId) {
       return {
         statusCode: 401,
         success: false,
-        message: 'Unauthorized: Missing or invalid token',
+        message: 'Unauthorized',
       }
     }
 
-    // Extract and verify token
-    const token = authHeader.substring(7)
+    console.log('Authenticated user ID:', auth.userId)
+    const userId = auth.userId
 
-    // Verify the token
-    const decoded = await verifyToken(token)
-
-    if (!decoded || !decoded.id) {
+    if (!userId) {
       return {
         statusCode: 401,
         success: false,
         message: 'Unauthorized: Invalid token',
       }
     }
-
-    const userId = decoded.id
 
     // Initialize the database
     const db = useDrizzle()

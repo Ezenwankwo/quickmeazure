@@ -9,275 +9,238 @@ import { verifyToken, generateToken } from '~/server/utils/auth'
  */
 export default defineEventHandler(async event => {
   try {
-    // Get user from auth token
-    const headers = getRequestHeaders(event)
-    const authHeader = headers.authorization || ''
-
-    console.log(
-      'Received auth header in subscription creation:',
-      authHeader ? `${authHeader.substring(0, 15)}...` : 'none'
-    )
-
-    // Check for token
-    if (!authHeader) {
+    // Get authenticated user from event context (set by auth middleware)
+    const auth = event.context.auth
+    if (!auth || !auth.userId) {
       throw createError({
         statusCode: 401,
-        message: 'Unauthorized - No token provided',
+        statusMessage: 'Unauthorized',
       })
     }
 
-    // Extract token - handle both 'Bearer token' and raw token formats
-    const token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader
+    console.log('Authenticated user ID:', auth.userId)
+    const userId = auth.userId
 
-    if (!token) {
+    if (!userId) {
       throw createError({
         statusCode: 401,
-        message: 'Unauthorized - Empty token',
+        message: 'Unauthorized - Invalid user ID',
       })
     }
 
-    try {
-      console.log('Verifying token...')
-      const decoded = await verifyToken(token)
-      console.log('Token verification result:', decoded ? 'success' : 'failed')
+    // Read request body
+    const {
+      planId,
+      planName = '',
+      paymentReference,
+      billingPeriod,
+      amount,
+      cardDetails, // Added to capture card details from payment provider
+    } = await readBody(event)
 
-      if (!decoded) {
-        throw createError({
-          statusCode: 401,
-          message: 'Unauthorized - Token verification failed',
-        })
-      }
+    // Validate required fields - planId and billingPeriod are always required
+    if (!planId || !billingPeriod) {
+      throw createError({
+        statusCode: 400,
+        message: 'Missing required fields: planId and billingPeriod are required',
+      })
+    }
 
-      if (!decoded.id) {
-        throw createError({
-          statusCode: 401,
-          message: 'Unauthorized - Invalid token payload (missing user ID)',
-        })
-      }
+    // Check if this is a free/growth plan (no payment required)
+    const isFreeOrGrowthPlan =
+      planName?.toLowerCase() === 'growth' || planName?.toLowerCase() === 'free'
 
-      const userId = decoded.id
+    // For paid plans, validate payment information
+    if (!isFreeOrGrowthPlan && (!paymentReference || !amount)) {
+      throw createError({
+        statusCode: 400,
+        message: 'Payment reference and amount are required for paid plans',
+      })
+    }
 
-      // Read request body
-      const {
-        planId,
-        planName = '',
-        paymentReference,
-        billingPeriod,
-        amount,
-        cardDetails, // Added to capture card details from payment provider
-      } = await readBody(event)
+    // Get database instance
+    const db = useDrizzle()
 
-      // Validate required fields - planId and billingPeriod are always required
-      if (!planId || !billingPeriod) {
-        throw createError({
-          statusCode: 400,
-          message: 'Missing required fields: planId and billingPeriod are required',
-        })
-      }
+    // Find the plan - ensure planId is converted to a number if it's a string
+    const planIdNum = typeof planId === 'string' && !isNaN(Number(planId)) ? Number(planId) : planId
+    console.log('Looking for plan with ID:', planIdNum, 'Original value:', planId)
 
-      // Check if this is a free/growth plan (no payment required)
-      const isFreeOrGrowthPlan =
-        planName?.toLowerCase() === 'growth' || planName?.toLowerCase() === 'free'
+    const plan = await db.query.plans.findFirst({
+      where: eq(tables.plans.id, planIdNum),
+    })
 
-      // For paid plans, validate payment information
-      if (!isFreeOrGrowthPlan && (!paymentReference || !amount)) {
-        throw createError({
-          statusCode: 400,
-          message: 'Payment reference and amount are required for paid plans',
-        })
-      }
+    if (!plan) {
+      throw createError({
+        statusCode: 404,
+        message: 'Plan not found',
+      })
+    }
 
-      // Get database instance
-      const db = useDrizzle()
+    // Calculate subscription end date based on billing period
+    const startDate = new Date()
+    const endDate = new Date(startDate)
 
-      // Find the plan - ensure planId is converted to a number if it's a string
-      const planIdNum =
-        typeof planId === 'string' && !isNaN(Number(planId)) ? Number(planId) : planId
-      console.log('Looking for plan with ID:', planIdNum, 'Original value:', planId)
+    if (billingPeriod === 'monthly') {
+      endDate.setMonth(endDate.getMonth() + 1)
+    } else if (billingPeriod === 'annual') {
+      endDate.setFullYear(endDate.getFullYear() + 1)
+    } else {
+      throw createError({
+        statusCode: 400,
+        message: 'Invalid billing period',
+      })
+    }
 
-      const plan = await db.query.plans.findFirst({
-        where: eq(tables.plans.id, planIdNum),
+    // Check if user already has an active subscription
+    const existingSubscription = await db.query.subscriptions.findFirst({
+      where: and(
+        eq(tables.subscriptions.userId, Number(userId)),
+        eq(tables.subscriptions.status, 'active')
+      ),
+    })
+
+    const subscriptionData = {
+      planId,
+      billingPeriod,
+      startDate,
+      endDate,
+      nextBillingDate: endDate,
+      // For free/growth plans, we don't require payment info
+      amount: isFreeOrGrowthPlan ? 0 : amount,
+      paymentReference: isFreeOrGrowthPlan ? 'free-plan' : paymentReference,
+      updatedAt: new Date(),
+    }
+
+    if (existingSubscription) {
+      // Update existing subscription
+      const updatedSubscription = await db
+        .update(tables.subscriptions)
+        .set(subscriptionData)
+        .where(eq(tables.subscriptions.id, existingSubscription.id))
+        .returning()
+
+      // Get the plan details for the token
+      const planDetails = await db.query.plans.findFirst({
+        where: eq(tables.plans.id, planId),
       })
 
-      if (!plan) {
-        throw createError({
-          statusCode: 404,
-          message: 'Plan not found',
-        })
+      // Generate a new token with subscription information
+      const newToken = generateToken({
+        id: userId,
+        subscriptionPlan: planDetails?.name || '',
+        subscriptionExpiry: Math.floor(endDate.getTime() / 1000),
+      })
+
+      return {
+        success: true,
+        message: 'Subscription updated successfully',
+        data: updatedSubscription[0],
+        token: newToken,
       }
-
-      // Calculate subscription end date based on billing period
-      const startDate = new Date()
-      const endDate = new Date(startDate)
-
-      if (billingPeriod === 'monthly') {
-        endDate.setMonth(endDate.getMonth() + 1)
-      } else if (billingPeriod === 'annual') {
-        endDate.setFullYear(endDate.getFullYear() + 1)
-      } else {
-        throw createError({
-          statusCode: 400,
-          message: 'Invalid billing period',
+    } else {
+      // Create new subscription
+      const newSubscription = await db
+        .insert(tables.subscriptions)
+        .values({
+          userId: typeof userId === 'string' ? Number(userId) : userId,
+          planId: planIdNum,
+          status: 'active',
+          startDate: new Date(),
+          billingPeriod,
+          amount: amount || 0,
+          paymentReference: paymentReference || null,
+          paymentMethod: paymentReference ? 'paystack' : 'free',
+          nextBillingDate:
+            billingPeriod === 'monthly'
+              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+              : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
         })
-      }
+        .returning()
 
-      // Check if user already has an active subscription
-      const existingSubscription = await db.query.subscriptions.findFirst({
-        where: and(
-          eq(tables.subscriptions.userId, Number(userId)),
-          eq(tables.subscriptions.status, 'active')
+      // Update user's hasCompletedSetup to false to ensure they complete the setup
+      await db
+        .update(tables.users)
+        .set({
+          hasCompletedSetup: false,
+          updatedAt: new Date(),
+        })
+        .where(eq(tables.users.id, userId))
+
+      // Get the plan details for the token
+      const planDetails = await db.query.plans.findFirst({
+        where: eq(tables.plans.id, planId),
+      })
+
+      // Generate a new token with subscription information
+      const newToken = generateToken({
+        id: userId,
+        subscriptionPlan: planDetails?.name || '',
+        subscriptionExpiry: Math.floor(
+          (billingPeriod === 'monthly'
+            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+          ).getTime() / 1000
         ),
       })
 
-      const subscriptionData = {
-        planId,
-        billingPeriod,
-        startDate,
-        endDate,
-        nextBillingDate: endDate,
-        // For free/growth plans, we don't require payment info
-        amount: isFreeOrGrowthPlan ? 0 : amount,
-        paymentReference: isFreeOrGrowthPlan ? 'free-plan' : paymentReference,
-        updatedAt: new Date(),
-      }
+      // For paid plans, save or update the payment method
+      // Using the single payment method approach - each user has only one payment method
+      if (!isFreeOrGrowthPlan && paymentReference && cardDetails) {
+        try {
+          console.log('Processing payment method for subscription')
 
-      if (existingSubscription) {
-        // Update existing subscription
-        const updatedSubscription = await db
-          .update(tables.subscriptions)
-          .set(subscriptionData)
-          .where(eq(tables.subscriptions.id, existingSubscription.id))
-          .returning()
-
-        // Get the plan details for the token
-        const planDetails = await db.query.plans.findFirst({
-          where: eq(tables.plans.id, planId),
-        })
-
-        // Generate a new token with subscription information
-        const newToken = generateToken({
-          id: userId,
-          subscriptionPlan: planDetails?.name || '',
-          subscriptionExpiry: Math.floor(endDate.getTime() / 1000),
-        })
-
-        return {
-          success: true,
-          message: 'Subscription updated successfully',
-          data: updatedSubscription[0],
-          token: newToken,
-        }
-      } else {
-        // Create new subscription
-        const newSubscription = await db
-          .insert(tables.subscriptions)
-          .values({
-            userId: typeof userId === 'string' ? Number(userId) : userId,
-            planId: planIdNum,
-            status: 'active',
-            startDate: new Date(),
-            billingPeriod,
-            amount: amount || 0,
-            paymentReference: paymentReference || null,
-            paymentMethod: paymentReference ? 'paystack' : 'free',
-            nextBillingDate:
-              billingPeriod === 'monthly'
-                ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-                : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+          // Check if the user already has a payment method
+          const existingPaymentMethod = await db.query.paymentMethods.findFirst({
+            where: eq(tables.paymentMethods.userId, Number(userId)),
           })
-          .returning()
 
-        // Update user's hasCompletedSetup to false to ensure they complete the setup
-        await db
-          .update(tables.users)
-          .set({
-            hasCompletedSetup: false,
-            updatedAt: new Date(),
-          })
-          .where(eq(tables.users.id, userId))
+          if (existingPaymentMethod) {
+            // Update the existing payment method
+            console.log('Updating existing payment method for user ID:', userId)
 
-        // Get the plan details for the token
-        const planDetails = await db.query.plans.findFirst({
-          where: eq(tables.plans.id, planId),
-        })
-
-        // Generate a new token with subscription information
-        const newToken = generateToken({
-          id: userId,
-          subscriptionPlan: planDetails?.name || '',
-          subscriptionExpiry: Math.floor(
-            (billingPeriod === 'monthly'
-              ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-              : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-            ).getTime() / 1000
-          ),
-        })
-
-        // For paid plans, save or update the payment method
-        // Using the single payment method approach - each user has only one payment method
-        if (!isFreeOrGrowthPlan && paymentReference && cardDetails) {
-          try {
-            console.log('Processing payment method for subscription')
-
-            // Check if the user already has a payment method
-            const existingPaymentMethod = await db.query.paymentMethods.findFirst({
-              where: eq(tables.paymentMethods.userId, Number(userId)),
-            })
-
-            if (existingPaymentMethod) {
-              // Update the existing payment method
-              console.log('Updating existing payment method for user ID:', userId)
-
-              await db
-                .update(tables.paymentMethods)
-                .set({
-                  type: cardDetails.type || 'card',
-                  last4: cardDetails.last4,
-                  expiryMonth: cardDetails.expiryMonth,
-                  expiryYear: cardDetails.expiryYear,
-                  brand: cardDetails.brand,
-                  provider: 'paystack',
-                  providerId: cardDetails.providerId || paymentReference,
-                  metadata: cardDetails.metadata || {},
-                  updatedAt: new Date(),
-                })
-                .where(eq(tables.paymentMethods.id, existingPaymentMethod.id))
-            } else {
-              // Create a new payment method
-              console.log('Creating new payment method for user ID:', userId)
-
-              await db.insert(tables.paymentMethods).values({
-                userId: Number(userId),
+            await db
+              .update(tables.paymentMethods)
+              .set({
                 type: cardDetails.type || 'card',
                 last4: cardDetails.last4,
                 expiryMonth: cardDetails.expiryMonth,
                 expiryYear: cardDetails.expiryYear,
                 brand: cardDetails.brand,
-                isDefault: true, // Always true since it's the only one
                 provider: 'paystack',
                 providerId: cardDetails.providerId || paymentReference,
                 metadata: cardDetails.metadata || {},
+                updatedAt: new Date(),
               })
-            }
-          } catch (paymentMethodError) {
-            // Log the error but don't fail the subscription creation
-            console.error('Error processing payment method:', paymentMethodError)
-          }
-        }
+              .where(eq(tables.paymentMethods.id, existingPaymentMethod.id))
+          } else {
+            // Create a new payment method
+            console.log('Creating new payment method for user ID:', userId)
 
-        return {
-          success: true,
-          message: 'Subscription created successfully',
-          data: newSubscription[0],
-          token: newToken,
+            await db.insert(tables.paymentMethods).values({
+              userId: Number(userId),
+              type: cardDetails.type || 'card',
+              last4: cardDetails.last4,
+              expiryMonth: cardDetails.expiryMonth,
+              expiryYear: cardDetails.expiryYear,
+              brand: cardDetails.brand,
+              isDefault: true, // Always true since it's the only one
+              provider: 'paystack',
+              providerId: cardDetails.providerId || paymentReference,
+              metadata: cardDetails.metadata || {},
+            })
+          }
+        } catch (paymentMethodError) {
+          // Log the error but don't fail the subscription creation
+          console.error('Error processing payment method:', paymentMethodError)
         }
       }
-    } catch (tokenError) {
-      console.error('Token verification error:', tokenError)
-      throw createError({
-        statusCode: 401,
-        message: 'Unauthorized - Invalid token',
-      })
+
+      return {
+        success: true,
+        message: 'Subscription created successfully',
+        data: newSubscription[0],
+        token: newToken,
+      }
     }
   } catch (error: any) {
     console.error('Error creating subscription:', error)

@@ -18,14 +18,11 @@ export interface ApiResponse<T = any> {
  */
 export interface PaginatedResponse<T = any> {
   data: T[]
-  meta: {
-    current_page: number
-    from: number
-    last_page: number
-    path: string
-    per_page: number
-    to: number
-    total: number
+  pagination: {
+    page: number
+    limit: number
+    totalCount: number
+    totalPages: number
   }
 }
 

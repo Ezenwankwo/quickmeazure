@@ -54,7 +54,7 @@
           <template #header>
             <div class="flex justify-between items-center">
               <h3 class="text-sm font-medium text-gray-500">Revenue</h3>
-              <UIcon name="i-heroicons-currency-dollar" class="text-primary-500" />
+              <UIcon name="i-heroicons-banknotes" class="text-primary-500" />
             </div>
           </template>
           <div class="text-3xl font-bold">
@@ -207,7 +207,7 @@ size="xs"> View all </UButton>
                     <td class="px-3 py-2 whitespace-nowrap text-right">
                       <UButton
                         icon="i-heroicons-eye"
-                        color="gray"
+                        color="neutral"
                         variant="ghost"
                         size="xs"
                         :to="`${ORDERS_PATH}/${order.id}`"
@@ -269,6 +269,7 @@ import { API_ENDPOINTS } from '~/constants/api'
 import { useDashboardStore } from '~/store/modules/dashboard'
 import { useAuthStore } from '~/store/modules/auth'
 import type { ChartPeriod } from '~/types/dashboard'
+import { ROUTE_NAMES } from '~/constants/routes'
 
 // Initialize auth store
 const authStore = useAuthStore()
@@ -286,9 +287,8 @@ const chartPeriodOptions = [
 ]
 
 // Routes
-const routes = useAppRoutes()
-const NEW_CLIENT_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.CLIENTS.NEW] as string
-const ORDERS_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.INDEX] as string
+const NEW_CLIENT_PATH = ROUTE_NAMES.DASHBOARD.CLIENTS.NEW
+const ORDERS_PATH = ROUTE_NAMES.DASHBOARD.ORDERS.INDEX
 
 // Set page metadata
 useHead({
@@ -305,16 +305,16 @@ const hasChartData = computed(() => {
 })
 
 // Update chart data when period changes
-const updateChartData = async (period: ChartPeriod) => {
+const updateChartData = async (period: string | ChartPeriod) => {
   try {
-    await dashboardStore.fetchClientGrowth(period)
+    const chartPeriod = period as ChartPeriod
+    await dashboardStore.fetchClientGrowth(chartPeriod)
   } catch (error) {
     console.error('Error updating chart data:', error)
     toast.add({
       title: 'Error',
       description: 'Failed to update chart data',
-      color: 'red',
-      timeout: 3000,
+      color: 'error',
     })
   }
 }
@@ -341,7 +341,7 @@ const formatDueDate = (date: string) => {
     const dueDate = new Date(date)
     const dueDateNoTime = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
 
-    const diffTime = dueDateNoTime - today
+    const diffTime = dueDateNoTime.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
     if (diffDays < 0) {
@@ -369,7 +369,7 @@ const getDueDateColor = (date: string) => {
     const dueDate = new Date(date)
     const dueDateNoTime = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate())
 
-    const diffTime = dueDateNoTime - today
+    const diffTime = dueDateNoTime.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
     if (diffDays < 0) {
@@ -506,7 +506,7 @@ const getDefaultDashboardData = () => ({
 })
 
 // Helper function to validate and get stats data
-const getValidStats = statsResult => {
+const getValidStats = (statsResult: any) => {
   if (statsResult.status === 'fulfilled' && statsResult.value) {
     return {
       totalClients: statsResult.value.totalClients || 0,
@@ -526,7 +526,7 @@ const getValidStats = statsResult => {
 }
 
 // Helper function to validate and get array data
-const getValidArray = (result, type) => {
+const getValidArray = (result: any, type: string) => {
   if (result.status === 'fulfilled' && Array.isArray(result.value)) {
     return result.value
   }
@@ -538,7 +538,7 @@ const getValidArray = (result, type) => {
 const { data: dashboardData, status } = useAsyncData('dashboard-data', fetchDashboardData, {
   default: () => ({
     stats: null,
-    recentActivity: [],
+    activities: [],
     dueOrders: [],
     clientGrowth: null,
   }),
@@ -555,7 +555,7 @@ watch(
   newStatus => {
     if (newStatus === 'success' && dashboardData.value) {
       // Update store with the fetched data
-      dashboardStore.setStats(dashboardData.value.stats || {})
+      dashboardStore.setStats(dashboardData.value.stats || null)
       dashboardStore.setRecentActivity(dashboardData.value.activities || [])
       dashboardStore.setDueOrders(dashboardData.value.dueOrders || [])
       dashboardStore.setError(null)
@@ -572,7 +572,6 @@ watch(
         title: 'Warning',
         description: errorMessage,
         color: 'warning',
-        timeout: 5000,
       })
     }
   },

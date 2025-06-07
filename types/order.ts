@@ -44,6 +44,7 @@ export interface Order {
   createdAt: string
   updatedAt?: string
   deletedAt?: string
+  clientName?: string
   client?: {
     id: string
     firstName: string

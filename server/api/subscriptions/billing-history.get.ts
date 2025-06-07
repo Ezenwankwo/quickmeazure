@@ -7,77 +7,44 @@ import { useDrizzle, tables, eq, desc } from '~/server/utils/drizzle'
  */
 export default defineEventHandler(async event => {
   try {
-    // Get user from auth token
-    const headers = getRequestHeaders(event)
-    const authHeader = headers.authorization || ''
-
-    // Check for token
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Get authenticated user from event context (set by auth middleware)
+    const auth = event.context.auth
+    if (!auth || !auth.userId) {
       throw createError({
         statusCode: 401,
-        message: 'Unauthorized - No valid token provided',
+        statusMessage: 'Unauthorized',
       })
     }
 
-    // Extract and verify token
-    const token = authHeader.split(' ')[1]
-    const config = useRuntimeConfig()
+    console.log('Authenticated user ID:', auth.userId)
+    const userId = auth.userId
 
-    console.log('Verifying token for billing history endpoint')
+    // Get database instance
+    const db = useDrizzle()
 
-    try {
-      // Make sure we have a valid JWT secret
-      if (!config.jwtSecret) {
-        console.error('JWT_SECRET is not configured properly')
-        throw createError({
-          statusCode: 500,
-          message: 'Server configuration error',
-        })
-      }
+    // Find the user's subscription payment history
+    // Using a simpler query approach to avoid relation errors
+    console.log('Querying for subscription payment history for user ID:', userId)
 
-      const decoded = jwt.verify(token, config.jwtSecret) as { id: string | number }
-      console.log('Token verified, user ID:', decoded?.id)
+    const payments = await db
+      .select()
+      .from(tables.subscriptionPayments)
+      .where(eq(tables.subscriptionPayments.userId, Number(userId)))
+      .orderBy(desc(tables.subscriptionPayments.createdAt))
+      .limit(10) // Limit to last 10 payments
+      .execute()
 
-      if (!decoded || !decoded.id) {
-        console.error('Invalid token payload, missing ID')
-        throw new Error('Invalid token payload')
-      }
-
-      const userId = decoded.id
-
-      // Get database instance
-      const db = useDrizzle()
-
-      // Find the user's subscription payment history
-      // Using a simpler query approach to avoid relation errors
-      console.log('Querying for subscription payment history for user ID:', userId)
-
-      const payments = await db
-        .select()
-        .from(tables.subscriptionPayments)
-        .where(eq(tables.subscriptionPayments.userId, Number(userId)))
-        .orderBy(desc(tables.subscriptionPayments.createdAt))
-        .limit(10) // Limit to last 10 payments
-        .execute()
-
-      return {
-        success: true,
-        data: payments.map(payment => ({
-          id: payment.id,
-          date: payment.createdAt,
-          description: payment.description || 'Subscription Payment',
-          amount: payment.amount,
-          status: payment.status,
-          reference: payment.reference,
-          metadata: payment.metadata,
-        })),
-      }
-    } catch (tokenError) {
-      console.error('Token verification error:', tokenError)
-      throw createError({
-        statusCode: 401,
-        message: 'Unauthorized - Invalid token',
-      })
+    return {
+      success: true,
+      data: payments.map(payment => ({
+        id: payment.id,
+        date: payment.createdAt,
+        description: payment.description || 'Subscription Payment',
+        amount: payment.amount,
+        status: payment.status,
+        reference: payment.reference,
+        metadata: payment.metadata,
+      })),
     }
   } catch (err) {
     console.error('Error retrieving billing history:', err)

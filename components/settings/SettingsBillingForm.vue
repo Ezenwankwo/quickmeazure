@@ -187,7 +187,14 @@
                     {{ invoice.description }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₦{{ invoice.amount.toFixed(2) }}
+                    ₦{{
+                      invoice.amount
+                        ? invoice.amount.toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        : '0.00'
+                    }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <span
@@ -245,12 +252,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { useSubscriptionStore } from '~/store/modules/subscription'
 import { useAuthStore } from '~/store/modules/auth'
-import { useUserStore } from '~/store/modules/user'
 
 // Initialize stores and composables
 const subscriptionStore = useSubscriptionStore()
 const authStore = useAuthStore()
-const _userStore = useUserStore()
 
 // Define loading state for plan changes
 const changePlanLoading = ref(false)
@@ -263,9 +268,8 @@ const initialLoad = ref(true)
 
 // Access store properties reactively
 const currentPlan = computed(() => subscriptionStore.currentPlan)
-// Status is used in the template but not in the script
-const _status = computed(() => subscriptionStore.status)
-const loading = computed(() => subscriptionStore.loading)
+const status = computed(() => subscriptionStore.status)
+const loading = computed(() => subscriptionStore.isLoading)
 const error = computed(() => subscriptionStore.error)
 const isSubscribed = computed(() => subscriptionStore.isSubscribed)
 const isTrialing = computed(() => subscriptionStore.isTrialing)
@@ -279,7 +283,7 @@ const statusClass = computed(() => {
   if (isSubscribed.value && !isCanceled.value) return 'bg-green-100 text-green-800'
   if (isTrialing.value) return 'bg-blue-100 text-blue-800'
   if (isPastDue.value) return 'bg-red-100 text-red-800'
-  if (isCanceled.value && subscriptionStore.status.currentPeriodEndsAt) {
+  if (isCanceled.value && status.value.currentPeriodEndsAt) {
     return 'bg-yellow-100 text-yellow-800'
   }
   if (isCanceled.value) return 'bg-gray-100 text-gray-800'
@@ -287,8 +291,8 @@ const statusClass = computed(() => {
 })
 
 const hasActiveUntilExpiry = computed(() => {
-  if (isCanceled.value && subscriptionStore.status.currentPeriodEndsAt) {
-    const expiryDate = new Date(subscriptionStore.status.currentPeriodEndsAt)
+  if (isCanceled.value && status.value.currentPeriodEndsAt) {
+    const expiryDate = new Date(status.value.currentPeriodEndsAt)
     return expiryDate > new Date()
   }
   return false
@@ -312,8 +316,8 @@ const statusText = computed(() => {
   if (isSubscribed.value && !isCanceled.value) return 'Active'
   if (isTrialing.value) return 'Trial'
   if (isPastDue.value) return 'Past Due'
-  if (isCanceled.value && subscriptionStore.status.currentPeriodEndsAt) {
-    return `Active until ${formatDate(subscriptionStore.status.currentPeriodEndsAt)}`
+  if (isCanceled.value && status.value.currentPeriodEndsAt) {
+    return `Active until ${formatDate(status.value.currentPeriodEndsAt)}`
   }
   if (isCanceled.value) return 'Canceled' // Fallback if no expiry date
   return 'Inactive'
@@ -352,30 +356,29 @@ const refreshSubscription = async () => {
 
     // Fetch all subscription data using direct API calls
     const [statusData, plansData, billingData, paymentMethodsData] = await Promise.all([
-      $fetch('/api/subscription/status', {
+      $fetch<{ success: boolean; data: { active: boolean; planId: number; plan: any } }>(
+        '/api/subscriptions/current',
+        {
+          method: 'GET',
+        }
+      ),
+      $fetch('/api/subscriptions/plans', {
         method: 'GET',
-        headers: authStore.getAuthHeaders(),
       }),
-      $fetch('/api/subscription/plans', {
+      $fetch('/api/subscriptions/billing-history', {
         method: 'GET',
-        headers: authStore.getAuthHeaders(),
       }),
-      $fetch('/api/subscription/billing-history', {
+      $fetch('/api/subscriptions/payment-methods', {
         method: 'GET',
-        headers: authStore.getAuthHeaders(),
-      }),
-      $fetch('/api/subscription/payment-methods', {
-        method: 'GET',
-        headers: authStore.getAuthHeaders(),
       }),
     ])
 
     // Update the store with the fetched data
-    if (statusData) {
-      subscriptionStore.setStatus(statusData)
+    if (statusData?.data) {
+      subscriptionStore.setStatus(statusData.data)
       // Set current plan if available
-      if (statusData.planId) {
-        const plan = plansData?.find((p: any) => p.id === statusData.planId)
+      if (statusData.data.planId) {
+        const plan = plansData?.find((p: any) => p.id === statusData.data.planId)
         if (plan) {
           subscriptionStore.setCurrentPlan(plan)
         }
@@ -417,7 +420,7 @@ const refreshSubscription = async () => {
 // Payment method management - handles both adding and changing payment methods
 const addPaymentMethod = async () => {
   try {
-    const response = await $fetch('/api/subscription/update-payment-method', {
+    await $fetch('/api/subscription/update-payment-method', {
       method: 'POST',
       body: {
         // Pass payment method details from your form
@@ -430,7 +433,7 @@ const addPaymentMethod = async () => {
     toast.add({
       title: 'Success',
       description: 'Payment method updated successfully',
-      color: 'success',
+      color: 'primary',
     })
   } catch (error: any) {
     console.error('Error updating payment method:', error)
@@ -445,13 +448,13 @@ const addPaymentMethod = async () => {
 }
 
 // Invoice viewing
-const viewInvoice = id => {
+const viewInvoice = (id: string) => {
   // This would typically open a modal with invoice details or download a PDF
   // For now, we'll just show a toast
   toast.add({
     title: 'Coming Soon',
     description: `Invoice viewing for ID: ${id} will be available soon`,
-    color: 'blue',
+    color: 'secondary',
   })
 }
 
@@ -468,13 +471,18 @@ const currentBillingPeriod = computed(() => {
 })
 
 // Handle plan fetch errors
-const handlePlanFetchError = error => {
+const handlePlanFetchError = (error: { message?: string }) => {
   useToast().add({
     title: 'Error',
     description: error?.message || 'Failed to load plans. Please try again later.',
-    color: 'red',
+    color: 'error',
     icon: 'i-heroicons-exclamation-triangle',
   })
+}
+
+// Close plan selection modal
+const closePlanSelection = () => {
+  showPlanSelectionModal.value = false
 }
 
 // Handle plan change confirmation
@@ -570,7 +578,7 @@ const reactivateSubscription = async () => {
     toast.add({
       title: 'Subscription Reactivated',
       description: 'Your subscription has been reactivated',
-      color: 'success',
+      color: 'primary',
     })
   } catch (error: any) {
     console.error('Error reactivating subscription:', error)
@@ -592,24 +600,11 @@ const formatDate = (dateString: string) => {
   })
 }
 
-// Format storage size from MB to appropriate unit (MB, GB, TB)
-const _formatStorage = sizeInMB => {
-  if (!sizeInMB) return 'Unlimited'
-
-  if (sizeInMB < 1000) {
-    return `${sizeInMB} MB`
-  } else if (sizeInMB < 1000000) {
-    return `${(sizeInMB / 1000).toFixed(1)} GB`
-  } else {
-    return `${(sizeInMB / 1000000).toFixed(1)} TB`
-  }
-}
-
 // Access billing history and payment methods from the store
 const billingHistory = computed(() => subscriptionStore.billingHistory)
 const paymentMethods = computed(() => subscriptionStore.paymentMethods)
-const loadingBillingHistory = computed(() => subscriptionStore.loadingBillingHistory)
-const loadingPaymentMethods = computed(() => subscriptionStore.loadingPaymentMethods)
+const loadingBillingHistory = computed(() => subscriptionStore.isLoading)
+const loadingPaymentMethods = computed(() => subscriptionStore.isLoading)
 
 // Removed billingColumns as we're using a standard HTML table now
 
@@ -628,16 +623,13 @@ onMounted(async () => {
       return
     }
 
-    console.log('Auth token available:', !!authStore.token)
-    console.log('Auth headers:', authStore.getAuthHeaders())
-
     // Refresh subscription data
     await refreshSubscription()
   } catch (err) {
     console.error('Error initializing billing form:', err)
     toast.add({
       title: 'Error',
-      description: `Error loading subscription data: ${err?.message || 'Unknown error'}`,
+      description: `Error loading subscription data: ${err instanceof Error ? err.message : 'Unknown error'}`,
       color: 'error',
     })
   }

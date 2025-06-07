@@ -142,6 +142,7 @@ defineProps({
 .empty-state-actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.75rem;
 }
 

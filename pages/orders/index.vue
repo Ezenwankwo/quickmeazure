@@ -26,112 +26,169 @@
       :empty-state-action="
         !search && !hasActiveFilters
           ? {
-              label: 'Create Order',
+              label: 'Add Order',
               to: ROUTE_NAMES.DASHBOARD.ORDERS.NEW,
               icon: 'i-heroicons-plus',
             }
-          : null
+          : undefined
       "
       :show-delete-modal="showDeleteModal"
       :item-to-delete="orderToDelete"
+      :is-filter-open="isFilterOpen"
+      :active-filters-count="activeFiltersCount"
       @update:current-page="handlePageChange"
       @search="handleSearch"
       @sort="handleSort"
       @reset-filters="resetFilters"
       @delete-confirm="deleteOrder"
+      @toggle-filter="toggleFilter"
     >
-      <!-- Filters slot -->
+      <!-- Filters slot for sort dropdown -->
       <template #filters>
-        <div class="flex flex-wrap gap-2">
-          <USelect
-            v-model="statusFilter"
-            :items="statusOptions"
-            placeholder="Status"
-            size="md"
-            class="w-full sm:w-40"
-            @update:model-value="filterOrders"
-          />
-          <USelect
-            v-model="paymentStatusFilter"
-            :items="paymentStatusOptions"
-            placeholder="Payment"
-            size="md"
-            class="w-full sm:w-40"
-            @update:model-value="filterOrders"
-          />
-          <USelect
-            v-model="sortBy"
-            :items="sortOptions"
-            placeholder="Sort by"
-            size="md"
-            class="w-full sm:w-48"
-            @update:model-value="filterOrders"
-          />
-        </div>
+        <USelect
+          v-model="sortBy"
+          :items="sortOptions"
+          placeholder="Sort by"
+          size="lg"
+          class="w-full sm:w-48"
+          @update:model-value="filterOrders"
+        />
+      </template>
+
+      <!-- Filter Panel slot for status filters -->
+      <template v-if="isFilterOpen" #filter-panel>
+        <Transition
+          enter-active-class="transition-all duration-300 ease-out"
+          enter-from-class="opacity-0 transform -translate-y-2"
+          enter-to-class="opacity-100 transform translate-y-0"
+          leave-active-class="transition-all duration-200 ease-in"
+          leave-from-class="opacity-100 transform translate-y-0"
+          leave-to-class="opacity-0 transform -translate-y-2"
+        >
+          <div v-show="isFilterOpen" class="mt-3 overflow-hidden">
+            <div
+              class="bg-gradient-to-br from-white to-gray-50/50 border border-gray-200/60 rounded-xl shadow-sm backdrop-blur-sm"
+            >
+              <!-- Filter Header -->
+              <div class="px-6 py-4 border-b border-gray-100 bg-white/80 rounded-t-xl">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <div class="w-2 h-2 bg-primary-500 rounded-full"></div>
+                    <h3 class="text-sm font-semibold text-gray-900">Filter Options</h3>
+                  </div>
+                  <div class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    {{ activeFiltersCount }}
+                    active
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filter Content -->
+              <div class="p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <!-- Status Filter -->
+                  <div class="space-y-2">
+                    <UFormField label="Order Status" name="status-filter">
+                      <template #label>
+                        <div class="flex items-center space-x-2">
+                          <UIcon
+                            name="i-heroicons-clipboard-document-list"
+                            class="w-4 h-4 text-gray-500"
+                          />
+                          <span class="text-sm font-medium text-gray-700">Order Status</span>
+                        </div>
+                      </template>
+                      <USelect
+                        v-model="statusFilter"
+                        :items="statusOptions"
+                        placeholder="All statuses"
+                        size="lg"
+                        class="transition-all duration-200 hover:shadow-sm"
+                        :ui="{
+                          base: 'relative block w-full disabled:cursor-not-allowed disabled:opacity-75 focus:outline-none border-0',
+                          placeholder: 'text-gray-400 dark:text-gray-500',
+                        }"
+                        @update:model-value="filterOrders"
+                      />
+                    </UFormField>
+                  </div>
+
+                  <!-- Payment Status Filter -->
+                  <div class="space-y-2">
+                    <UFormField label="Payment Status" name="payment-status-filter">
+                      <template #label>
+                        <div class="flex items-center space-x-2">
+                          <UIcon name="i-heroicons-credit-card" class="w-4 h-4 text-gray-500" />
+                          <span class="text-sm font-medium text-gray-700">Payment Status</span>
+                        </div>
+                      </template>
+                      <USelect
+                        v-model="paymentStatusFilter"
+                        :items="paymentStatusOptions"
+                        placeholder="All payments"
+                        size="lg"
+                        class="transition-all duration-200 hover:shadow-sm"
+                        :ui="{
+                          base: 'relative block w-full disabled:cursor-not-allowed disabled:opacity-75 focus:outline-none border-0',
+                          placeholder: 'text-gray-400 dark:text-gray-500',
+                        }"
+                        @update:model-value="filterOrders"
+                      />
+                    </UFormField>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+                  <div class="flex items-center space-x-2 text-xs text-gray-500">
+                    <UIcon name="i-heroicons-information-circle" class="w-4 h-4" />
+                    <span>Filters are applied automatically</span>
+                  </div>
+
+                  <div class="flex items-center space-x-3">
+                    <UButton
+                      color="neutral"
+                      variant="outline"
+                      size="sm"
+                      icon="i-heroicons-arrow-path"
+                      class="transition-all duration-200 hover:bg-gray-100"
+                      @click="resetFilters"
+                    >
+                      Reset
+                    </UButton>
+
+                    <UButton
+                      color="primary"
+                      variant="outline"
+                      size="sm"
+                      icon="i-heroicons-x-mark"
+                      class="transition-all duration-200"
+                      @click="isFilterOpen = false"
+                    >
+                      Close
+                    </UButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </template>
 
       <!-- Default slot for content -->
       <template #default>
-        <!-- Desktop Table View (hidden on mobile) -->
+        <!-- Desktop Table View -->
         <div class="hidden md:block">
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th
-                    v-for="column in columns"
-                    :key="column.key"
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    :class="column.class"
-                  >
-                    {{ column.label }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="order in paginatedOrders" :key="order.id" class="hover:bg-gray-50">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ order.id }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ order.clientName }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ order.items?.length || 0 }} items
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${{ order.totalAmount?.toFixed(2) }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <UBadge :color="getStatusColor(order.status)">
-                      {{ formatStatus(order.status) }}
-                    </UBadge>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ order.dueDate ? formatDate(order.dueDate) : 'N/A' }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div class="flex items-center space-x-2">
-                      <UButton
-                        color="gray"
-                        variant="ghost"
-                        icon="i-heroicons-pencil"
-                        :to="getOrderPath(order.id)"
-                        title="Edit order"
-                      />
-                      <UButton
-                        color="red"
-                        variant="ghost"
-                        icon="i-heroicons-trash"
-                        title="Delete order"
-                        @click="confirmDelete(order)"
-                      />
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <UTable
+            :data="paginatedOrders"
+            :columns="tableColumns"
+            :loading="isLoading"
+            :empty-state="{
+              icon: 'i-heroicons-document-text',
+              label: 'No orders found',
+              description: 'Create your first order to get started.',
+            }"
+          />
         </div>
 
         <!-- Mobile Card View -->
@@ -139,39 +196,100 @@
           <div
             v-for="order in paginatedOrders"
             :key="order.id"
-            class="bg-white rounded-lg border border-gray-200 shadow-sm p-4"
+            class="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 p-5 hover:border-gray-300"
           >
-            <div class="flex justify-between items-start mb-2">
-              <h3 class="text-sm font-medium text-gray-900">Order #{{ order.id }}</h3>
-              <UBadge :color="getStatusColor(order.status)" size="sm">
+            <!-- Header with Order ID and Status -->
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-primary-50 rounded-lg flex items-center justify-center">
+                  <UIcon name="i-heroicons-document-text" class="w-4 h-4 text-primary-600" />
+                </div>
+                <h3 class="text-base font-semibold text-gray-900">
+                  Order #{{ order.orderNumber || order.id }}
+                </h3>
+              </div>
+              <UBadge
+                :color="getStatusColor(order.status)"
+                variant="subtle"
+                size="sm"
+                class="font-medium"
+              >
                 {{ formatStatus(order.status) }}
               </UBadge>
             </div>
-            <p class="text-sm text-gray-500">Client: {{ order.clientName }}</p>
-            <p class="text-sm text-gray-500">Items: {{ order.items?.length || 0 }}</p>
-            <p class="text-sm font-medium text-gray-900">
-              Total: ${{ order.totalAmount?.toFixed(2) }}
-            </p>
-            <p class="text-sm text-gray-500">
-              Due: {{ order.dueDate ? formatDate(order.dueDate) : 'N/A' }}
-            </p>
-            <div class="mt-3 pt-3 border-t border-gray-100 flex justify-end space-x-2">
-              <UButton
-                color="gray"
-                variant="ghost"
-                size="sm"
-                icon="i-heroicons-pencil"
-                :to="getOrderPath(order.id)"
-                title="Edit order"
-              />
-              <UButton
-                color="red"
-                variant="ghost"
-                size="sm"
-                icon="i-heroicons-trash"
-                title="Delete order"
-                @click="confirmDelete(order)"
-              />
+
+            <!-- Order Details -->
+            <div class="space-y-3">
+              <!-- Client Info -->
+              <div class="flex items-center space-x-2">
+                <UIcon name="i-heroicons-user" class="w-4 h-4 text-gray-400" />
+                <span class="text-sm text-gray-600">Client:</span>
+                <span class="text-sm font-medium text-gray-900">{{
+                  order.clientName || 'Unknown Client'
+                }}</span>
+              </div>
+
+              <!-- Total Amount -->
+              <div class="flex items-center space-x-2">
+                <UIcon name="i-heroicons-banknotes" class="w-4 h-4 text-gray-400" />
+                <span class="text-sm text-gray-600">Total:</span>
+                <span class="text-base font-bold text-gray-900">
+                  ₦{{
+                    (order.finalAmount || order.totalAmount)?.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  }}
+                </span>
+              </div>
+
+              <!-- Due Date -->
+              <div class="flex items-center space-x-2">
+                <UIcon name="i-heroicons-calendar-days" class="w-4 h-4 text-gray-400" />
+                <span class="text-sm text-gray-600">Due:</span>
+                <span class="text-sm font-medium text-gray-900">
+                  {{ order.dueDate ? formatDate(order.dueDate) : 'N/A' }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+              <UDropdownMenu
+                :items="[
+                  {
+                    type: 'label',
+                    label: 'Actions',
+                  },
+                  {
+                    label: 'View',
+                    icon: 'i-heroicons-eye',
+                    onSelect: () => navigateTo(getOrderPath(order.id)),
+                  },
+                  {
+                    label: 'Edit',
+                    icon: 'i-heroicons-pencil',
+                    onSelect: () => navigateTo(getOrderPath(order.id)),
+                  },
+                  {
+                    type: 'separator',
+                  },
+                  {
+                    label: 'Delete',
+                    icon: 'i-heroicons-trash',
+                    color: 'error',
+                    onSelect: () => confirmDelete(order),
+                  },
+                ]"
+              >
+                <UButton
+                  color="gray"
+                  variant="outline"
+                  icon="i-heroicons-ellipsis-horizontal"
+                  size="sm"
+                  class="hover:bg-gray-50 transition-colors duration-150"
+                />
+              </UDropdownMenu>
             </div>
           </div>
         </div>
@@ -182,7 +300,13 @@
     <DeleteModal
       v-model:model-value="showDeleteModal"
       :item-type="'order'"
-      :item-name="orderToDelete?.id ? `order #${orderToDelete.id}` : 'this order'"
+      :item-name="
+        orderToDelete?.orderNumber
+          ? `order #${orderToDelete.orderNumber}`
+          : orderToDelete?.id
+            ? `order #${orderToDelete.id}`
+            : 'this order'
+      "
       @confirm="deleteOrder"
       @update:model-value="val => (showDeleteModal = val)"
     />
@@ -190,50 +314,93 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useHead, useToast } from '#imports'
+import { ref, computed, h, resolveComponent, watch } from 'vue'
 import { ROUTE_NAMES } from '~/constants/routes'
 import type { Order } from '~/types/order'
-import { useAppRoutes } from '~/composables/useRoutes'
+import { useListData } from '~/composables/useListData'
+
+// Resolve UI components
+const UDropdownMenu = resolveComponent('UDropdownMenu')
+const UButton = resolveComponent('UButton')
+const UBadge = resolveComponent('UBadge')
 
 // Set page metadata
 useHead({
-  title: 'Orders - QuickMeazure',
-  meta: [{ name: 'description', content: 'View and manage your orders' }],
+  title: 'Orders',
 })
 
-// State
-const search = ref('')
-const statusFilter = ref('all')
-const paymentStatusFilter = ref('any')
-const sortBy = ref('newest')
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-const isLoading = ref(false)
-const orders = ref<Order[]>([])
+// Delete modal state
 const showDeleteModal = ref(false)
-const orderToDelete = ref<Order | null>(null)
+const orderToDelete = ref<Order | undefined>(undefined)
 const isDeleting = ref(false)
 
-// Constants
-const routes = useAppRoutes()
+// Use unified list data management
+const {
+  state: {
+    items: orders,
+    currentPage,
+    pageSize: itemsPerPage,
+    search,
+    sortBy,
+    isLoading,
+    isFilterOpen,
+    hasActiveFilters,
+    activeFiltersCount,
+  },
+  actions: { handleSearch, handleSort, handlePageChange, resetFilters },
+  setFilter,
+  getFilter,
+} = useListData<Order>({
+  endpoint: '/api/orders',
+  defaultPageSize: 10,
+  defaultSortBy: 'newest',
+  filterKeys: ['status', 'paymentStatus'],
+  transform: (order: any) => ({
+    ...order,
+    clientName: order.clientName || 'Unknown Client',
+    orderNumber: order.id,
+    finalAmount: order.totalAmount,
+    items: [],
+  }),
+  serverSide: false,
+  sortByMapping: {
+    newest: { sortBy: 'createdAt', sortOrder: 'desc' },
+    oldest: { sortBy: 'createdAt', sortOrder: 'asc' },
+    due_soonest: { sortBy: 'dueDate', sortOrder: 'asc' },
+    amount_high: { sortBy: 'totalAmount', sortOrder: 'desc' },
+    amount_low: { sortBy: 'totalAmount', sortOrder: 'asc' },
+  },
+})
+
+// Additional filter refs for easier access
+const statusFilter = computed({
+  get: () => getFilter('status') || 'all',
+  set: value => setFilter('status', value === 'all' ? null : value),
+})
+
+const paymentStatusFilter = computed({
+  get: () => getFilter('paymentStatus') || 'any',
+  set: value => setFilter('paymentStatus', value === 'any' ? null : value),
+})
 
 // Options
 const statusOptions = [
   { label: 'All statuses', value: 'all' },
-  { label: 'Draft', value: 'draft' },
   { label: 'Pending', value: 'pending' },
-  { label: 'In Progress', value: 'in_progress' },
-  { label: 'Ready for Pickup', value: 'ready_for_pickup' },
+  { label: 'Processing', value: 'processing' },
   { label: 'Completed', value: 'completed' },
   { label: 'Cancelled', value: 'cancelled' },
+  { label: 'Refunded', value: 'refunded' },
+  { label: 'Delivered', value: 'delivered' },
+  { label: 'Shipped', value: 'shipped' },
 ]
 
 const paymentStatusOptions = [
   { label: 'All payment statuses', value: 'any' },
-  { label: 'Paid in full', value: 'paid' },
-  { label: 'Partial payment', value: 'partial' },
-  { label: 'No payment', value: 'none' },
+  { label: 'Paid', value: 'paid' },
+  { label: 'Partially Paid', value: 'partially_paid' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Refunded', value: 'refunded' },
 ]
 
 const sortOptions = [
@@ -244,14 +411,135 @@ const sortOptions = [
   { label: 'Lowest amount', value: 'amount_low' },
 ]
 
-const columns = [
-  { key: 'id', label: 'Order ID' },
-  { key: 'client', label: 'Client' },
-  { key: 'items', label: 'Items' },
-  { key: 'total', label: 'Total' },
-  { key: 'status', label: 'Status' },
-  { key: 'dueDate', label: 'Due Date' },
-  { key: 'actions', label: 'Actions', class: 'text-right' },
+const tableColumns = [
+  {
+    id: 'index',
+    header: '#',
+    enableSorting: false,
+    cell: ({ row }: { row: { original: Order } }) => {
+      const index = paginatedOrders.value.findIndex(order => order.id === row.original.id)
+      return h(
+        'div',
+        { class: 'font-medium text-neutral-700' },
+        String((currentPage.value - 1) * itemsPerPage.value + index + 1)
+      )
+    },
+  },
+  {
+    accessorKey: 'orderNumber',
+    header: 'Order ID',
+    enableSorting: true,
+    cell: ({ row }: { row: { original: Order } }) => {
+      return h(
+        'div',
+        { class: 'font-medium text-neutral-700' },
+        row.original.orderNumber || row.original.id
+      )
+    },
+  },
+  {
+    accessorKey: 'clientName',
+    header: 'Client',
+    enableSorting: true,
+    cell: ({ row }: { row: { original: Order } }) => {
+      return h('div', { class: 'text-neutral-700' }, row.original.clientName || 'Unknown Client')
+    },
+  },
+  {
+    accessorKey: 'totalAmount',
+    header: 'Total',
+    enableSorting: true,
+    cell: ({ row }: { row: { original: Order } }) => {
+      const amount = row.original.finalAmount || row.original.totalAmount
+      return h(
+        'div',
+        { class: 'font-medium text-neutral-700' },
+        `₦${amount?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
+      )
+    },
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    enableSorting: true,
+    cell: ({ row }: { row: { original: Order } }) => {
+      return h(
+        UBadge,
+        {
+          color: getStatusColor(row.original.status),
+          variant: 'subtle',
+          size: 'sm',
+          class: 'capitalize',
+        },
+        {
+          default: () => formatStatus(row.original.status),
+        }
+      )
+    },
+  },
+  {
+    accessorKey: 'dueDate',
+    header: 'Due Date',
+    enableSorting: true,
+    cell: ({ row }: { row: { original: Order } }) => {
+      return h(
+        'div',
+        { class: 'text-neutral-700' },
+        row.original.dueDate ? formatDate(row.original.dueDate) : 'N/A'
+      )
+    },
+  },
+  {
+    id: 'actions',
+    header: '',
+    enableSorting: false,
+    cell: ({ row }: { row: { original: Order } }) => {
+      return h(
+        'div',
+        { class: 'flex justify-center' },
+        h(
+          UDropdownMenu,
+          {
+            content: {
+              align: 'start',
+            },
+            items: [
+              {
+                type: 'label',
+                label: 'Actions',
+              },
+              {
+                label: 'View',
+                icon: 'i-heroicons-eye',
+                onSelect: () => navigateTo(getOrderPath(row.original.id)),
+              },
+              {
+                label: 'Edit',
+                icon: 'i-heroicons-pencil',
+                onSelect: () => navigateTo(getOrderPath(row.original.id)),
+              },
+              {
+                type: 'separator',
+              },
+              {
+                label: 'Delete',
+                icon: 'i-heroicons-trash',
+                color: 'error',
+                onSelect: () => confirmDelete(row.original),
+              },
+            ],
+          },
+          () =>
+            h(UButton, {
+              color: 'neutral',
+              variant: 'ghost',
+              icon: 'i-heroicons-ellipsis-horizontal',
+              size: 'sm',
+            })
+        )
+      )
+    },
+  },
 ]
 
 // Computed
@@ -264,9 +552,11 @@ const filteredOrders = computed(() => {
     result = result.filter(
       order =>
         order.id.toLowerCase().includes(searchTerm) ||
-        order.clientName?.toLowerCase().includes(searchTerm) ||
-        order.clientEmail?.toLowerCase().includes(searchTerm) ||
-        order.clientPhone?.includes(searchTerm)
+        (order.client?.firstName + ' ' + order.client?.lastName)
+          ?.toLowerCase()
+          .includes(searchTerm) ||
+        order.client?.email?.toLowerCase().includes(searchTerm) ||
+        order.client?.phone?.includes(searchTerm)
     )
   }
 
@@ -277,13 +567,7 @@ const filteredOrders = computed(() => {
 
   // Apply payment status filter
   if (paymentStatusFilter.value !== 'any') {
-    result = result.filter(order => {
-      if (paymentStatusFilter.value === 'paid') return order.paymentStatus === 'paid'
-      if (paymentStatusFilter.value === 'partial') return order.paymentStatus === 'partial'
-      if (paymentStatusFilter.value === 'none')
-        return !order.paymentStatus || order.paymentStatus === 'unpaid'
-      return true
-    })
+    result = result.filter(order => order.paymentStatus === paymentStatusFilter.value)
   }
 
   // Apply sorting
@@ -316,34 +600,8 @@ const paginatedOrders = computed(() => {
   return filteredOrders.value.slice(start, end)
 })
 
-const hasActiveFilters = computed(() => {
-  return statusFilter.value !== 'all' || paymentStatusFilter.value !== 'any' || search.value !== ''
-})
-
-// Methods
-const handlePageChange = (page: number) => {
-  currentPage.value = page
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-const handleSearch = (value: string) => {
-  search.value = value
-  currentPage.value = 1 // Reset to first page on new search
-}
-
-const handleSort = (value: string) => {
-  sortBy.value = value
-}
-
+// Additional methods
 const filterOrders = () => {
-  currentPage.value = 1
-}
-
-const resetFilters = () => {
-  statusFilter.value = 'all'
-  paymentStatusFilter.value = 'any'
-  search.value = ''
-  sortBy.value = 'newest'
   currentPage.value = 1
 }
 
@@ -359,70 +617,44 @@ const deleteOrder = async () => {
   isDeleting.value = true
 
   try {
-    // TODO: Replace with actual API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // Remove the order from the list
-    const index = orders.value.findIndex(o => o.id === orderToDelete.value?.id)
-    if (index !== -1) {
-      orders.value.splice(index, 1)
-    }
-
-    toast.add({
-      title: 'Order deleted',
-      description: `Order #${orderToDelete.value.id} has been deleted successfully.`,
-      color: 'green',
+    const response = await $fetch(`/api/orders/${orderToDelete.value.id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     })
+
+    if (response) {
+      // Remove the order from the list
+      const index = orders.value.findIndex(o => o.id === orderToDelete.value?.id)
+      if (index !== -1) {
+        orders.value.splice(index, 1)
+      }
+
+      toast.add({
+        title: 'Order deleted',
+        description: `Order #${orderToDelete.value.orderNumber || orderToDelete.value.id} has been deleted successfully.`,
+        color: 'primary',
+      })
+    } else {
+      throw new Error('Failed to delete order')
+    }
   } catch (error) {
     console.error('Error deleting order:', error)
     toast.add({
       title: 'Error',
       description: 'Failed to delete order. Please try again.',
-      color: 'red',
+      color: 'error',
     })
   } finally {
     isDeleting.value = false
     showDeleteModal.value = false
-    orderToDelete.value = null
+    orderToDelete.value = undefined
   }
 }
 
-const fetchOrders = async () => {
-  isLoading.value = true
-  try {
-    // TODO: Replace with actual API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // Mock data - replace with actual API response
-    orders.value = Array.from({ length: 25 }, (_, i) => ({
-      id: `ORD-${1000 + i}`,
-      clientName: `Client ${i + 1}`,
-      clientEmail: `client${i + 1}@example.com`,
-      clientPhone: `+123456789${i.toString().padStart(2, '0')}`,
-      items: Array.from({ length: Math.floor(Math.random() * 5) + 1 }, (_, j) => ({
-        id: `item-${j}`,
-        name: `Item ${j + 1}`,
-        quantity: Math.floor(Math.random() * 3) + 1,
-        price: Math.floor(Math.random() * 100) + 10,
-      })),
-      totalAmount: Math.floor(Math.random() * 1000) + 100,
-      status: ['draft', 'pending', 'in_progress', 'ready_for_pickup', 'completed', 'cancelled'][
-        i % 6
-      ],
-      paymentStatus: ['unpaid', 'partial', 'paid'][i % 3],
-      dueDate: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
-    }))
-  } catch (error) {
-    console.error('Error fetching orders:', error)
-    useToast().add({
-      title: 'Error',
-      description: 'Failed to load orders. Please try again.',
-      color: 'red',
-    })
-  } finally {
-    isLoading.value = false
-  }
+const toggleFilter = () => {
+  isFilterOpen.value = !isFilterOpen.value
 }
 
 // Helper functions
@@ -444,29 +676,22 @@ const formatStatus = (status: string) => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'draft':
-      return 'gray'
-    case 'pending':
-      return 'yellow'
-    case 'in_progress':
-      return 'blue'
-    case 'ready_for_pickup':
-      return 'indigo'
-    case 'completed':
-      return 'green'
-    case 'cancelled':
-      return 'red'
+    case 'Pending':
+      return 'neutral'
+    case 'Processing':
+      return 'info'
+    case 'Completed':
+      return 'success'
+    case 'Cancelled':
+      return 'error'
+    case 'Delivered':
+      return 'primary'
     default:
-      return 'gray'
+      return 'neutral'
   }
 }
 
 const getOrderPath = (id: string) => {
-  return routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.ORDERS.EDIT]({ id })
+  return ROUTE_NAMES.DASHBOARD.ORDERS.EDIT.replace(':id', id)
 }
-
-// Lifecycle hooks
-onMounted(() => {
-  fetchOrders()
-})
 </script>

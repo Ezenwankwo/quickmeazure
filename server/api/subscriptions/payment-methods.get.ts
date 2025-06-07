@@ -7,75 +7,42 @@ import { useDrizzle, tables, eq } from '~/server/utils/drizzle'
  */
 export default defineEventHandler(async event => {
   try {
-    // Get user from auth token
-    const headers = getRequestHeaders(event)
-    const authHeader = headers.authorization || ''
-
-    // Check for token
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Get authenticated user from event context (set by auth middleware)
+    const auth = event.context.auth
+    if (!auth || !auth.userId) {
       throw createError({
         statusCode: 401,
-        message: 'Unauthorized - No valid token provided',
+        statusMessage: 'Unauthorized',
       })
     }
 
-    // Extract and verify token
-    const token = authHeader.split(' ')[1]
-    const config = useRuntimeConfig()
+    console.log('Authenticated user ID:', auth.userId)
+    const userId = auth.userId
 
-    console.log('Verifying token for payment methods endpoint')
+    // Get database instance
+    const db = useDrizzle()
 
-    try {
-      // Make sure we have a valid JWT secret
-      if (!config.jwtSecret) {
-        console.error('JWT_SECRET is not configured properly')
-        throw createError({
-          statusCode: 500,
-          message: 'Server configuration error',
-        })
-      }
+    // Find the user's payment methods
+    console.log('Querying for payment methods for user ID:', userId)
 
-      const decoded = jwt.verify(token, config.jwtSecret) as { id: string | number }
-      console.log('Token verified, user ID:', decoded?.id)
+    const paymentMethods = await db
+      .select()
+      .from(tables.paymentMethods)
+      .where(eq(tables.paymentMethods.userId, Number(userId)))
+      .execute()
 
-      if (!decoded || !decoded.id) {
-        console.error('Invalid token payload, missing ID')
-        throw new Error('Invalid token payload')
-      }
-
-      const userId = decoded.id
-
-      // Get database instance
-      const db = useDrizzle()
-
-      // Find the user's payment methods
-      console.log('Querying for payment methods for user ID:', userId)
-
-      const paymentMethods = await db
-        .select()
-        .from(tables.paymentMethods)
-        .where(eq(tables.paymentMethods.userId, Number(userId)))
-        .execute()
-
-      return {
-        success: true,
-        data: paymentMethods.map(method => ({
-          id: method.id,
-          type: method.type,
-          last4: method.last4,
-          expiryMonth: method.expiryMonth,
-          expiryYear: method.expiryYear,
-          isDefault: method.isDefault,
-          brand: method.brand,
-          createdAt: method.createdAt,
-        })),
-      }
-    } catch (tokenError) {
-      console.error('Token verification error:', tokenError)
-      throw createError({
-        statusCode: 401,
-        message: 'Unauthorized - Invalid token',
-      })
+    return {
+      success: true,
+      data: paymentMethods.map(method => ({
+        id: method.id,
+        type: method.type,
+        last4: method.last4,
+        expiryMonth: method.expiryMonth,
+        expiryYear: method.expiryYear,
+        isDefault: method.isDefault,
+        brand: method.brand,
+        createdAt: method.createdAt,
+      })),
     }
   } catch (err) {
     console.error('Error retrieving payment methods:', err)

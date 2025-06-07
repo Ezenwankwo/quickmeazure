@@ -46,18 +46,33 @@
           </slot>
 
           <UButton
-            v-if="hasActiveFilters"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            class="text-sm"
-            @click="resetFilters"
+            :color="isFilterOpen ? 'primary' : 'neutral'"
+            :variant="isFilterOpen ? 'soft' : 'outline'"
+            icon="i-heroicons-funnel"
+            class="transition-all duration-200"
+            :class="{
+              'ring-2 ring-primary-200 bg-primary-50': isFilterOpen,
+              'hover:bg-gray-50': !isFilterOpen,
+            }"
+            @click="$emit('toggle-filter')"
           >
-            <UIcon name="i-heroicons-x-mark" class="w-4 h-4 mr-1" />
-            Clear filters
+            <span class="flex items-center space-x-1">
+              <span>Filter</span>
+              <UBadge
+                v-if="activeFiltersCount > 0"
+                :label="activeFiltersCount.toString()"
+                color="primary"
+                variant="solid"
+                size="xs"
+                class="ml-1"
+              />
+            </span>
           </UButton>
         </div>
       </div>
+
+      <!-- Filter Panel Slot -->
+      <slot name="filter-panel"></slot>
     </UCard>
 
     <!-- 3. Main Content Card -->
@@ -70,26 +85,28 @@
         </div>
       </div>
 
-      <!-- Empty State - Only render on client -->
-      <div v-else-if="!hasItems && isMounted" key="empty">
-        <EmptyState
-          :icon="emptyStateIcon || 'i-heroicons-inbox'"
-          :title="emptyStateTitle || `No ${pageType} found`"
-          :description="emptyStateDescription || 'Create your first item to get started.'"
-        >
-          <template #actions>
-            <slot name="empty-state-actions">
-              <UButton
-                v-if="emptyStateAction"
-                :to="emptyStateAction.to"
-                :icon="emptyStateAction.icon"
-                @click="emptyStateAction.onClick"
-              >
-                {{ emptyStateAction.label }}
-              </UButton>
-            </slot>
-          </template>
-        </EmptyState>
+      <!-- Empty State -->
+      <div v-else-if="!hasItems" key="empty">
+        <ClientOnly>
+          <EmptyState
+            :icon="emptyStateIcon || 'i-heroicons-inbox'"
+            :title="emptyStateTitle || `No ${pageType} found`"
+            :description="emptyStateDescription || 'Create your first item to get started.'"
+          >
+            <template #actions>
+              <slot name="empty-state-actions">
+                <UButton
+                  v-if="emptyStateAction"
+                  size="lg"
+                  :to="emptyStateAction.to"
+                  @click="emptyStateAction.onClick"
+                >
+                  {{ emptyStateAction.label }}
+                </UButton>
+              </slot>
+            </template>
+          </EmptyState>
+        </ClientOnly>
       </div>
 
       <!-- Content with Pagination -->
@@ -109,7 +126,7 @@
             <UPagination
               v-if="totalPages > 1"
               :model-value="currentPage"
-              :page-count="pageSize"
+              :page-count="totalPages"
               :total="totalItems"
               :ui="{
                 root: 'flex items-center gap-1',
@@ -161,12 +178,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, useSlots, onMounted } from 'vue'
-
-const isMounted = ref(false)
-onMounted(() => {
-  isMounted.value = true
-})
+import { ref, computed, watch, useSlots } from 'vue'
 
 const props = defineProps({
   // Page configuration
@@ -256,6 +268,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isFilterOpen: {
+    type: Boolean,
+    default: false,
+  },
+  activeFiltersCount: {
+    type: Number,
+    default: 0,
+  },
 })
 
 const emit = defineEmits([
@@ -266,6 +286,7 @@ const emit = defineEmits([
   'sort',
   'reset-filters',
   'delete-confirm',
+  'toggle-filter',
 ])
 
 const slots = useSlots()
@@ -279,7 +300,19 @@ const sortBy = ref(props.sortOptions?.[0] ? (props.sortOptions[0] as { value: st
 const totalPages = computed(() => Math.ceil(props.totalItems / props.pageSize))
 
 const paginationInfo = computed(() => {
-  const start = (props.currentPage - 1) * props.pageSize + 1
+  console.log('Computing paginationInfo with:', {
+    currentPage: props.currentPage,
+    pageSize: props.pageSize,
+    totalItems: props.totalItems,
+  })
+
+  // If there are no items, show 0-0 of 0
+  if (!props.totalItems || props.totalItems <= 0) {
+    return `Showing 0-0 of 0 ${props.pageType}`
+  }
+
+  // Calculate start and end for pagination display
+  const start = Math.max((props.currentPage - 1) * props.pageSize + 1, 1)
   const end = Math.min(props.currentPage * props.pageSize, props.totalItems)
   return `Showing ${start}-${end} of ${props.totalItems} ${props.pageType}`
 })
@@ -296,10 +329,6 @@ const resetSearch = () => {
 
 const handleSort = (value: string) => {
   emit('sort', value)
-}
-
-const resetFilters = () => {
-  emit('reset-filters')
 }
 
 const handlePageChange = (page: number) => {

@@ -30,4 +30,4 @@ export interface ClientGrowthData {
   percentGrowth: number
 }
 
-export type ChartPeriod = 'week' | 'month' | 'year'
+export type ChartPeriod = '7days' | '30days' | '90days' | 'year'

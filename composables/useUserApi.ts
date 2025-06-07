@@ -1,5 +1,13 @@
 import type { User } from '~/types/auth'
+import { useAuthStore } from '~/store/modules/auth'
 import type { UserPreferences } from '~/types/user' // Used in the return type of the composable
+
+// Avatar upload response interface
+interface AvatarUploadResponse {
+  success: boolean
+  avatarUrl: string
+  message: string
+}
 
 /**
  * Composable for handling user-related API calls
@@ -110,7 +118,7 @@ export function useUserApi() {
       const formData = new FormData()
       formData.append('avatar', file)
 
-      const { data, error } = await useFetch<{ url: string }>('/api/user/avatar', {
+      const { data, error } = await useFetch<AvatarUploadResponse>('/api/users/avatar', {
         method: 'POST',
         baseURL: config.public.apiBaseUrl,
         headers: {

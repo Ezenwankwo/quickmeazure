@@ -95,12 +95,10 @@ export default defineEventHandler(async event => {
       return {
         data: stylesData,
         pagination: {
-          total,
           page,
           limit,
+          totalCount: total,
           totalPages,
-          hasNextPage: page < totalPages,
-          hasPrevPage: page > 1,
         },
       }
     } catch (error) {

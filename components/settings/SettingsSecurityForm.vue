@@ -30,9 +30,8 @@
                 >
                   <template #trailing>
                     <UButton
-                      color="gray"
+                      color="neutral"
                       variant="ghost"
-                      icon
                       @click="showCurrentPassword = !showCurrentPassword"
                     >
                       <UIcon
@@ -59,9 +58,8 @@
                 >
                   <template #trailing>
                     <UButton
-                      color="gray"
+                      color="neutral"
                       variant="ghost"
-                      icon
                       @click="showNewPassword = !showNewPassword"
                     >
                       <UIcon
@@ -219,13 +217,12 @@
                   placeholder="Confirm new password"
                   size="lg"
                   class="w-full md:w-1/2"
-                  :color="passwordMismatchError ? 'red' : undefined"
+                  :color="passwordMismatchError ? 'error' : undefined"
                 >
                   <template #trailing>
                     <UButton
-                      color="gray"
+                      color="neutral"
                       variant="ghost"
-                      icon
                       @click="showConfirmPassword = !showConfirmPassword"
                     >
                       <UIcon
@@ -277,11 +274,8 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useToast } from '#imports'
-import { useUserStore } from '~/store/modules/user'
 
 const toast = useToast()
-const userStore = useUserStore()
 
 const passwordForm = ref({
   currentPassword: '',
@@ -372,41 +366,36 @@ async function updatePassword() {
   try {
     console.log('Submitting password change request to user store...')
 
-    // Call the changePassword method from the user store
-    const result = await userStore.changePassword(
-      passwordForm.value.currentPassword,
-      passwordForm.value.newPassword
-    )
+    // Call the change password API directly
+    await $fetch('/api/users/change-password', {
+      method: 'POST',
+      body: {
+        currentPassword: passwordForm.value.currentPassword,
+        newPassword: passwordForm.value.newPassword,
+      },
+    })
 
-    console.log('Password change result:', result)
+    toast.add({
+      title: 'Password updated',
+      description: 'Your password has been successfully changed',
+      icon: 'i-heroicons-check-circle',
+      color: 'primary',
+    })
 
-    if (result.success) {
-      // Success response
-      toast.add({
-        title: 'Password updated',
-        description: 'Your password has been successfully changed',
-        icon: 'i-heroicons-check-circle',
-        color: 'primary',
-      })
-
-      // Reset form
-      passwordForm.value = {
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      }
-      showCurrentPassword.value = false
-      showNewPassword.value = false
-      showConfirmPassword.value = false
-    } else {
-      // Handle error from the store method
-      throw new Error(result.error || 'Failed to update password')
+    // Reset form
+    passwordForm.value = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
     }
+    showCurrentPassword.value = false
+    showNewPassword.value = false
+    showConfirmPassword.value = false
   } catch (error) {
     console.error('Failed to update password:', error)
     toast.add({
       title: 'Password Update Failed',
-      description: error.message || 'An unexpected error occurred. Please try again.',
+      description: (error as Error).message || 'An unexpected error occurred. Please try again.',
       color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
@@ -414,9 +403,4 @@ async function updatePassword() {
     isSubmitting.value = false
   }
 }
-
-// Lifecycle
-onMounted(() => {
-  // Nothing to fetch since we only have password functionality now
-})
 </script>

@@ -91,7 +91,7 @@
                 class="w-full rounded-lg px-3 py-2.5 text-sm flex items-center gap-3 font-medium justify-start hover:bg-gray-100 transition-all duration-200 hover:translate-x-1 text-gray-600 hover:text-gray-900"
                 :class="{
                   'bg-primary-50/80 font-semibold text-primary-700 shadow-sm border-l-4 border-primary-500 -ml-1':
-                    route.path.startsWith(DASHBOARD.NOTIFICATIONS),
+                    route.path === '/notifications',
                 }"
                 @click="isNotificationsOpen = true"
               >
@@ -241,7 +241,6 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { formatDistanceToNow } from 'date-fns'
 import { API_ENDPOINTS } from '~/constants/api'
 import { ROUTE_NAMES } from '~/constants/routes'
 import { useSubscriptionStore } from '~/store/modules/subscription'
@@ -274,16 +273,6 @@ const { DASHBOARD } = ROUTE_NAMES
 const isDropdownOpen = ref(false)
 const isNotificationsOpen = ref(false)
 
-// Format notification date to relative time (e.g., "2 hours ago")
-const formatNotificationDate = date => {
-  try {
-    const dateObj = typeof date === 'string' ? new Date(date) : date
-    return formatDistanceToNow(dateObj, { addSuffix: true })
-  } catch (_error) {
-    return 'Unknown date'
-  }
-}
-
 // Fetch notifications directly using useAsyncData
 const {
   pending: notificationsLoading,
@@ -293,7 +282,7 @@ const {
   'notifications',
   async () => {
     try {
-      const { data } = await $fetch('/api/notifications', {
+      const response = await $fetch('/api/notifications', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -301,7 +290,7 @@ const {
         },
       })
 
-      return data?.notifications || []
+      return response?.notifications || []
     } catch (error: any) {
       console.error('Error fetching notifications:', error)
       throw error
@@ -325,7 +314,7 @@ watch(notificationsError, error => {
 })
 
 // Get icon based on notification type and severity
-const getNotificationIcon = notification => {
+const _getNotificationIcon = (notification: { type: string; severity: string }): string => {
   if (notification.type === 'payment') {
     return notification.severity === 'critical'
       ? 'i-heroicons-credit-card-solid'
@@ -346,10 +335,10 @@ const getNotificationIcon = notification => {
 }
 
 // Mark notification as read
-const markNotificationAsRead = async (id: string) => {
+const _markNotificationAsRead = async (id: string) => {
   try {
     notificationStore.setLoading(true)
-    const response = await $fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/${id}/read`, {
+    const response = await $fetch(`/api/notifications/${id}/read`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -366,7 +355,7 @@ const markNotificationAsRead = async (id: string) => {
       toast.add({
         title: 'Success',
         description: 'Notification marked as read',
-        color: 'green',
+        color: 'primary',
       })
     }
   } catch (error: any) {
@@ -374,7 +363,7 @@ const markNotificationAsRead = async (id: string) => {
     toast.add({
       title: 'Error',
       description: error.message || 'Failed to mark notification as read',
-      color: 'red',
+      color: 'error',
     })
   } finally {
     notificationStore.setLoading(false)
@@ -384,10 +373,10 @@ const markNotificationAsRead = async (id: string) => {
 /**
  * Mark all notifications as read
  */
-const markAllNotificationsAsRead = async () => {
+const _markAllNotificationsAsRead = async () => {
   try {
     notificationStore.setLoading(true)
-    const response = await $fetch(`${API_ENDPOINTS.NOTIFICATIONS.BASE}/mark-all-read`, {
+    const response = await $fetch(`${API_ENDPOINTS.USERS}/notifications/mark-all-read`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -396,7 +385,7 @@ const markAllNotificationsAsRead = async () => {
       credentials: 'include',
     })
 
-    if (response.success) {
+    if ((response as { success: boolean }).success) {
       // Update local state
       notificationStore.markAllRead()
 
@@ -404,13 +393,15 @@ const markAllNotificationsAsRead = async () => {
       toast.add({
         title: 'Success',
         description: 'All notifications marked as read',
-        color: 'green',
+        color: 'primary',
       })
 
       // Refresh notifications
       await refreshNotifications()
     } else {
-      throw new Error(response.error || 'Failed to mark all notifications as read')
+      throw new Error(
+        (response as { error?: string }).error || 'Failed to mark all notifications as read'
+      )
     }
   } catch (error: any) {
     console.error('Error marking all notifications as read:', error)
@@ -420,7 +411,7 @@ const markAllNotificationsAsRead = async () => {
     toast.add({
       title: 'Error',
       description: error.message || 'Failed to mark all notifications as read',
-      color: 'red',
+      color: 'error',
     })
   } finally {
     notificationStore.setLoading(false)

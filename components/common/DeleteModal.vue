@@ -10,8 +10,16 @@
         </div>
       </template>
 
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <p v-html="message" />
+      <!-- Use slot content if provided, otherwise fall back to message prop or generate from item props -->
+      <slot>
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <p v-if="message" v-html="message" />
+        <p v-else-if="itemType && itemName" class="text-gray-700 dark:text-gray-300">
+          Are you sure you want to delete
+          <span class="font-semibold">{{ itemName }}</span
+          >? This action cannot be undone.
+        </p>
+      </slot>
 
       <template #footer>
         <div class="flex justify-end space-x-4">
@@ -38,6 +46,14 @@ defineProps({
     default: 'Confirm Delete',
   },
   message: {
+    type: String,
+    default: '',
+  },
+  itemType: {
+    type: String,
+    default: '',
+  },
+  itemName: {
     type: String,
     default: '',
   },

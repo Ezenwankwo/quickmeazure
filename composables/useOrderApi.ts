@@ -73,7 +73,7 @@ export function useOrderApi() {
             params: filters,
             headers: {
               'Content-Type': 'application/json',
-              ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+              ...(authStore?.token && { Authorization: `Bearer ${authStore.token}` }),
             },
             credentials: 'include',
           })
@@ -103,7 +103,7 @@ export function useOrderApi() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+            ...(authStore?.token && { Authorization: `Bearer ${authStore.token}` }),
           },
           credentials: 'include',
         })
@@ -132,7 +132,7 @@ export function useOrderApi() {
         body: orderData,
         headers: {
           'Content-Type': 'application/json',
-          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+          ...(authStore?.token && { Authorization: `Bearer ${authStore.token}` }),
         },
         credentials: 'include',
       })
@@ -156,7 +156,7 @@ export function useOrderApi() {
         body: orderData,
         headers: {
           'Content-Type': 'application/json',
-          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+          ...(authStore?.token && { Authorization: `Bearer ${authStore.token}` }),
         },
         credentials: 'include',
       })
@@ -179,7 +179,7 @@ export function useOrderApi() {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+          ...(authStore?.token && { Authorization: `Bearer ${authStore.token}` }),
         },
         credentials: 'include',
       })
@@ -195,12 +195,12 @@ export function useOrderApi() {
    */
   const updateOrderStatus = async (id: string, status: OrderStatus): Promise<OrderResponse> => {
     try {
-      const response = await $api<Order>(`${API_ENDPOINTS.ORDERS.BASE}/${id}/status`, {
+      const response = await $fetch<Order>(`${API_ENDPOINTS.ORDERS.BASE}/${id}/status`, {
         method: 'PATCH',
         body: { status },
         headers: {
           'Content-Type': 'application/json',
-          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+          ...(authStore?.token && { Authorization: `Bearer ${authStore.token}` }),
         },
         credentials: 'include',
       })
@@ -219,11 +219,11 @@ export function useOrderApi() {
    */
   const getOrderStats = async (): Promise<ApiResponse<OrderStats>> => {
     try {
-      const response = await $api<OrderStats>(`${API_ENDPOINTS.ORDERS.BASE}/stats`, {
+      const response = await $fetch<OrderStats>(`${API_ENDPOINTS.ORDERS.BASE}/stats`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...(authStore.token && { Authorization: `Bearer ${authStore.token}` }),
+          ...(authStore?.token && { Authorization: `Bearer ${authStore.token}` }),
         },
         credentials: 'include',
       })
