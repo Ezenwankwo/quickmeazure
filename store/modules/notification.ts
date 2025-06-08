@@ -1,5 +1,5 @@
 // Types
-import type { Notification } from '~/types/notification'
+import type { Notification } from '../../types/notification'
 
 /**
  * Notification store for managing user notifications state

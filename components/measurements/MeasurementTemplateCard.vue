@@ -1,8 +1,8 @@
 <template>
   <UCard
     :ui="{
-      base: 'h-full flex flex-col',
-      body: { base: 'flex-1' },
+      root: 'h-full flex flex-col',
+      body: 'flex-1',
       footer: 'pt-4 mt-auto',
     }"
     class="group hover:shadow-lg transition-shadow duration-200"
@@ -13,7 +13,7 @@
         <h3 class="font-medium text-gray-900 flex items-center gap-2">
           {{ template.name }}
           <UBadge v-if="template.isDefault" size="xs" color="primary"> Default </UBadge>
-          <UBadge v-else-if="template.isArchived" size="xs" color="gray"> Archived </UBadge>
+          <UBadge v-else-if="template.archived" size="xs" color="neutral"> Archived </UBadge>
         </h3>
         <p class="text-sm text-gray-500">
           {{ formatGender(template.gender) }} • {{ template.fields?.length || 0 }} fields
@@ -22,7 +22,7 @@
 
       <UDropdown :items="dropdownItems" :popper="{ placement: 'bottom-end' }">
         <UButton
-          color="gray"
+          color="neutral"
           variant="ghost"
           icon="i-heroicons-ellipsis-vertical"
           size="xs"
@@ -58,28 +58,28 @@
           class="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <UButton
-            v-if="!template.isArchived"
+            v-if="!template.archived"
             icon="i-heroicons-pencil"
             size="xs"
-            color="gray"
+            color="neutral"
             variant="ghost"
             @click="$emit('edit', template)"
           />
 
           <UButton
-            v-if="!template.isArchived"
+            v-if="!template.archived"
             icon="i-heroicons-archive-box"
             size="xs"
-            color="gray"
+            color="neutral"
             variant="ghost"
             @click="$emit('archive', template.id)"
           />
 
           <UButton
-            v-if="template.isArchived"
+            v-if="template.archived"
             icon="i-heroicons-arrow-uturn-left"
             size="xs"
-            color="gray"
+            color="neutral"
             variant="ghost"
             @click="$emit('unarchive', template.id)"
           />
@@ -88,7 +88,7 @@
             v-if="!template.isDefault"
             icon="i-heroicons-trash"
             size="xs"
-            color="red"
+            color="error"
             variant="ghost"
             @click="$emit('delete', template.id)"
           />

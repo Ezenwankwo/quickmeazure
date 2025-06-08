@@ -55,24 +55,19 @@ export default defineEventHandler(async event => {
 
     // Create user
     const newUser = {
-      id: uuidv4(),
       name: body.name || 'Test User',
       email: body.email.toLowerCase(),
       password: hashedPassword,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      subscriptionPlan: 'free',
-      subscriptionExpiry: null,
     }
 
     // Insert user
-    await db.insert(users).values(newUser)
+    const [insertedUser] = await db.insert(users).values(newUser).returning()
 
     return {
       message: 'Test user created successfully',
-      userId: newUser.id,
-      email: newUser.email,
-      name: newUser.name,
+      userId: insertedUser.id,
+      email: insertedUser.email,
+      name: insertedUser.name,
     }
   } catch (error: any) {
     console.error('Create test user error:', error)

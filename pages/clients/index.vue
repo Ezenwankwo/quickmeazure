@@ -401,7 +401,7 @@ const {
   defaultPageSize: ITEMS_PER_PAGE,
   defaultSortBy: 'name-asc',
   filterKeys: ['hasOrders', 'dateAdded'],
-  transform: (client: any) => ({
+  transform: (client: Client) => ({
     ...client,
     name: client.name || 'Unnamed Client',
     hasOrders: Boolean(client.hasOrders),
@@ -517,7 +517,7 @@ interface TableColumn<T> {
   id?: string
   header: string
   enableSorting: boolean
-  cell?: (props: { row: { original: T } }) => any
+  cell?: (props: { row: { original: T } }) => unknown
   meta?: {
     class?: {
       th?: string

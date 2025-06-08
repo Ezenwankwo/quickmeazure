@@ -24,5 +24,5 @@ export interface UserPreferences {
   fontSize: 'small' | 'medium' | 'large'
   showTutorial: boolean
   lastVisitedAt?: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }

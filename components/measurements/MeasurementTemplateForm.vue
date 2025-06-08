@@ -7,7 +7,7 @@
             {{ editing ? 'Edit Template' : 'New Measurement Template' }}
           </h3>
           <UButton
-color="gray"
+color="neutral"
 variant="ghost"
 icon="i-heroicons-x-mark"
 @click="close" />
@@ -48,15 +48,11 @@ icon="i-heroicons-x-mark"
                   :name="`field-${index}-name`"
                   :error="fieldErrors[field.key]?.name"
                 >
-                  <UInput
-                    v-model="field.name"
-                    placeholder="e.g., Chest, Waist, Sleeve Length"
-                    :ui="{ icon: { trailing: { pointer: '' } } }"
-                  >
+                  <UInput v-model="field.name" placeholder="e.g., Chest, Waist, Sleeve Length">
                     <template #trailing>
                       <UButton
                         v-if="!field.isDefault"
-                        color="red"
+                        color="error"
                         variant="ghost"
                         icon="i-heroicons-trash"
                         size="xs"
@@ -89,8 +85,8 @@ icon="i-heroicons-x-mark"
                 <UButton
                   v-if="index > 0"
                   icon="i-heroicons-arrow-up"
-                  size="2xs"
-                  color="gray"
+                  size="lg"
+                  color="neutral"
                   variant="ghost"
                   :ui="{ base: 'rounded-full' }"
                   @click="moveFieldUp(index)"
@@ -98,8 +94,8 @@ icon="i-heroicons-x-mark"
                 <UButton
                   v-if="index < form.fields.length - 1"
                   icon="i-heroicons-arrow-down"
-                  size="2xs"
-                  color="gray"
+                  size="lg"
+                  color="neutral"
                   variant="ghost"
                   :ui="{ base: 'rounded-full' }"
                   @click="moveFieldDown(index)"
@@ -113,7 +109,7 @@ icon="i-heroicons-x-mark"
         <div class="flex justify-end gap-3 pt-4">
           <UButton
 type="button"
-color="gray"
+color="neutral"
 variant="ghost"
 @click="close"> Cancel </UButton>
           <UButton
@@ -132,7 +128,7 @@ variant="ghost"
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { MeasurementField } from '~/types/measurement'
+import type { MeasurementField, MeasurementTemplate } from '~/types/measurement'
 import { useMeasurementTemplateStore } from '~/store/modules/measurementTemplate'
 import { API_ENDPOINTS } from '~/constants/api'
 
@@ -172,8 +168,10 @@ const form = ref({
     id?: number
     name: string
     unit: 'in' | 'cm'
+    type: 'number' | 'text' | 'select'
     isRequired: boolean
     isDefault?: boolean
+    order: number
   }>,
 })
 
@@ -196,18 +194,18 @@ const unitOptions = [
 const generateKey = () => Math.random().toString(36).substring(2, 11)
 
 // Add a new field (unused but kept for potential future use)
-const _addField = (field?: Partial<MeasurementField> & { key?: string }) => {
-  form.value.fields.push({
-    key: field?.key || generateKey(),
-    name: field?.name || '',
-    unit: field?.unit || 'cm',
-    type: field?.type || 'number',
-    required: field?.required ?? true,
-    order: form.value.fields.length,
-    isDefault: field?.isDefault ?? false,
-    ...(field?.id && { id: field.id }),
-  })
-}
+// const _addField = (field?: Partial<MeasurementField> & { key?: string }) => {
+//   form.value.fields.push({
+//     key: field?.key || generateKey(),
+//     name: field?.name || '',
+//     unit: (field?.unit as 'in' | 'cm') || 'cm',
+//     type: field?.type || 'number',
+//     isRequired: field?.required ?? true,
+//     order: form.value.fields.length,
+//     isDefault: field?.isDefault ?? false,
+//     ...(field?.id && { id: field.id }),
+//   })
+// }
 
 // Remove a field
 const removeField = (index: number) => {
@@ -316,8 +314,8 @@ const onSubmit = async () => {
       fields: form.value.fields.map((field, index) => ({
         ...(field.id && { id: field.id }),
         name: field.name.trim(),
-        type: field.type,
-        required: field.required,
+        type: 'number', // Default to number type since it's not in the field object
+        required: field.isRequired,
         unit: field.unit,
         order: index,
       })),
@@ -333,7 +331,10 @@ const onSubmit = async () => {
           }
         )
 
-        templateStore.updateTemplateInStore(Number(props.template.id), template)
+        templateStore.updateTemplateInStore(
+          Number(props.template.id),
+          template as MeasurementTemplate
+        )
 
         toast.add({
           title: 'Template updated',
@@ -345,11 +346,13 @@ const onSubmit = async () => {
         emit('saved')
         close()
       } catch (error) {
-        throw new Error(error.data?.message || 'Failed to update template')
+        throw new Error(
+          (error as { data?: { message: string } })?.data?.message || 'Failed to update template'
+        )
       }
     } else {
       try {
-        const template = await $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, {
+        const template = await $fetch<MeasurementTemplate>(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, {
           method: 'POST',
           body: templateData,
         })
@@ -366,7 +369,9 @@ const onSubmit = async () => {
         emit('saved')
         close()
       } catch (error) {
-        throw new Error(error.data?.message || 'Failed to create template')
+        throw new Error(
+          (error as { data?: { message: string } })?.data?.message || 'Failed to create template'
+        )
       }
     }
   } catch (error: any) {

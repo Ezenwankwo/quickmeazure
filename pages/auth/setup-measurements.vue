@@ -48,7 +48,7 @@
                 role="tab"
                 :aria-selected="activeTab === tab.id"
                 :aria-controls="`${tab.id}-panel`"
-                @click="switchTab(tab.id)"
+                @click="switchTab(tab.id as 'male' | 'female')"
               >
                 <UIcon
                   :name="tab.icon"
@@ -63,7 +63,7 @@
                   >Active</span
                 >
                 <span
-                  v-if="hasUnsavedChanges(tab.id)"
+                  v-if="hasUnsavedChanges(tab.id as 'male' | 'female')"
                   class="ml-1 sm:ml-2 bg-amber-100 text-amber-700 text-xs px-1 sm:px-2 py-0.5 rounded-full"
                   >Unsaved</span
                 >
@@ -116,7 +116,6 @@ class="block text-sm font-medium text-gray-700"
                     ? 'error'
                     : undefined
                 "
-                :ui="{ icon: { trailing: { pointer: '' } } }"
                 required
                 @blur="validateTemplateName(activeTab)"
               >
@@ -235,7 +234,7 @@ class="block text-sm font-medium text-gray-700"
                           class="flex items-center gap-2 group bg-white rounded-md p-3 hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm"
                           :class="{
                             'border-red-200 bg-red-50':
-                              !field.name.trim() && (attemptedSave || field.validated),
+                              !field.name.trim() && (attemptedSave || field.name === ''),
                           }"
                         >
                           <div class="flex-1">
@@ -248,16 +247,16 @@ class="block text-sm font-medium text-gray-700"
                                 !field.name.trim() &&
                                 (formErrors[`${activeTab}-fieldnames`] ||
                                   attemptedSave ||
-                                  field.validated)
+                                  field.name === '')
                                   ? 'error'
                                   : undefined
                               "
-                              :ui="{ base: 'relative', input: { base: 'peer w-full' } }"
+                              :ui="{ base: 'relative peer w-full' }"
                               required
                               @blur="validateField(field)"
                             />
                             <p
-                              v-if="!field.name.trim() && (attemptedSave || field.validated)"
+                              v-if="!field.name.trim() && attemptedSave"
                               class="text-xs text-red-500 mt-1"
                             >
                               Field name is required
@@ -325,7 +324,7 @@ class="block text-sm font-medium text-gray-700"
                           class="flex items-center gap-2 group bg-white rounded-md p-3 hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm"
                           :class="{
                             'border-red-200 bg-red-50':
-                              !field.name.trim() && (attemptedSave || field.validated),
+                              !field.name.trim() && (attemptedSave || field.name === ''),
                           }"
                         >
                           <div class="flex-1">
@@ -338,16 +337,16 @@ class="block text-sm font-medium text-gray-700"
                                 !field.name.trim() &&
                                 (formErrors[`${activeTab}-fieldnames`] ||
                                   attemptedSave ||
-                                  field.validated)
+                                  field.name === '')
                                   ? 'error'
                                   : undefined
                               "
-                              :ui="{ base: 'relative', input: { base: 'peer w-full' } }"
+                              :ui="{ base: 'relative peer w-full' }"
                               required
                               @blur="validateField(field)"
                             />
                             <p
-                              v-if="!field.name.trim() && (attemptedSave || field.validated)"
+                              v-if="!field.name.trim() && attemptedSave"
                               class="text-xs text-red-500 mt-1"
                             >
                               Field name is required
@@ -400,11 +399,10 @@ class="block text-sm font-medium text-gray-700"
                     <UButton
                       :to="ROUTE_NAMES.AUTH.CONFIRM"
                       variant="outline"
-                      color="gray"
+                      color="neutral"
                       class="w-full sm:w-auto"
                       :ui="{
-                        rounded: 'rounded-lg',
-                        padding: { xs: 'px-4 py-2.5', sm: 'px-5 py-2.5' },
+                        base: 'rounded-lg',
                       }"
                     >
                       <UIcon name="i-heroicons-arrow-left" class="w-4 h-4 mr-2" />
@@ -416,11 +414,10 @@ class="block text-sm font-medium text-gray-700"
                       type="button"
                       variant="solid"
                       color="primary"
-                      class="w-full sm:w-auto"
+                      class="w-full sm:w-auto px-4 py-2.5 sm:px-5 sm:py-2.5"
                       :disabled="isSaving || !isTemplatesValid"
                       :ui="{
-                        rounded: 'rounded-lg',
-                        padding: { xs: 'px-4 py-2.5', sm: 'px-5 py-2.5' },
+                        base: 'rounded-lg',
                       }"
                       @click="saveTemplates"
                     >
@@ -444,13 +441,12 @@ class="block text-sm font-medium text-gray-700"
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useToast, useHead, navigateTo, useNuxtApp } from '#imports'
+import { ref, onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useAuthStore, useMeasurementTemplateStore } from '~/store'
-import type { MeasurementTemplate, MeasurementField } from '~/types/measurement'
-import { ROUTE_NAMES } from '~/constants/routes'
-import { API_ENDPOINTS } from '~/constants/api'
+import { useAuthStore, useMeasurementTemplateStore } from '../../store'
+import type { MeasurementTemplate, MeasurementField } from '../../types/measurement'
+import { ROUTE_NAMES } from '../../constants/routes'
+import { API_ENDPOINTS } from '../../constants/api'
 
 useHead({
   title: 'Setup Measurements',
@@ -462,38 +458,14 @@ onMounted(() => {
   isClient.value = true
 })
 
-// Define measurement field interface
-interface MeasurementField {
-  id: string
-  name: string
-  type: string
-  required: boolean
-  unit: string
-  order: number
-  category: string
-}
-
-// Define measurement template interface
-interface MeasurementTemplate {
-  id: number
-  userId: number
-  name: string
-  description: string
-  fields: MeasurementField[]
-  isDefault: boolean
-  createdAt: string
-  updatedAt: string
-}
+// Use imported types from ~/types/measurement
+// Remove local interface definitions to avoid conflicts
 
 // Initialize stores
 const authStore = useAuthStore()
 const { user } = storeToRefs(authStore)
 const toast = useToast()
-const { $api } = useNuxtApp()
 const measurementTemplateStore = useMeasurementTemplateStore()
-
-// Initialize API loading state
-const _apiLoading = ref(false)
 
 // Initialize loading state and templates
 const loading = ref(true)
@@ -502,14 +474,132 @@ const currentTemplate = ref<MeasurementTemplate | null>(null)
 // Track if user has attempted to save
 const attemptedSave = ref(false)
 
-// Validate field on blur
-function validateField(field: MeasurementField) {
-  return !!field.name.trim()
-}
+// Initialize reactive data for templates
+const activeTab = ref<'male' | 'female'>('male')
+const formErrors = ref<Record<string, string>>({})
+const maxFieldsPerSection = ref(10)
+const isSaving = ref(false)
+const isProcessing = ref(false)
+const originalTemplates = ref<Record<string, any>>({})
+
+// Define tabs
+const tabs = ref([
+  {
+    id: 'male',
+    name: 'Male Template',
+    icon: 'i-heroicons-user',
+  },
+  {
+    id: 'female',
+    name: 'Female Template',
+    icon: 'i-heroicons-user',
+  },
+])
 
 // Generate a unique ID
 const generateId = () => {
   return Math.random().toString(36).substr(2, 9)
+}
+
+// Define template field interface for internal use
+interface TemplateField {
+  id: string
+  name: string
+  required: boolean
+}
+
+interface TemplateData {
+  name: string
+  upperBody: TemplateField[]
+  lowerBody: TemplateField[]
+}
+
+// Initialize templates structure
+const templates = ref<Record<'male' | 'female', TemplateData>>({
+  male: {
+    name: 'Standard Male Measurements',
+    upperBody: [
+      { id: generateId(), name: 'Chest', required: true },
+      { id: generateId(), name: 'Waist', required: true },
+      { id: generateId(), name: 'Shoulders', required: false },
+    ],
+    lowerBody: [
+      { id: generateId(), name: 'Hips', required: true },
+      { id: generateId(), name: 'Inseam', required: true },
+    ],
+  },
+  female: {
+    name: 'Standard Female Measurements',
+    upperBody: [
+      { id: generateId(), name: 'Bust', required: true },
+      { id: generateId(), name: 'Waist', required: true },
+      { id: generateId(), name: 'Shoulders', required: false },
+    ],
+    lowerBody: [
+      { id: generateId(), name: 'Hips', required: true },
+      { id: generateId(), name: 'Inseam', required: true },
+    ],
+  },
+})
+
+// Computed property for template validation
+const isTemplatesValid = computed(() => {
+  return (
+    templates.value.male.name.trim() &&
+    templates.value.female.name.trim() &&
+    templates.value.male.upperBody.every(field => field.name.trim()) &&
+    templates.value.male.lowerBody.every(field => field.name.trim()) &&
+    templates.value.female.upperBody.every(field => field.name.trim()) &&
+    templates.value.female.lowerBody.every(field => field.name.trim())
+  )
+})
+
+// Validate field on blur
+function validateField(field: TemplateField): boolean {
+  return !!field.name.trim()
+}
+
+// Switch between tabs
+function switchTab(tabId: 'male' | 'female'): void {
+  activeTab.value = tabId
+}
+
+// Check if there are unsaved changes
+function hasUnsavedChanges(tabId: 'male' | 'female'): boolean {
+  if (!originalTemplates.value[tabId]) return false
+  return JSON.stringify(templates.value[tabId]) !== JSON.stringify(originalTemplates.value[tabId])
+}
+
+// Add a new field to a category
+function addField(tabId: 'male' | 'female', category: 'upperBody' | 'lowerBody'): void {
+  const newField: TemplateField = {
+    id: generateId(),
+    name: '',
+    required: false,
+  }
+  templates.value[tabId][category].push(newField)
+}
+
+// Remove a field from a category
+function removeField(
+  tabId: 'male' | 'female',
+  category: 'upperBody' | 'lowerBody',
+  index: number
+): void {
+  if (confirm('Are you sure you want to remove this field?')) {
+    templates.value[tabId][category].splice(index, 1)
+  }
+}
+
+// Validate template name
+function validateTemplateName(tabId: 'male' | 'female'): void {
+  if (!templates.value[tabId].name.trim()) {
+    formErrors.value[`${tabId}-name`] = 'Template name is required'
+  } else {
+    const errorKey = `${tabId}-name`
+    const { [errorKey]: _, ...rest } = formErrors.value
+    formErrors.value = rest
+  }
 }
 
 // Get default template structure
@@ -540,7 +630,7 @@ const getDefaultTemplate = (gender: 'male' | 'female'): MeasurementTemplate => {
       required: true,
       unit: 'in',
       order: 2,
-      category: 'upperBody',
+      category: 'lowerBody',
     },
   ]
 
@@ -575,58 +665,13 @@ onMounted(async () => {
     toast.add({
       title: 'Error',
       description: 'Failed to load measurement templates. Please refresh the page to try again.',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
-      timeout: 5000,
     })
   } finally {
     loading.value = false
   }
 })
-
-// Add a new field
-const addField = (category: 'upperBody' | 'lowerBody') => {
-  if (!currentTemplate.value) return
-
-  const newField: MeasurementField = {
-    id: generateId(),
-    name: '',
-    type: 'number',
-    required: false,
-    unit: 'in',
-    order: currentTemplate.value.fields.filter(f => f.category === category).length,
-    category,
-  }
-
-  currentTemplate.value.fields.push(newField)
-  currentTemplate.value.updatedAt = new Date().toISOString()
-}
-
-// Remove a field
-const removeField = (fieldId: string) => {
-  if (!currentTemplate.value) return
-
-  if (
-    confirm('Are you sure you want to remove this measurement field? This action cannot be undone.')
-  ) {
-    // Check if this is a default field that can't be removed
-    const defaultFields = ['Chest', 'Waist', 'Hips', 'Inseam']
-    const field = currentTemplate.value.fields.find(f => f.id === fieldId)
-
-    if (field && defaultFields.includes(field.name)) {
-      toast.add({
-        title: 'Cannot remove',
-        description: 'This is a default field and cannot be removed.',
-        color: 'warning',
-      })
-      return
-    }
-
-    // Remove the field
-    currentTemplate.value.fields = currentTemplate.value.fields.filter(f => f.id !== fieldId)
-    currentTemplate.value.updatedAt = new Date().toISOString()
-  }
-}
 
 const measurementTemplatesStore = useMeasurementTemplateStore()
 
@@ -651,6 +696,7 @@ async function saveTemplates() {
 
   try {
     // Set processing state
+    isSaving.value = true
     isProcessing.value = true
 
     // Prepare male template data
@@ -709,16 +755,19 @@ async function saveTemplates() {
     originalTemplates.value = {
       male: JSON.parse(JSON.stringify(templates.value.male)),
       female: JSON.parse(JSON.stringify(templates.value.female)),
-    }
+    } as Record<string, TemplateData>
 
     // Refresh templates from the API
     const { data } = await useAsyncData('measurement-templates', () =>
-      $fetch(API_ENDPOINTS.MEASUREMENTS.TEMPLATES, { method: 'GET' })
+      $fetch<{ success: boolean; data: MeasurementTemplate[] }>(
+        API_ENDPOINTS.MEASUREMENTS.TEMPLATES,
+        { method: 'GET' }
+      )
     )
 
     // Update the store with fetched templates
-    if (data.value) {
-      measurementTemplatesStore.setTemplates(data.value)
+    if (data.value && data.value.data) {
+      measurementTemplatesStore.setTemplates(data.value.data)
     }
 
     // Show success message
@@ -749,6 +798,7 @@ async function saveTemplates() {
       color: 'error',
     })
   } finally {
+    isSaving.value = false
     isProcessing.value = false
   }
 }

@@ -2,6 +2,8 @@
  * Order related types
  */
 
+import type { MeasurementValues, Address } from './enhanced'
+
 export type OrderStatus =
   | 'pending'
   | 'processing'
@@ -16,7 +18,7 @@ export interface OrderItem {
   styleId: number
   quantity: number
   price: number
-  measurements?: Record<string, any>
+  measurements?: MeasurementValues
   notes?: string
   createdAt?: string
   updatedAt?: string
@@ -35,9 +37,9 @@ export interface Order {
   finalAmount: number
   notes?: string
   items: OrderItem[]
-  measurements?: Record<string, any>
-  shippingAddress?: Record<string, any>
-  billingAddress?: Record<string, any>
+  measurements?: MeasurementValues
+  shippingAddress?: Address
+  billingAddress?: Address
   paymentStatus?: 'pending' | 'paid' | 'partially_paid' | 'refunded'
   paymentMethod?: string
   paymentReference?: string
@@ -94,9 +96,9 @@ export interface CreateOrderInput {
   finalAmount: number
   notes?: string
   items: Omit<OrderItem, 'id' | 'createdAt' | 'updatedAt'>[]
-  measurements?: Record<string, any>
-  shippingAddress?: Record<string, any>
-  billingAddress?: Record<string, any>
+  measurements?: MeasurementValues
+  shippingAddress?: Address
+  billingAddress?: Address
   paymentStatus?: 'pending' | 'paid' | 'partially_paid' | 'refunded'
   paymentMethod?: string
   paymentReference?: string

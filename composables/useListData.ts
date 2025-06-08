@@ -9,7 +9,7 @@ export interface ListFilters {
   search?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export interface ListResponse<T> {
@@ -33,7 +33,7 @@ export interface ListState<T> {
   sortBy: Ref<string>
   isLoading: Ref<boolean>
   isFilterOpen: Ref<boolean>
-  additionalFilters: Ref<Record<string, any>>
+  additionalFilters: Ref<Record<string, unknown>>
   hasActiveFilters: Ref<boolean>
   activeFiltersCount: Ref<number>
 }
@@ -51,7 +51,7 @@ export interface UseListDataOptions<T> {
   defaultPageSize?: number
   defaultSortBy?: string
   filterKeys?: string[]
-  transform?: (item: any) => T
+  transform?: (item: unknown) => T
   serverSide?: boolean
   sortByMapping?: Record<string, { sortBy: string; sortOrder: string }>
 }
@@ -60,15 +60,15 @@ export interface UseListDataOptions<T> {
  * Unified composable for list data management
  * Provides consistent patterns for fetching, filtering, sorting, and pagination
  */
-export function useListData<T = any>(
+export function useListData<T = unknown>(
   options: UseListDataOptions<T>
 ): {
   state: ListState<T>
   actions: ListActions
   data: AsyncData<ListResponse<T>, Error | null>
-  setFilter: (key: string, value: any) => void
-  getFilter: (key: string) => any
-  additionalFilters: Readonly<Ref<Record<string, any>>>
+  setFilter: (key: string, value: unknown) => void
+  getFilter: (key: string) => unknown
+  additionalFilters: Readonly<Ref<Record<string, unknown>>>
 } {
   const {
     endpoint,
@@ -91,7 +91,7 @@ export function useListData<T = any>(
   const isFilterOpen = ref(false)
 
   // Additional filters (dynamic based on filterKeys)
-  const additionalFilters = ref<Record<string, any>>({})
+  const additionalFilters = ref<Record<string, unknown>>({})
 
   // Initialize additional filters
   filterKeys.forEach(key => {
@@ -277,7 +277,7 @@ export function useListData<T = any>(
   }
 
   // Expose filter setters for additional filters
-  const setFilter = (key: string, value: any) => {
+  const setFilter = (key: string, value: unknown) => {
     if (filterKeys.includes(key)) {
       additionalFilters.value[key] = value
       currentPage.value = 1

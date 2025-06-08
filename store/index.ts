@@ -6,4 +6,4 @@ export { useOrderStore } from './modules/order'
 export { useUserStore } from './modules/user'
 
 // Types
-export type { ApiResponse } from './modules/api'
+// export type { ApiResponse } from './modules/api' // File doesn't exist

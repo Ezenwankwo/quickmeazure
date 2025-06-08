@@ -1,18 +1,51 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type {
-  SubscriptionPlan,
-  PaymentMethod,
-  BillingHistoryItem,
-  PlanLimits,
-  SubscriptionStatus,
-} from '~/types/subscription'
+import type { Plan, PaymentMethod, SubscriptionStatus } from '../../types/subscription'
+
+// Define missing types
+export interface BillingHistoryItem {
+  id: number
+  date: string
+  description: string
+  amount: number
+  status: 'paid' | 'pending' | 'failed' | 'refunded'
+  reference?: string
+}
+
+export interface PlanLimits {
+  clients: number
+  styles: number
+  storage: number
+  [key: string]: number
+}
 
 export const useSubscriptionStore = defineStore('subscription', () => {
   // State
-  const plans = ref<SubscriptionPlan[]>([])
-  const currentPlan = ref<SubscriptionPlan | null>(null)
-  const status = ref<SubscriptionStatus>({
+  const plans = ref<Plan[]>([])
+  const currentPlan = ref<Plan | null>(null)
+  const status = ref<{
+    active: boolean
+    planId: number | null
+    trialEndsAt: string | null
+    currentPeriodEndsAt: string | null
+    canceledAt: string | null
+    pastDue: boolean
+  }>({
+    active: false,
+    planId: null,
+    trialEndsAt: null,
+    currentPeriodEndsAt: null,
+    canceledAt: null,
+    pastDue: false,
+  })
+  const subscriptionDetails = ref<{
+    active: boolean
+    planId: number | null
+    trialEndsAt: string | null
+    currentPeriodEndsAt: string | null
+    canceledAt: string | null
+    pastDue: boolean
+  }>({
     active: false,
     planId: null,
     trialEndsAt: null,
@@ -61,12 +94,12 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   }
 
   // State setters
-  const setPlans = (newPlans: SubscriptionPlan[]) => {
+  const setPlans = (newPlans: Plan[]) => {
     plans.value = newPlans
     lastFetched.value = Date.now()
   }
 
-  const setCurrentPlan = (plan: SubscriptionPlan | null) => {
+  const setCurrentPlan = (plan: Plan | null) => {
     currentPlan.value = plan
   }
 

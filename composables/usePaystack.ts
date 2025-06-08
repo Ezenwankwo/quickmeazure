@@ -1,5 +1,5 @@
-import { useAuthStore } from '~/store/modules/auth'
-import { initializePaystackPayment } from '~/utils/paystack'
+import { useAuthStore } from '../store/modules/auth'
+import { initializePaystackPayment } from '../utils/paystack'
 
 interface PaymentOptions {
   amount: number
@@ -7,7 +7,7 @@ interface PaymentOptions {
   planName: string
   billingPeriod: string
   onSuccess?: () => void
-  onError?: (error: any) => void
+  onError?: (error: unknown) => void
 }
 
 export const usePaystack = () => {
@@ -93,7 +93,7 @@ export const usePaystack = () => {
   const processPaymentMethodVerification = async (options: {
     email?: string
     onSuccess?: () => void
-    onError?: (error: any) => void
+    onError?: (error: unknown) => void
   }) => {
     console.log('processPaymentMethodVerification called with options:', options)
     try {

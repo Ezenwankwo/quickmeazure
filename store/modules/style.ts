@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 // Types
-import type { Style, StyleFilter } from '~/types/style'
+import type { Style, StyleFilter } from '../../types/style'
 
 export const useStyleStore = defineStore('style', () => {
   // State

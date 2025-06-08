@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Client, ClientStats } from '~/types/client'
+import type { Client, ClientStats } from '../../types/client'
 
 export const useClientStore = defineStore('client', () => {
   // State

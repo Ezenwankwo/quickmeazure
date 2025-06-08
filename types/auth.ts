@@ -12,8 +12,8 @@ export interface User {
   phone?: string | null
   location?: string | null
   bio?: string | null
-  specializations?: Record<string, any>
-  services?: Record<string, any>
+  specializations?: Record<string, string | boolean>
+  services?: Record<string, string | number | boolean>
   hasCompletedSetup: boolean
   createdAt: string
   updatedAt?: string | null

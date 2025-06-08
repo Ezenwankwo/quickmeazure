@@ -11,7 +11,7 @@ interface PaystackConfig {
   ref?: string
   callback?: (response: PaystackResponse) => void
   onClose?: () => void
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 interface PaystackResponse {
@@ -64,7 +64,7 @@ export const initializePaystackPayment = (config: PaystackConfig): void => {
  */
 const openPaystackPopup = (config: PaystackConfig): void => {
   console.log('openPaystackPopup called')
-  const paystack = (window as any).PaystackPop
+  const paystack = (window as unknown as { PaystackPop: unknown }).PaystackPop
 
   if (!paystack) {
     console.error('Paystack script not loaded properly - PaystackPop not available in window')

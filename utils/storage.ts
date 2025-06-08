@@ -11,7 +11,7 @@
  * @returns The parsed value or null if not found or error
  */
 export function getFromStorage<T>(key: string): T | null {
-  if (!import.meta.client) return null
+  if (typeof window === 'undefined') return null
 
   try {
     const value = localStorage.getItem(key)
@@ -29,7 +29,7 @@ export function getFromStorage<T>(key: string): T | null {
  * @returns True if successful, false otherwise
  */
 export function setToStorage<T>(key: string, value: T): boolean {
-  if (!import.meta.client) return false
+  if (typeof window === 'undefined') return false
 
   try {
     localStorage.setItem(key, JSON.stringify(value))
@@ -46,7 +46,7 @@ export function setToStorage<T>(key: string, value: T): boolean {
  * @returns True if successful, false otherwise
  */
 export function removeFromStorage(key: string): boolean {
-  if (!import.meta.client) return false
+  if (typeof window === 'undefined') return false
 
   try {
     localStorage.removeItem(key)
@@ -62,7 +62,7 @@ export function removeFromStorage(key: string): boolean {
  * @returns True if successful, false otherwise
  */
 export function clearStorage(): boolean {
-  if (!import.meta.client) return false
+  if (typeof window === 'undefined') return false
 
   try {
     localStorage.clear()

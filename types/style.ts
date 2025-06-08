@@ -26,7 +26,7 @@ export interface Style {
   description?: string | null
   imageUrl?: string | null
   category?: string | null
-  details?: unknown
+  details?: Record<string, string | number | boolean>
   measurements?: Record<string, StyleMeasurement>
   templateId?: number
   template?: StyleTemplate

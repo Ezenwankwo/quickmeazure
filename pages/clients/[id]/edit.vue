@@ -626,6 +626,7 @@ const fetchClient = async () => {
   } catch (error) {
     console.error('Error fetching client:', error)
 
+    const errorMessage = error.message || 'Failed to load client data'
     useToast().add({
       title: 'Error',
       description: errorMessage,
@@ -751,13 +752,16 @@ const deleteClient = async () => {
 
 // Confirm delete
 const _confirmDelete = () => {
-  useConfirm({
+  useConfirmDialog({
     title: 'Delete Client',
-    message: 'Are you sure you want to delete this client? This action cannot be undone.',
+    content: 'Are you sure you want to delete this client? This action cannot be undone.',
     confirmLabel: 'Delete',
     cancelLabel: 'Cancel',
-    confirmColor: 'red',
-    onConfirm: deleteClient,
+    confirmButtonColor: 'red',
+  }).then(confirmed => {
+    if (confirmed) {
+      deleteClient()
+    }
   })
 }
 

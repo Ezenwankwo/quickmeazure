@@ -60,7 +60,7 @@ export type SingleParamFunction<T, R> = (arg: T) => R
 /**
  * Type for a function that takes any number of arguments and returns a value
  */
-export type AnyFunction = (...args: any[]) => any
+export type AnyFunction = (...args: unknown[]) => unknown
 
 /**
  * Type for a function that takes no arguments and returns void
@@ -70,7 +70,7 @@ export type VoidFunction = () => void
 /**
  * Type for a function that takes any arguments and returns void
  */
-export type AnyVoidFunction = (...args: any[]) => void
+export type AnyVoidFunction = (...args: unknown[]) => void
 
 /**
  * Type for a function that might return a promise

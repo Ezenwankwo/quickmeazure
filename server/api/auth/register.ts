@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { useDrizzle, tables, eq } from '~/server/utils/drizzle'
+import { handleApiError } from '~/utils/error-handling'
 
 export default defineEventHandler(async event => {
   try {
@@ -219,11 +220,7 @@ export default defineEventHandler(async event => {
       },
       token,
     }
-  } catch (error: any) {
-    console.error('Registration error:', error)
-    throw createError({
-      statusCode: error.statusCode || 500,
-      message: error.message || 'Registration failed',
-    })
+  } catch (error: unknown) {
+    handleApiError(error, 'user registration')
   }
 })

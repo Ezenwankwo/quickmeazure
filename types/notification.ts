@@ -22,9 +22,10 @@ export interface Notification {
     label: string
     url: string
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
-    data?: Record<string, any>
+    data?: Record<string, unknown>
+    priority?: 'low' | 'medium' | 'high'
   }
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 export interface NotificationPreferences {

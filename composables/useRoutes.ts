@@ -5,7 +5,7 @@ import {
   navigateToRoute,
   type RouteName,
   type NavigationOptions,
-} from '~/constants/routes'
+} from '../constants/routes'
 
 export function useAppRoutes() {
   // Helper to get route path
@@ -15,7 +15,7 @@ export function useAppRoutes() {
       ? [Parameters<typeof getRoutePath<T>>[1]]
       : []
   ): string => {
-    return getRoutePath(name, ...(args as [any]))
+    return getRoutePath(name, ...(args as [unknown]))
   }
 
   // Type-safe navigation

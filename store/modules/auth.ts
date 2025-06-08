@@ -1,17 +1,17 @@
 // Types
-import type { User } from '~/types/auth'
+import type { User } from '../../types/auth'
 
 // Stores
 import { useUserStore } from './user'
 
 // Constants
-import { STORAGE_KEYS } from '~/constants/storage'
+import { STORAGE_KEYS } from '../../constants/storage'
 
 // Utils
-import { getFromStorage, setToStorage, removeFromStorage } from '~/utils/storage'
+import { getFromStorage, setToStorage, removeFromStorage } from '../../utils/storage'
 
 // Composables
-import { useAuthApi } from '~/composables/useAuthApi'
+import { useAuthApi } from '../../composables/useAuthApi'
 
 /**
  * Auth store for managing authentication state
@@ -45,11 +45,11 @@ export const useAuthStore = defineStore(
       if (!user.value) return false
 
       // Free plan is always active
-      if (user.value.subscriptionPlan === 'free') return true
+      if (user.value.subscription?.plan === 'free') return true
 
       // Check if paid subscription is expired
-      if (user.value.subscriptionExpiry) {
-        return Date.now() < user.value.subscriptionExpiry
+      if (user.value.subscription?.expiryDate) {
+        return Date.now() < new Date(user.value.subscription.expiryDate).getTime()
       }
 
       return false
@@ -77,7 +77,7 @@ export const useAuthStore = defineStore(
      * Set up session timeout to handle token expiry and refreshing
      */
     function setupSessionTimeout() {
-      if (!import.meta.client) return
+      if (typeof window === 'undefined') return
 
       // Clear any existing timeout
       clearSessionTimeout()
@@ -122,8 +122,11 @@ export const useAuthStore = defineStore(
           id: payload.id || payload.sub,
           name: payload.name,
           email: payload.email,
-          subscriptionPlan: payload.subscriptionPlan || 'free',
-          subscriptionExpiry: payload.subscriptionExpiry,
+          subscription: payload.subscription || {
+            plan: 'free',
+            status: 'active',
+            expiryDate: null,
+          },
         }
       } catch (e) {
         console.error('Failed to decode JWT token', e)
@@ -135,19 +138,19 @@ export const useAuthStore = defineStore(
      * Persist auth state to localStorage using standardized storage utilities
      */
     function persistAuthState() {
-      if (!import.meta.client) return
+      if (typeof window === 'undefined') return
 
       if (token.value && sessionExpiry.value) {
         // Use the standardized storage utility for consistent error handling
-        setToStorage(STORAGE_KEYS.AUTH, {
-          token: token.value,
-          refreshToken: refreshToken.value,
-          sessionExpiry: sessionExpiry.value,
-        })
+        setToStorage(STORAGE_KEYS.USER, user.value)
+        setToStorage(STORAGE_KEYS.AUTH_TOKEN, token.value)
+        setToStorage(STORAGE_KEYS.REFRESH_TOKEN, refreshToken.value)
         setToStorage('lastLoginTime', Date.now())
       } else {
         // Use the standardized storage utility for consistent error handling
-        removeFromStorage(STORAGE_KEYS.AUTH)
+        removeFromStorage(STORAGE_KEYS.USER)
+        removeFromStorage(STORAGE_KEYS.AUTH_TOKEN)
+        removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN)
         removeFromStorage('lastLoginTime')
       }
     }
@@ -163,14 +166,23 @@ export const useAuthStore = defineStore(
       if (import.meta.server) return
 
       // Only run on client
-      if (import.meta.client) {
+      if (typeof window !== 'undefined') {
         console.log('Initializing auth store on client')
 
         // Get user store instance
         const userStore = useUserStore()
 
         // Use standardized storage utility to load auth data
-        const authData = getFromStorage(STORAGE_KEYS.AUTH)
+        const storedUser = getFromStorage(STORAGE_KEYS.USER)
+        const storedToken = getFromStorage(STORAGE_KEYS.AUTH_TOKEN)
+        const storedRefreshToken = getFromStorage(STORAGE_KEYS.REFRESH_TOKEN)
+        const authData = storedToken
+          ? {
+              token: storedToken,
+              refreshToken: storedRefreshToken,
+              sessionExpiry: Date.now() + SESSION_DURATION,
+            }
+          : null
 
         if (authData) {
           // Check if token exists and is not expired
@@ -220,9 +232,11 @@ export const useAuthStore = defineStore(
       refreshToken.value = null
       sessionExpiry.value = null
 
-      if (import.meta.client) {
+      if (typeof window !== 'undefined') {
         // Use standardized storage utilities for consistent error handling
-        removeFromStorage(STORAGE_KEYS.AUTH)
+        removeFromStorage(STORAGE_KEYS.USER)
+        removeFromStorage(STORAGE_KEYS.AUTH_TOKEN)
+        removeFromStorage(STORAGE_KEYS.REFRESH_TOKEN)
         removeFromStorage('lastLoginTime')
         removeFromStorage('isHandlingAuthError')
         removeFromStorage('isHandlingTokenRefresh')
@@ -288,7 +302,7 @@ export const useAuthStore = defineStore(
       console.log('Starting client-side logout process')
 
       // Mark this as an intentional logout if not already set
-      if (import.meta.client && !getFromStorage('intentionalLogout')) {
+      if (typeof window !== 'undefined' && !getFromStorage('intentionalLogout')) {
         setToStorage('intentionalLogout', 'true')
       }
 
@@ -304,7 +318,7 @@ export const useAuthStore = defineStore(
       console.log('Client-side logout completed')
 
       // Clear the intentional logout flag after successful logout
-      if (import.meta.client) {
+      if (typeof window !== 'undefined') {
         setTimeout(() => {
           removeFromStorage('intentionalLogout')
         }, 1000) // Small delay to ensure other operations complete
@@ -360,7 +374,7 @@ export const useAuthStore = defineStore(
     async function handleSessionExpiry(showNotification = true, reason = 'Session expired') {
       // Check if this is an intentional logout
       const isIntentionalLogout =
-        import.meta.client && getFromStorage('intentionalLogout') === 'true'
+        typeof window !== 'undefined' && getFromStorage('intentionalLogout') === 'true'
 
       console.log(`Handling session expiry: ${reason}`, { isIntentionalLogout })
 
@@ -371,12 +385,12 @@ export const useAuthStore = defineStore(
       await logout()
 
       // Show notification only if not an intentional logout
-      if (showNotification && import.meta.client && !isIntentionalLogout) {
+      if (showNotification && typeof window !== 'undefined' && !isIntentionalLogout) {
         console.error('Session Expired: Your session has expired. Please log in again.')
       }
 
       // Redirect to login page with return URL if possible
-      if (import.meta.client) {
+      if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname
         const isAuthPage = currentPath.startsWith('/auth/')
 
@@ -398,7 +412,7 @@ export const useAuthStore = defineStore(
     function getClientLimit() {
       if (!user.value) return 0
 
-      switch (user.value.subscriptionPlan) {
+      switch (user.value.subscription?.plan) {
         case 'free':
           return 100
         case 'standard':
@@ -536,7 +550,7 @@ export const useAuthStore = defineStore(
   },
   {
     persist: {
-      storage: import.meta.client ? window.localStorage : null,
+      storage: typeof window !== 'undefined' ? window.localStorage : null,
       paths: ['user', 'token', 'sessionExpiry'],
     },
   }

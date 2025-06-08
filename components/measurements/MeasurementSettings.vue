@@ -24,9 +24,7 @@
               v-for="unit in unitOptions"
               :key="unit.value"
               :ui="{
-                body: {
-                  padding: 'p-4',
-                },
+                body: 'p-4',
               }"
               :class="[
                 'cursor-pointer transition-all hover:shadow-md',
@@ -34,7 +32,7 @@
                   ? 'ring-2 ring-primary-500 border-primary-500 bg-primary-50'
                   : 'hover:border-gray-300',
               ]"
-              @click="settings.defaultUnit = unit.value"
+              @click="settings.defaultUnit = unit.value as 'in' | 'cm'"
             >
               <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -87,7 +85,7 @@ import { useMeasurementSettings } from '~/composables/measurements/useMeasuremen
 
 const emit = defineEmits(['saved'])
 
-const { settings, _loading, _error, fetchSettings, updateSettings } = useMeasurementSettings()
+const { settings, fetchSettings, updateSettings } = useMeasurementSettings()
 
 const isSaving = ref(false)
 
@@ -124,14 +122,14 @@ const saveSettings = async () => {
       title: 'Settings saved',
       description: 'Your measurement preferences have been updated',
       icon: 'i-heroicons-check-circle',
-      color: 'green',
+      color: 'primary',
     })
   } catch (err) {
     console.error('Error saving settings:', err)
     useToast().add({
       title: 'Error saving settings',
       description: 'Please try again',
-      color: 'red',
+      color: 'error',
       icon: 'i-heroicons-exclamation-triangle',
     })
   } finally {

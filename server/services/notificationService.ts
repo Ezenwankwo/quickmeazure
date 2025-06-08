@@ -31,6 +31,16 @@ export async function createNotification({
   actionText = null,
   expiresAt = null,
   metadata = {},
+}: {
+  userId: number
+  type: string
+  severity: string
+  title: string
+  message: string
+  actionUrl?: string | null
+  actionText?: string | null
+  expiresAt?: Date | null
+  metadata?: Record<string, unknown>
 }) {
   try {
     const db = useDrizzle()
@@ -111,11 +121,15 @@ export async function generatePaymentReminders() {
 
     // Create notifications for each upcoming renewal
     for (const { subscription, user, plan } of upcomingRenewals) {
+      if (!subscription.nextBillingDate) continue
       const daysUntilRenewal = differenceInDays(subscription.nextBillingDate, now)
 
       // Determine severity based on how close the renewal is
       let severity = NOTIFICATION_SEVERITIES.INFO
-      if (isBefore(subscription.nextBillingDate, threeDaysFromNow)) {
+      if (
+        subscription.nextBillingDate &&
+        isBefore(subscription.nextBillingDate, threeDaysFromNow)
+      ) {
         severity = NOTIFICATION_SEVERITIES.WARNING
       }
 
@@ -176,11 +190,13 @@ export async function generateSubscriptionExpirationAlerts() {
 
     // Create notifications for each upcoming expiration
     for (const { subscription, user, plan } of upcomingExpirations) {
-      const daysUntilExpiration = differenceInDays(subscription.endDate, now)
+      const daysUntilExpiration = subscription.endDate
+        ? differenceInDays(subscription.endDate, now)
+        : 0
 
       // Determine severity based on how close the expiration is
       let severity = NOTIFICATION_SEVERITIES.INFO
-      if (isBefore(subscription.endDate, sevenDaysFromNow)) {
+      if (subscription.endDate && isBefore(subscription.endDate, sevenDaysFromNow)) {
         severity = NOTIFICATION_SEVERITIES.WARNING
       }
 
@@ -285,7 +301,7 @@ export async function generateUsageLimitWarnings() {
         const measurementCount = await db
           .select({ count: sql`count(*)` })
           .from(tables.measurements)
-          .where(eq(tables.measurements.userId, user.id))
+          .where(eq(tables.measurements.clientId, user.id))
           .then(result => Number(result[0]?.count || 0))
 
         // Calculate percentage of limit used

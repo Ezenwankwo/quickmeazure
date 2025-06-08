@@ -18,7 +18,7 @@ export interface Client {
 export interface ClientMeasurement {
   id: number
   clientId: number
-  values: Record<string, any>
+  values: Record<string, string | number>
   notes?: string
   lastUpdated: string
   createdAt: string

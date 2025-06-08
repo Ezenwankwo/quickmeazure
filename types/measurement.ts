@@ -2,10 +2,12 @@
  * Measurement related types
  */
 
+import type { MeasurementValues, UnknownRecord } from './enhanced'
+
 export interface Measurement {
   id: number
   clientId: number
-  values: Record<string, any>
+  values: MeasurementValues
   notes?: string
   lastUpdated: string
   createdAt: string
@@ -18,6 +20,8 @@ export interface MeasurementTemplate {
   description?: string
   fields: MeasurementField[]
   isDefault: boolean
+  archived?: boolean
+  gender?: string
   createdAt: string
   updatedAt?: string
 }
@@ -27,7 +31,7 @@ export interface MeasurementField {
   name: string
   type: 'number' | 'text' | 'select'
   required: boolean
-  defaultValue?: any
+  defaultValue?: string | number
   options?: string[]
   unit?: string
   min?: number
@@ -35,13 +39,14 @@ export interface MeasurementField {
   step?: number
   category?: string
   order: number
+  isDefault?: boolean
 }
 
 export interface ClientMeasurement {
   id: number
   clientId: number
   templateId: number
-  values: Record<string, any>
+  values: MeasurementValues
   notes?: string
   lastUpdated: string
   createdAt: string

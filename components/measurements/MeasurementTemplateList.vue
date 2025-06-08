@@ -137,7 +137,7 @@ import { useMeasurementTemplatesStore } from '~/store'
 
 const props = defineProps({
   initialTemplates: {
-    type: Array as () => any[],
+    type: Array as () => MeasurementTemplate[],
     default: () => [],
   },
 })
@@ -173,7 +173,7 @@ const isDeleting = ref(false)
 const templateToDelete = ref<number | null>(null)
 
 // Editing
-const editingTemplate = ref<any>(null)
+const editingTemplate = ref<MeasurementTemplate | null>(null)
 
 // Computed
 const defaultTemplates = computed(() => templates.value.filter(t => t.isDefault && !t.isArchived))
@@ -191,7 +191,7 @@ const totalTemplates = computed(
 )
 
 // Methods
-const openEditModal = (template: any) => {
+const openEditModal = (template: MeasurementTemplate) => {
   editingTemplate.value = template
   isFormModalOpen.value = true
 }

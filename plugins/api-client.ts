@@ -36,7 +36,10 @@ export default defineNuxtPlugin({
     }
 
     // Create a custom fetch instance with interceptors
-    const customFetch = async <T = any>(url: string, options: any = {}): Promise<T> => {
+    const customFetch = async <T = unknown>(
+      url: string,
+      options: Record<string, unknown> = {}
+    ): Promise<T> => {
       // Add base URL if the URL is relative
       const baseUrl = import.meta.client
         ? window.location.origin
@@ -83,7 +86,8 @@ export default defineNuxtPlugin({
         console.log(`API Response: ${fullUrl}`, response)
 
         return response
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         // Log error for debugging
         console.error(`API Error: ${fullUrl}`, error)
 
@@ -98,7 +102,10 @@ export default defineNuxtPlugin({
     /**
      * Handle API errors including 401 unauthorized responses
      */
-    const handleApiError = async (error: any, options: any = {}): Promise<void> => {
+    const handleApiError = async (
+      error: unknown,
+      options: Record<string, unknown> = {}
+    ): Promise<void> => {
       if (!error) return
 
       // Skip error handling if explicitly requested
@@ -176,35 +183,35 @@ export default defineNuxtPlugin({
       /**
        * Make a GET request
        */
-      get: <T = any>(url: string, options: any = {}) => {
+      get: <T = unknown>(url: string, options: Record<string, unknown> = {}) => {
         return customFetch<T>(url, { ...options, method: 'GET' })
       },
 
       /**
        * Make a POST request
        */
-      post: <T = any>(url: string, data: any, options: any = {}) => {
+      post: <T = unknown>(url: string, data: unknown, options: Record<string, unknown> = {}) => {
         return customFetch<T>(url, { ...options, method: 'POST', body: data })
       },
 
       /**
        * Make a PUT request
        */
-      put: <T = any>(url: string, data: any, options: any = {}) => {
+      put: <T = unknown>(url: string, data: unknown, options: Record<string, unknown> = {}) => {
         return customFetch<T>(url, { ...options, method: 'PUT', body: data })
       },
 
       /**
        * Make a DELETE request
        */
-      delete: <T = any>(url: string, options: any = {}) => {
+      delete: <T = unknown>(url: string, options: Record<string, unknown> = {}) => {
         return customFetch<T>(url, { ...options, method: 'DELETE' })
       },
 
       /**
        * Make a PATCH request
        */
-      patch: <T = any>(url: string, data: any, options: any = {}) => {
+      patch: <T = unknown>(url: string, data: unknown, options: Record<string, unknown> = {}) => {
         return customFetch<T>(url, { ...options, method: 'PATCH', body: data })
       },
 
@@ -212,7 +219,7 @@ export default defineNuxtPlugin({
        * Format API response into a consistent structure
        */
       formatResponse: <T>(
-        response: any
+        response: unknown
       ): { data: T | null; success: boolean; error?: string; statusCode?: number } => {
         // If response is already in our expected format, return it
         if (response && typeof response === 'object' && 'success' in response) {

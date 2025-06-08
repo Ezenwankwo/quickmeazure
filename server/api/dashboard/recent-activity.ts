@@ -11,7 +11,7 @@ interface ActivityItem {
   message: string
   time: string
   icon: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 // Map activity types to icons
@@ -86,7 +86,7 @@ export default defineCachedEventHandler(async (event: H3Event<EventHandlerReques
           timestamp: tables.clients.createdAt,
           icon: sql<string>`${activityIcons.client.created}::text`.as('icon'),
           metadata: sql<
-            Record<string, any>
+            Record<string, unknown>
           >`jsonb_build_object('clientId', ${tables.clients.id}::text)::jsonb`.as('metadata'),
           sort_order: sql<number>`1::integer`.as('sort_order'),
         })
@@ -119,7 +119,7 @@ export default defineCachedEventHandler(async (event: H3Event<EventHandlerReques
                 THEN ${activityIcons.order.completed}::text
                 ELSE ${activityIcons.order.created}::text
               END`.as('icon'),
-              metadata: sql<Record<string, any>>`jsonb_build_object(
+              metadata: sql<Record<string, unknown>>`jsonb_build_object(
                 'orderId', ${tables.orders.id}::text,
                 'clientId', ${tables.orders.clientId}::text,
                 'clientName', ${tables.clients.name}::text
@@ -150,7 +150,7 @@ export default defineCachedEventHandler(async (event: H3Event<EventHandlerReques
               ),
               timestamp: tables.payments.paymentDate,
               icon: sql<string>`${activityIcons.payment.received}::text`.as('icon'),
-              metadata: sql<Record<string, any>>`jsonb_build_object(
+              metadata: sql<Record<string, unknown>>`jsonb_build_object(
                 'paymentId', ${tables.payments.id}::text,
                 'orderId', ${tables.payments.orderId}::text,
                 'amount', ${tables.payments.amount},
@@ -177,7 +177,7 @@ export default defineCachedEventHandler(async (event: H3Event<EventHandlerReques
               ),
               timestamp: tables.measurements.lastUpdated,
               icon: sql<string>`${activityIcons.measurement.updated}::text`.as('icon'),
-              metadata: sql<Record<string, any>>`jsonb_build_object(
+              metadata: sql<Record<string, unknown>>`jsonb_build_object(
                 'measurementId', ${tables.measurements.id}::text,
                 'clientId', ${tables.measurements.clientId}::text,
                 'clientName', ${tables.clients.name}::text
@@ -218,11 +218,7 @@ export default defineCachedEventHandler(async (event: H3Event<EventHandlerReques
       metadata: activity.metadata,
     }))
     return activities.slice(0, limit)
-  } catch (error: any) {
-    console.error('Dashboard recent activity API error:', error)
-    throw createError({
-      statusCode: error.statusCode || 500,
-      message: error.message || 'Failed to fetch recent activity',
-    })
+  } catch (error: unknown) {
+    handleDatabaseError(error, 'fetching recent activities')
   }
 })

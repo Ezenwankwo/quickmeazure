@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { MeasurementTemplate } from '~/types/measurement'
+import type { MeasurementTemplate } from '../../types/measurement'
 
 export const useMeasurementTemplateStore = defineStore('measurementTemplate', () => {
   // State

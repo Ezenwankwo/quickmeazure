@@ -50,8 +50,12 @@ export const plans = pgTable('plans', {
 // Subscriptions table to track user subscriptions
 export const subscriptions = pgTable('subscriptions', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references('users', 'id'),
-  planId: integer('plan_id').notNull().references('plans', 'id'),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  planId: integer('plan_id')
+    .notNull()
+    .references(() => plans.id),
   status: text('status').notNull().default('active'), // active, canceled, expired, pending
   startDate: timestamp('start_date').notNull().defaultNow(),
   endDate: timestamp('end_date'), // When the subscription expires
@@ -190,12 +194,14 @@ export const measurements = pgTable(
 export const payments = pgTable('payments', {
   id: serial('id').primaryKey(),
   orderId: integer('order_id').references(() => orders.id),
-  subscriptionId: integer('subscription_id').references('subscriptions', 'id'),
-  userId: integer('user_id').notNull().references('users', 'id'),
+  subscriptionId: integer('subscription_id').references(() => subscriptions.id),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
   amount: real('amount').notNull(),
   currency: text('currency').notNull().default('NGN'),
   paymentMethod: text('payment_method').notNull(),
-  paymentMethodId: integer('payment_method_id').references('payment_methods', 'id'),
+  paymentMethodId: integer('payment_method_id').references(() => paymentMethods.id),
   paymentDate: timestamp('payment_date').notNull(),
   status: text('status').notNull().default('successful'), // 'successful', 'failed', 'pending'
   reference: text('reference'), // Payment reference from provider
@@ -289,7 +295,9 @@ export const userMeasurementSettings = pgTable('user_measurement_settings', {
 // Payment methods table
 export const paymentMethods = pgTable('payment_methods', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references('users', 'id'),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
   type: text('type').notNull(), // 'card', 'bank', etc.
   last4: varchar('last4', { length: 4 }),
   expiryMonth: varchar('expiry_month', { length: 2 }),
@@ -306,14 +314,18 @@ export const paymentMethods = pgTable('payment_methods', {
 // Subscription Payments table for subscription-related transactions
 export const subscriptionPayments = pgTable('subscription_payments', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references('users', 'id'),
-  subscriptionId: integer('subscription_id').references('subscriptions', 'id').notNull(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  subscriptionId: integer('subscription_id')
+    .references(() => subscriptions.id)
+    .notNull(),
   amount: real('amount').notNull(),
   currency: text('currency').notNull().default('NGN'),
   status: text('status').notNull(), // 'successful', 'failed', 'pending'
   reference: text('reference'), // Payment reference from provider
   description: text('description'),
-  paymentMethodId: integer('payment_method_id').references('payment_methods', 'id'),
+  paymentMethodId: integer('payment_method_id').references(() => paymentMethods.id),
   provider: text('provider').notNull().default('paystack'),
   providerReference: text('provider_reference'),
   metadata: jsonb('metadata'),
@@ -324,14 +336,18 @@ export const subscriptionPayments = pgTable('subscription_payments', {
 // Order Payments table for order-related transactions
 export const orderPayments = pgTable('order_payments', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references('users', 'id'),
-  orderId: integer('order_id').references('orders', 'id').notNull(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  orderId: integer('order_id')
+    .references(() => orders.id)
+    .notNull(),
   amount: real('amount').notNull(),
   currency: text('currency').notNull().default('NGN'),
   status: text('status').notNull(), // 'successful', 'failed', 'pending'
   reference: text('reference'), // Payment reference from provider
   description: text('description'),
-  paymentMethodId: integer('payment_method_id').references('payment_methods', 'id'),
+  paymentMethodId: integer('payment_method_id').references(() => paymentMethods.id),
   provider: text('provider').notNull().default('paystack'),
   providerReference: text('provider_reference'),
   metadata: jsonb('metadata'),
@@ -342,7 +358,9 @@ export const orderPayments = pgTable('order_payments', {
 // Notifications table for user notifications
 export const notifications = pgTable('notifications', {
   id: serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references('users', 'id'),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
   type: text('type').notNull(), // 'payment', 'subscription', 'usage', 'system'
   severity: text('severity').notNull(), // 'info', 'warning', 'critical'
   title: text('title').notNull(),

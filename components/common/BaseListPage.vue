@@ -41,7 +41,7 @@
               option-attribute="label"
               size="lg"
               class="w-full sm:w-52"
-              @update:model-value="(value: any) => handleSort(value as string)"
+              @update:model-value="(value: unknown) => handleSort(value as string)"
             />
           </slot>
 

@@ -1,8 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useDashboardApi } from '~/composables/useDashboardApi'
-import type { DashboardStats, ActivityItem, ClientGrowthData, ChartPeriod } from '~/types/dashboard'
-import type { Order } from '~/types/order'
+import { useDashboardApi } from '../../composables/useDashboardApi'
+import type {
+  DashboardStats,
+  ActivityItem,
+  ClientGrowthData,
+  ChartPeriod,
+} from '../../types/dashboard'
+import type { Order } from '../../types/order'
 
 export const useDashboardStore = defineStore('dashboard', () => {
   // State

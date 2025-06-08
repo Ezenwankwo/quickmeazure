@@ -2,9 +2,12 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 // Types
-import type { User } from '~/types/auth'
-import type { UserPreferences } from '~/types/user'
-import type { SubscriptionPlan } from '~/types/subscription'
+import type { User } from '../../types/auth'
+import type { UserPreferences } from '../../types/user'
+import type { Plan } from '../../types/subscription'
+
+// Define a type that can be either a Plan object or a string plan name
+type SubscriptionPlanType = Plan | string
 
 /**
  * User store for managing user profile data, subscription status, and preferences
@@ -26,7 +29,7 @@ export const useUserStore = defineStore('user', () => {
   })
 
   const subscriptionDetails = ref<{
-    plan: SubscriptionPlan | null
+    plan: SubscriptionPlanType | null
     status: 'active' | 'inactive' | 'trial' | 'expired'
     expiryDate: string | null
     features: string[]
@@ -78,7 +81,7 @@ export const useUserStore = defineStore('user', () => {
    * Load user preferences from localStorage
    */
   function loadPreferences() {
-    if (import.meta.client) {
+    if (typeof window !== 'undefined') {
       try {
         const savedPreferences = localStorage.getItem('user-preferences')
         if (savedPreferences) {
@@ -158,7 +161,7 @@ export const useUserStore = defineStore('user', () => {
    * Save preferences to localStorage
    */
   function savePreferences() {
-    if (import.meta.client) {
+    if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('user-preferences', JSON.stringify(preferences.value))
       } catch (error) {
@@ -203,7 +206,7 @@ export const useUserStore = defineStore('user', () => {
    * @param plan The subscription plan
    * @returns Array of feature names
    */
-  function getFeaturesByPlan(plan: SubscriptionPlan | string): string[] {
+  function getFeaturesByPlan(plan: SubscriptionPlanType): string[] {
     const features: Record<string, string[]> = {
       free: ['Basic client management', 'Up to 5 clients', 'Basic measurements', 'Email support'],
       basic: [
@@ -232,7 +235,7 @@ export const useUserStore = defineStore('user', () => {
    * @param plan The subscription plan
    * @returns Maximum number of clients allowed
    */
-  function getClientLimitByPlan(plan: SubscriptionPlan | string): number {
+  function getClientLimitByPlan(plan: SubscriptionPlanType): number {
     const limits: Record<string, number> = {
       free: 5,
       basic: 50,

@@ -2,10 +2,12 @@
  * API related types and interfaces
  */
 
+import type { UnknownRecord, PaginationInfo } from './enhanced'
+
 /**
  * Standard API response format
  */
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T | null
   success: boolean
   error?: string
@@ -16,14 +18,9 @@ export interface ApiResponse<T = any> {
 /**
  * Paginated API response
  */
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
   data: T[]
-  pagination: {
-    page: number
-    limit: number
-    totalCount: number
-    totalPages: number
-  }
+  pagination: PaginationInfo
 }
 
 /**
@@ -41,13 +38,13 @@ export interface ApiError {
  */
 export interface ApiRequestOptions {
   headers?: Record<string, string>
-  params?: Record<string, any>
-  body?: any
+  params?: UnknownRecord
+  body?: unknown
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   responseType?: 'json' | 'blob' | 'arraybuffer' | 'text'
   skipAuth?: boolean
   skipErrorHandling?: boolean
-  [key: string]: any
+  [key: string]: unknown
 }
 
 /**
@@ -65,7 +62,7 @@ export interface FileUploadOptions {
   fieldName?: string
   fileName?: string
   mimeType?: string
-  metadata?: Record<string, any>
+  metadata?: UnknownRecord
   onProgress?: (progress: number) => void
 }
 

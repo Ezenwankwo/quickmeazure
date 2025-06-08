@@ -146,11 +146,7 @@ export default defineEventHandler(async event => {
       },
       token,
     }
-  } catch (error: any) {
-    console.error('Login error:', error)
-    throw createError({
-      statusCode: error.statusCode || 500,
-      message: error.message || 'Login failed',
-    })
+  } catch (error: unknown) {
+    handleApiError(error, 'user login')
   }
 })

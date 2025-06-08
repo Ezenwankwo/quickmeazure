@@ -1,4 +1,4 @@
-import { useAuthStore } from '~/store/modules/auth'
+import { useAuthStore } from '../store/modules/auth'
 import { useToast } from '#imports'
 
 interface SubscriptionData {
@@ -10,7 +10,7 @@ interface SubscriptionData {
 
 interface SubscriptionResponse {
   success: boolean
-  data?: any
+  data?: unknown
   error?: string
 }
 
@@ -32,9 +32,10 @@ export function useSubscriptionManagement() {
       })
 
       return { success: true, data }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       const message =
-        error.response?.data?.message || error.message || 'Failed to load subscription'
+        (error as any).response?.data?.message || errorMessage || 'Failed to load subscription'
       toast.add({
         title: 'Error',
         description: message,
@@ -58,9 +59,10 @@ export function useSubscriptionManagement() {
       })
 
       return { success: true, data }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       const message =
-        error.response?.data?.message || error.message || 'Failed to create subscription'
+        (error as any).response?.data?.message || errorMessage || 'Failed to create subscription'
       toast.add({
         title: 'Error',
         description: message,
