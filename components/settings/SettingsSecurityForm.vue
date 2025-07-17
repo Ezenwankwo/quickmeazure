@@ -68,139 +68,138 @@
                     </UButton>
                   </template>
                 </UInput>
-                <div v-if="passwordForm.newPassword" class="mt-2">
-                  <div class="flex items-center gap-2">
+                <div v-if="passwordForm.newPassword && !isPasswordValid" class="mt-2">
+                  <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm text-gray-600">Password strength</span>
+                    <span
+                      class="text-sm"
+                      :class="{
+                        'text-red-500': passwordStrength <= 1,
+                        'text-yellow-500': passwordStrength === 2,
+                        'text-blue-500': passwordStrength === 3,
+                        'text-green-500': passwordStrength === 4,
+                      }"
+                    >
+                      {{
+                        passwordStrength === 0
+                          ? 'Very weak'
+                          : passwordStrength === 1
+                            ? 'Weak'
+                            : passwordStrength === 2
+                              ? 'Fair'
+                              : passwordStrength === 3
+                                ? 'Good'
+                                : 'Strong'
+                      }}
+                    </span>
+                  </div>
+                  <div class="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      class="h-1 flex-grow rounded-full"
-                      :class="[passwordStrength >= 1 ? 'bg-green-500' : 'bg-gray-200']"
-                    />
-                    <div
-                      class="h-1 flex-grow rounded-full"
-                      :class="[passwordStrength >= 2 ? 'bg-green-500' : 'bg-gray-200']"
-                    />
-                    <div
-                      class="h-1 flex-grow rounded-full"
-                      :class="[passwordStrength >= 3 ? 'bg-green-500' : 'bg-gray-200']"
-                    />
-                    <div
-                      class="h-1 flex-grow rounded-full"
-                      :class="[passwordStrength >= 4 ? 'bg-green-500' : 'bg-gray-200']"
-                    />
+                      class="h-2 rounded-full transition-all duration-300"
+                      :class="{
+                        'bg-red-500': passwordStrength <= 1,
+                        'bg-yellow-500': passwordStrength === 2,
+                        'bg-blue-500': passwordStrength === 3,
+                        'bg-green-500': passwordStrength === 4,
+                      }"
+                      :style="{ width: `${(passwordStrength / 4) * 100}%` }"
+                    ></div>
                   </div>
 
                   <!-- Password criteria checklist -->
-                  <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-1">
-                    <div class="flex items-center">
-                      <UIcon
-                        :name="
-                          passwordForm.newPassword.length >= 8
-                            ? 'i-heroicons-check-circle'
-                            : 'i-heroicons-x-circle'
-                        "
-                        class="mr-1.5 text-xs"
-                        :class="
-                          passwordForm.newPassword.length >= 8 ? 'text-green-500' : 'text-gray-400'
-                        "
-                      />
-                      <span
-                        class="text-xs"
-                        :class="
-                          passwordForm.newPassword.length >= 8 ? 'text-green-600' : 'text-gray-500'
-                        "
-                        >8+ characters</span
-                      >
-                    </div>
-                    <div class="flex items-center">
-                      <UIcon
-                        :name="
-                          hasUpperCase(passwordForm.newPassword)
-                            ? 'i-heroicons-check-circle'
-                            : 'i-heroicons-x-circle'
-                        "
-                        class="mr-1.5 text-xs"
-                        :class="
-                          hasUpperCase(passwordForm.newPassword)
-                            ? 'text-green-500'
-                            : 'text-gray-400'
-                        "
-                      />
-                      <span
-                        class="text-xs"
-                        :class="
-                          hasUpperCase(passwordForm.newPassword)
-                            ? 'text-green-600'
-                            : 'text-gray-500'
-                        "
-                        >Uppercase letter</span
-                      >
-                    </div>
-                    <div class="flex items-center">
-                      <UIcon
-                        :name="
-                          hasLowerCase(passwordForm.newPassword)
-                            ? 'i-heroicons-check-circle'
-                            : 'i-heroicons-x-circle'
-                        "
-                        class="mr-1.5 text-xs"
-                        :class="
-                          hasLowerCase(passwordForm.newPassword)
-                            ? 'text-green-500'
-                            : 'text-gray-400'
-                        "
-                      />
-                      <span
-                        class="text-xs"
-                        :class="
-                          hasLowerCase(passwordForm.newPassword)
-                            ? 'text-green-600'
-                            : 'text-gray-500'
-                        "
-                        >Lowercase letter</span
-                      >
-                    </div>
-                    <div class="flex items-center">
-                      <UIcon
-                        :name="
-                          hasNumber(passwordForm.newPassword)
-                            ? 'i-heroicons-check-circle'
-                            : 'i-heroicons-x-circle'
-                        "
-                        class="mr-1.5 text-xs"
-                        :class="
-                          hasNumber(passwordForm.newPassword) ? 'text-green-500' : 'text-gray-400'
-                        "
-                      />
-                      <span
-                        class="text-xs"
-                        :class="
-                          hasNumber(passwordForm.newPassword) ? 'text-green-600' : 'text-gray-500'
-                        "
-                        >Number</span
-                      >
-                    </div>
-                    <div class="flex items-center col-span-2">
-                      <UIcon
-                        :name="
-                          hasSpecialChar(passwordForm.newPassword)
-                            ? 'i-heroicons-check-circle'
-                            : 'i-heroicons-x-circle'
-                        "
-                        class="mr-1.5 text-xs"
-                        :class="
-                          hasSpecialChar(passwordForm.newPassword)
-                            ? 'text-green-500'
-                            : 'text-gray-400'
-                        "
-                      />
-                      <span
-                        class="text-xs"
-                        :class="
-                          hasSpecialChar(passwordForm.newPassword)
-                            ? 'text-green-600'
-                            : 'text-gray-500'
-                        "
-                        >Special character</span
-                      >
+                  <div class="mt-3 space-y-1">
+                    <div class="text-sm">
+                      <div class="flex items-center space-x-2">
+                        <UIcon
+                          :name="
+                            passwordForm.newPassword.length >= 8
+                              ? 'i-heroicons-check-circle'
+                              : 'i-heroicons-x-circle'
+                          "
+                          :class="
+                            passwordForm.newPassword.length >= 8
+                              ? 'text-green-600'
+                              : 'text-gray-500'
+                          "
+                          class="h-4 w-4"
+                        />
+                        <span
+                          :class="
+                            passwordForm.newPassword.length >= 8
+                              ? 'text-green-600'
+                              : 'text-gray-500'
+                          "
+                          >At least 8 characters</span
+                        >
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <UIcon
+                          :name="
+                            hasUpperCase(passwordForm.newPassword) &&
+                            hasLowerCase(passwordForm.newPassword)
+                              ? 'i-heroicons-check-circle'
+                              : 'i-heroicons-x-circle'
+                          "
+                          :class="
+                            hasUpperCase(passwordForm.newPassword) &&
+                            hasLowerCase(passwordForm.newPassword)
+                              ? 'text-green-600'
+                              : 'text-gray-500'
+                          "
+                          class="h-4 w-4"
+                        />
+                        <span
+                          :class="
+                            hasUpperCase(passwordForm.newPassword) &&
+                            hasLowerCase(passwordForm.newPassword)
+                              ? 'text-green-600'
+                              : 'text-gray-500'
+                          "
+                          >Upper and lowercase letters</span
+                        >
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <UIcon
+                          :name="
+                            hasNumber(passwordForm.newPassword)
+                              ? 'i-heroicons-check-circle'
+                              : 'i-heroicons-x-circle'
+                          "
+                          :class="
+                            hasNumber(passwordForm.newPassword) ? 'text-green-600' : 'text-gray-500'
+                          "
+                          class="h-4 w-4"
+                        />
+                        <span
+                          :class="
+                            hasNumber(passwordForm.newPassword) ? 'text-green-600' : 'text-gray-500'
+                          "
+                          >At least one number</span
+                        >
+                      </div>
+                      <div class="flex items-center space-x-2">
+                        <UIcon
+                          :name="
+                            hasSpecialChar(passwordForm.newPassword)
+                              ? 'i-heroicons-check-circle'
+                              : 'i-heroicons-x-circle'
+                          "
+                          :class="
+                            hasSpecialChar(passwordForm.newPassword)
+                              ? 'text-green-600'
+                              : 'text-gray-500'
+                          "
+                          class="h-4 w-4"
+                        />
+                        <span
+                          :class="
+                            hasSpecialChar(passwordForm.newPassword)
+                              ? 'text-green-600'
+                              : 'text-gray-500'
+                          "
+                          >Special character</span
+                        >
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -318,6 +317,17 @@ const passwordMismatchError = computed(() => {
   )
 })
 
+// Check if new password meets all criteria
+const isPasswordValid = computed(() => {
+  return (
+    passwordForm.value.newPassword.length >= 8 &&
+    hasUpperCase(passwordForm.value.newPassword) &&
+    hasLowerCase(passwordForm.value.newPassword) &&
+    hasNumber(passwordForm.value.newPassword) &&
+    hasSpecialChar(passwordForm.value.newPassword)
+  )
+})
+
 // Form validation
 const isFormValid = computed(() => {
   // Check if all required fields are filled
@@ -326,18 +336,10 @@ const isFormValid = computed(() => {
     !!passwordForm.value.newPassword &&
     passwordForm.value.newPassword === passwordForm.value.confirmPassword
 
-  // Check if password meets all criteria
-  const passwordValid =
-    passwordForm.value.newPassword.length >= 8 &&
-    hasUpperCase(passwordForm.value.newPassword) &&
-    hasLowerCase(passwordForm.value.newPassword) &&
-    hasNumber(passwordForm.value.newPassword) &&
-    hasSpecialChar(passwordForm.value.newPassword)
-
-  const result = fieldsValid && passwordValid
+  const result = fieldsValid && isPasswordValid.value
   console.log('Form validation:', {
     fieldsValid,
-    passwordValid,
+    passwordValid: isPasswordValid.value,
     isValid: result,
     currentPassword: !!passwordForm.value.currentPassword,
     newPassword: !!passwordForm.value.newPassword,

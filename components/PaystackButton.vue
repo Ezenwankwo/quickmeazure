@@ -81,7 +81,7 @@ const initiatePayment = async () => {
 
       // Reload subscription data using direct API call
       try {
-        await $fetch('/api/subscription/status', {
+        await $fetch('/api/subscriptions/current', {
           method: 'GET',
           headers: authStore.getAuthHeaders(),
         })

@@ -105,7 +105,9 @@
                 <div class="relative">
                   <ul class="mt-2 space-y-1">
                     <li
-                      v-for="(feature, index) in plan.features?.slice(0, 3)"
+                      v-for="(feature, index) in Array.isArray(plan.features)
+                        ? plan.features.slice(0, 3)
+                        : []"
                       :key="index"
                       class="text-sm text-gray-700 flex items-center"
                     >
@@ -227,24 +229,27 @@ const displayedPlans = computed(() => {
     return []
   }
 
-  // Filter plans based on billing period
+  // Always show monthly plans, but adjust pricing based on billing period
   return plans.value
     .filter(plan => {
-      if (isAnnualBilling.value) {
-        return plan.interval === 'year' || plan.interval === 'yearly' || plan.interval === 'annual'
-      } else {
-        return plan.interval === 'month' || plan.interval === 'monthly'
+      // Only show monthly plans as base
+      return ['month', 'monthly'].includes(plan.interval)
+    })
+    .map(plan => {
+      // Calculate annual price (10 months worth for 15% discount)
+      const annualPrice = plan.price > 0 ? Math.round(plan.price * 10) : 0
+
+      return {
+        value: plan.id.toString(),
+        label: plan.name,
+        description: plan.description || '',
+        numericPrice: isAnnualBilling.value ? annualPrice : plan.price,
+        features: plan.features || [],
+        isFeatured: plan.isFeatured || false,
+        maxClients: plan.maxClients || 0,
       }
     })
-    .map(plan => ({
-      value: plan.id.toString(),
-      label: plan.name,
-      description: plan.description || '',
-      numericPrice: plan.price,
-      features: plan.features || [],
-      isFeatured: plan.isFeatured || false,
-      maxClients: plan.maxClients || 0,
-    }))
+    .reverse() // Reverse the order of plans
 })
 
 // Methods
@@ -273,32 +278,27 @@ const onConfirm = async () => {
   }
 }
 
-// Fetch plans when the modal is opened
+// Watch for modal open to initialize selection
 watch(
   () => props.modelValue,
-  async newVal => {
-    if (newVal) {
-      try {
-        isLoading.value = true
-        await subscriptionStore.fetchPlans()
-
-        // If no plan is selected, select the first one
-        if (!selectedPlanValue.value && displayedPlans.value.length > 0) {
-          selectedPlanValue.value = displayedPlans.value[0].value
-        }
-      } catch (error) {
-        console.error('Error fetching plans:', error)
-        emit('error', error)
-      } finally {
-        isLoading.value = false
+  newValue => {
+    if (newValue) {
+      // If no plan is selected, select the first one
+      if (!selectedPlanValue.value && displayedPlans.value.length > 0) {
+        selectedPlanValue.value = displayedPlans.value[0].value
       }
     }
   }
 )
 
 // Initialize on mount
-onMounted(async () => {
+onMounted(() => {
   // Set billing period from props
   isAnnualBilling.value = props.defaultBillingPeriod === 'annual'
+
+  // If no plan is selected and plans are available, select the first one
+  if (!selectedPlanValue.value && displayedPlans.value.length > 0) {
+    selectedPlanValue.value = displayedPlans.value[0].value
+  }
 })
 </script>

@@ -44,9 +44,37 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { useSubscriptionStore } from '~/store/modules/subscription'
+import { useAppRoutes } from '~/composables/useRoutes'
+
 // Get current route for conditional rendering
 const route = useRoute()
 const routes = useAppRoutes()
+const subscriptionStore = useSubscriptionStore()
+
+// Fetch plans on layout mount
+const fetchPlans = async () => {
+  try {
+    const response = await $fetch('/api/plans')
+    // Handle both direct array response and object with plans property
+    const plansData = Array.isArray(response) ? response : response.plans || []
+    subscriptionStore.setPlans(
+      plansData.map(plan => ({
+        ...plan,
+        isActive: true, // Set default value for isActive
+        createdAt: new Date().toISOString(), // Set current timestamp for createdAt
+      }))
+    )
+  } catch (error) {
+    console.error('Error fetching plans in auth layout:', error)
+  }
+}
+
+// Fetch plans when layout is mounted
+onMounted(() => {
+  fetchPlans()
+})
 
 // Check if current page is subscription confirm page
 const isSubscriptionConfirmPage = computed(() => {
@@ -55,7 +83,7 @@ const isSubscriptionConfirmPage = computed(() => {
 
 // Check if current page is setup measurements page
 const isSetupMeasurementsPage = computed(() => {
-  return route.path === routes.ROUTE_PATHS[routes.ROUTE_NAMES.AUTH.SETUP_MEASUREMENTS]
+  return route.path === routes.ROUTE_NAMES.AUTH.SETUP_MEASUREMENT
 })
 
 // Show login button condition

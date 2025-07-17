@@ -14,6 +14,7 @@
           size="lg"
           variant="outline"
           class="flex items-center justify-center"
+          :loading="isGoogleLoading"
           @click="handleGoogleLogin"
         >
           <UIcon name="i-simple-icons-google" class="mr-2 text-lg" />
@@ -66,11 +67,7 @@
                   </UButton>
                 </template>
               </UInput>
-              <div class="flex justify-between mt-1">
-                <div class="flex items-center">
-                  <UCheckbox v-model="form.rememberMe" name="remember" color="primary" />
-                  <label for="remember" class="ml-2 text-sm text-gray-600">Remember me</label>
-                </div>
+              <div class="flex justify-end mt-1">
                 <NuxtLink
                   :to="AUTH.FORGOT_PASSWORD"
                   class="text-sm font-medium text-primary hover:text-primary"
@@ -86,7 +83,7 @@
             block
             color="primary"
             size="lg"
-            :loading="isLoading"
+            :loading="isFormLoading"
             :disabled="!form.email || !form.password"
             @click.prevent="handleLogin"
           >
@@ -128,22 +125,21 @@ const { AUTH, DASHBOARD } = ROUTE_NAMES
 const form = ref({
   email: '',
   password: '',
-  rememberMe: false,
 })
 
 // UI state
 const showPassword = ref(false)
-const isLoading = ref(false)
+const isFormLoading = ref(false)
+const isGoogleLoading = ref(false)
 
 // Form submission handler
 async function handleLogin() {
-  isLoading.value = true
+  isFormLoading.value = true
 
   try {
     const loginCredentials: LoginCredentials = {
       email: form.value.email,
       password: form.value.password,
-      rememberMe: form.value.rememberMe,
     }
 
     const response = await $fetch('/api/auth/login', {
@@ -151,7 +147,6 @@ async function handleLogin() {
       body: {
         email: loginCredentials.email,
         password: loginCredentials.password,
-        remember: loginCredentials.rememberMe,
       },
     })
 
@@ -163,7 +158,6 @@ async function handleLogin() {
     await authStore.setAuthState({
       user: userData,
       token: authToken,
-      remember: loginCredentials.rememberMe,
     })
 
     // Redirect to dashboard or intended route
@@ -177,13 +171,13 @@ async function handleLogin() {
       icon: 'i-heroicons-exclamation-triangle',
     })
   } finally {
-    isLoading.value = false
+    isFormLoading.value = false
   }
 }
 
 async function handleGoogleLogin() {
   try {
-    isLoading.value = true
+    isGoogleLoading.value = true
 
     // Show notification that Google login is not currently available
     toast.add({
@@ -194,6 +188,8 @@ async function handleGoogleLogin() {
     })
   } catch (e) {
     console.error('Google login error:', e)
+  } finally {
+    isGoogleLoading.value = false
   }
 }
 </script>

@@ -26,9 +26,8 @@ export function useSubscriptionManagement() {
    */
   const loadSubscription = async (): Promise<SubscriptionResponse> => {
     try {
-      const data = await $fetch('/api/subscription/status', {
+      const data = await $fetch('/api/subscriptions/current', {
         method: 'GET',
-        headers: authStore.getAuthHeaders(),
       })
 
       return { success: true, data }
@@ -52,10 +51,9 @@ export function useSubscriptionManagement() {
     subscriptionData: SubscriptionData
   ): Promise<SubscriptionResponse> => {
     try {
-      const data = await $fetch('/api/subscription/create', {
+      const data = await $fetch('/api/subscriptions/create', {
         method: 'POST',
         body: subscriptionData,
-        headers: authStore.getAuthHeaders(),
       })
 
       return { success: true, data }

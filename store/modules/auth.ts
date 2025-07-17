@@ -1,5 +1,6 @@
 // Types
 import type { User } from '../../types/auth'
+import type { AuthHeaders } from '../../types/api'
 
 // Stores
 import { useUserStore } from './user'
@@ -8,10 +9,17 @@ import { useUserStore } from './user'
 import { STORAGE_KEYS } from '../../constants/storage'
 
 // Utils
-import { getFromStorage, setToStorage, removeFromStorage } from '../../utils/storage'
+import {
+  getFromStorage,
+  setToStorage,
+  removeFromStorage,
+  getStringFromStorage,
+  setStringToStorage,
+} from '../../utils/storage'
+import { migrateTokenStorage } from '../../utils/storage-migration'
 
 // Composables
-import { useAuthApi } from '../../composables/useAuthApi'
+// Note: useAuthApi removed - using direct API calls
 
 /**
  * Auth store for managing authentication state
@@ -32,9 +40,8 @@ export const useAuthStore = defineStore(
     const sessionTimeoutId = ref<NodeJS.Timeout | null>(null)
 
     // Constants for session management
-    const SESSION_DURATION = 8 * 60 * 60 * 1000 // 8 hours
-    const EXTENDED_SESSION_DURATION = 30 * 24 * 60 * 60 * 1000 // 30 days
-    const TOKEN_REFRESH_THRESHOLD = 5 * 60 * 1000 // 5 minutes before expiry
+    const SESSION_DURATION = 90 * 24 * 60 * 60 * 1000 // 90 days (WhatsApp-like persistence)
+    const TOKEN_REFRESH_THRESHOLD = 7 * 24 * 60 * 60 * 1000 // 7 days before expiry
 
     // Computed properties
     const isLoggedIn = computed(() => {
@@ -75,6 +82,7 @@ export const useAuthStore = defineStore(
 
     /**
      * Set up session timeout to handle token expiry and refreshing
+     * Modified for WhatsApp-like behavior - no auto-logout, only background refresh
      */
     function setupSessionTimeout() {
       if (typeof window === 'undefined') return
@@ -82,20 +90,13 @@ export const useAuthStore = defineStore(
       // Clear any existing timeout
       clearSessionTimeout()
 
-      // Set up a new timeout that checks token expiry
+      // Set up a new timeout that only handles token refresh, no auto-logout
       sessionTimeoutId.value = setInterval(() => {
         const now = Date.now()
 
-        // Check if token is expired
-        if (sessionExpiry.value && now >= sessionExpiry.value) {
-          console.log('Session expired, logging out')
-          handleSessionExpiry()
-          return
-        }
-
-        // Check if token needs refreshing (within 5 minutes of expiry)
+        // Only refresh token if within threshold, never auto-logout
         if (sessionExpiry.value && sessionExpiry.value - now < TOKEN_REFRESH_THRESHOLD) {
-          console.log('Token expiring soon, refreshing')
+          console.log('Token expiring soon, refreshing in background')
           refreshSession()
         }
       }, 60000) // Check every minute
@@ -122,6 +123,8 @@ export const useAuthStore = defineStore(
           id: payload.id || payload.sub,
           name: payload.name,
           email: payload.email,
+          hasCompletedSetup: payload.hasCompletedSetup || false,
+          createdAt: payload.createdAt || new Date().toISOString(),
           subscription: payload.subscription || {
             plan: 'free',
             status: 'active',
@@ -143,8 +146,10 @@ export const useAuthStore = defineStore(
       if (token.value && sessionExpiry.value) {
         // Use the standardized storage utility for consistent error handling
         setToStorage(STORAGE_KEYS.USER, user.value)
-        setToStorage(STORAGE_KEYS.AUTH_TOKEN, token.value)
-        setToStorage(STORAGE_KEYS.REFRESH_TOKEN, refreshToken.value)
+        setStringToStorage(STORAGE_KEYS.AUTH_TOKEN, token.value)
+        if (refreshToken.value) {
+          setStringToStorage(STORAGE_KEYS.REFRESH_TOKEN, refreshToken.value)
+        }
         setToStorage('lastLoginTime', Date.now())
       } else {
         // Use the standardized storage utility for consistent error handling
@@ -169,13 +174,16 @@ export const useAuthStore = defineStore(
       if (typeof window !== 'undefined') {
         console.log('Initializing auth store on client')
 
+        // Migrate any legacy token storage formats
+        migrateTokenStorage()
+
         // Get user store instance
         const userStore = useUserStore()
 
         // Use standardized storage utility to load auth data
-        const storedUser = getFromStorage(STORAGE_KEYS.USER)
-        const storedToken = getFromStorage(STORAGE_KEYS.AUTH_TOKEN)
-        const storedRefreshToken = getFromStorage(STORAGE_KEYS.REFRESH_TOKEN)
+        const storedUser = getFromStorage<any>(STORAGE_KEYS.USER)
+        const storedToken = getStringFromStorage(STORAGE_KEYS.AUTH_TOKEN)
+        const storedRefreshToken = getStringFromStorage(STORAGE_KEYS.REFRESH_TOKEN)
         const authData = storedToken
           ? {
               token: storedToken,
@@ -247,17 +255,16 @@ export const useAuthStore = defineStore(
 
     /**
      * Set user authentication state after successful login
+     * Modified for WhatsApp-like behavior - always use 90-day sessions
      */
     function setAuthState({
       user: userData,
       token: authToken,
       refreshToken: authRefreshToken,
-      remember = false,
     }: {
       user: User
       token: string
       refreshToken?: string
-      remember?: boolean
     }) {
       if (!authToken) {
         throw new Error('No token provided')
@@ -272,11 +279,9 @@ export const useAuthStore = defineStore(
       const userStore = useUserStore()
       userStore.init(userData)
 
-      // Calculate session expiry based on remember setting
+      // Always use 90-day session for WhatsApp-like persistence
       const now = Date.now()
-      sessionExpiry.value = remember
-        ? now + EXTENDED_SESSION_DURATION // 30 days if remember me is checked
-        : now + SESSION_DURATION // 8 hours for normal session
+      sessionExpiry.value = now + SESSION_DURATION // 90 days
 
       // Set up session timeout
       setupSessionTimeout()
@@ -486,6 +491,7 @@ export const useAuthStore = defineStore(
 
     /**
      * Refresh the authentication session by getting a new access token
+     * Background refresh for WhatsApp-like behavior
      */
     async function refreshSession() {
       // Skip if already refreshing
@@ -498,19 +504,46 @@ export const useAuthStore = defineStore(
       isRefreshing.value = true
 
       try {
-        // Use the auth API composable to refresh the token
-        const authApi = useAuthApi()
-        const result = await authApi.refreshToken()
+        // Direct API call to refresh token
+        const response = await $fetch<{
+          success: boolean
+          user: User
+          token: string
+          refreshToken?: string
+        }>('/api/auth/refresh', {
+          method: 'POST',
+          headers: getAuthHeaders() as Record<string, string>,
+        })
 
-        if (result.success) {
-          console.log('Session refreshed successfully')
+        if (response.token) {
+          // Update token and extend session
+          token.value = response.token
+          if (response.refreshToken) {
+            refreshToken.value = response.refreshToken
+          }
+
+          // Extend session by another 90 days
+          sessionExpiry.value = Date.now() + SESSION_DURATION
+
+          // Update user data if provided
+          if (response.user) {
+            user.value = response.user
+            const userStore = useUserStore()
+            userStore.init(response.user)
+          }
+
+          // Save to localStorage
+          persistAuthState()
+
+          console.log('Session refreshed successfully in background')
           return { success: true }
         } else {
-          console.error('Failed to refresh session:', result.error)
-          return { success: false, error: result.error || 'Failed to refresh session' }
+          console.error('Failed to refresh session: No token received')
+          return { success: false, error: 'No token received' }
         }
       } catch (error) {
         console.error('Error refreshing session:', error)
+        // Don't logout on refresh failure for WhatsApp-like behavior
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
       } finally {
         // Always clear the refreshing flag
@@ -549,9 +582,11 @@ export const useAuthStore = defineStore(
     }
   },
   {
-    persist: {
-      storage: typeof window !== 'undefined' ? window.localStorage : null,
-      paths: ['user', 'token', 'sessionExpiry'],
-    },
+    persist:
+      typeof window !== 'undefined'
+        ? {
+            storage: window.localStorage,
+          }
+        : false,
   }
 )

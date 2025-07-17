@@ -31,19 +31,12 @@
               <h4 class="font-medium mb-2">Plan Features:</h4>
               <ul class="space-y-2">
                 <li
-                  v-for="feature in selectedPlan?.features || []"
-                  :key="feature"
+                  v-for="feature in getFormattedFeatures(selectedPlan)"
+                  :key="feature.key"
                   class="flex items-center"
                 >
                   <UIcon name="i-heroicons-check-circle" class="text-green-500 mr-2" />
-                  <span>{{ feature }}</span>
-                </li>
-                <li
-                  v-if="!selectedPlan?.features || selectedPlan.features.length === 0"
-                  class="flex items-center"
-                >
-                  <UIcon name="i-heroicons-check-circle" class="text-green-500 mr-2" />
-                  <span>Basic plan features</span>
+                  <span>{{ feature.label }}</span>
                 </li>
               </ul>
             </div>
@@ -51,9 +44,9 @@
             <!-- Change Plan Button -->
             <div class="mt-6 flex justify-end">
               <UButton
-                size="sm"
-                color="gray"
-                variant="ghost"
+                size="md"
+                color="neutral"
+                variant="outline"
                 icon="i-heroicons-pencil-square"
                 aria-label="Change subscription plan"
                 class="text-xs sm:text-sm"
@@ -94,9 +87,9 @@
               <template v-if="selectedPlan.numericPrice > 0">
                 <PaystackButton
                   :amount="selectedPlan.numericPrice"
-                  :plan-id="selectedPlan.id"
+                  :plan-id="String(selectedPlan.id)"
                   :plan-name="selectedPlan.label"
-                  :billing-period="billingPeriod"
+                  :billing-period="billingPeriod as string"
                   size="lg"
                   class="w-full sm:w-auto"
                   @success="onPaymentSuccess"
@@ -128,7 +121,7 @@
       v-model:selected-plan="tempSelectedPlan"
       title="Select a Different Plan"
       confirm-button-text="Change Plan"
-      :default-billing-period="billingPeriod.value"
+      :default-billing-period="billingPeriod as string"
       @confirm="changePlan"
       @close="onPlanModalClose"
       @error="handlePlanFetchError"
@@ -137,27 +130,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick as _nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useToast } from '#imports'
 import { monthlyPlans, annualPlans } from '~/data/subscription-plans'
 import { useAppRoutes } from '~/composables/useRoutes'
 import { usePaystack } from '~/composables/usePaystack'
 import { useAuthStore } from '~/store/modules/auth'
-// Direct API calls instead of using useSubscriptionManagement
+import { useSubscriptionStore } from '~/store/modules/subscription'
 import PlanSelectionModal from '~/components/plans/PlanSelectionModal.vue'
 
-// Composable
+// Composables and stores
 const routes = useAppRoutes()
 const toast = useToast()
 const router = useRouter()
+const route = useRoute()
+const { processPayment } = usePaystack()
+const subscriptionStore = useSubscriptionStore()
 
 // Constants
 const DASHBOARD_PATH = routes.ROUTE_PATHS[routes.ROUTE_NAMES.DASHBOARD.INDEX] as string
-
-// Add paystack composable
-const { processPayment } = usePaystack()
-// Use direct API calls instead of useSubscriptionManagement
-const authStore = useAuthStore()
+const SETUP_MEASUREMENTS_PATH = '/auth/setup-measurements'
 
 // Set page metadata
 useHead({
@@ -166,23 +158,32 @@ useHead({
 
 // Set layout for this page
 definePageMeta({
-  layout: 'subscription',
+  layout: 'auth',
   middleware: 'subscription',
 })
 
-const route = useRoute()
+// Reactive state
+const planType = ref(
+  Array.isArray(route.query.plan) ? route.query.plan[0] : route.query.plan || 'growth'
+)
+const billingPeriod = ref(
+  Array.isArray(route.query.billing) ? route.query.billing[0] : route.query.billing || 'monthly'
+)
+const isProcessing = ref(false)
+const showChangePlanModal = ref(false)
+const tempSelectedPlan = ref('')
 
-// Create a computed property for subscription plans based on the imported plan data
+// Subscription plans computed property
 const subscriptionPlans = computed(() => {
-  // Use the appropriate plans based on billing period
   const plansData = billingPeriod.value === 'annual' ? annualPlans : monthlyPlans
+  const periodLabel = billingPeriod.value === 'annual' ? 'year' : 'month'
 
   return plansData.map(plan => ({
     id: plan.id,
     value: plan.name.toLowerCase(),
     label: plan.name,
     description: plan.description,
-    price: `₦${plan.price.toLocaleString()}/${billingPeriod.value === 'annual' ? 'year' : 'month'}`,
+    price: `₦${plan.price.toLocaleString()}/${periodLabel}`,
     numericPrice: plan.price,
     features: plan.features,
     maxClients: plan.maxClients,
@@ -190,178 +191,186 @@ const subscriptionPlans = computed(() => {
   }))
 })
 
-// Get plan from URL query params or use free as default
-const planType = ref(route.query.plan || 'growth')
-const billingPeriod = ref(route.query.billing || 'monthly')
-
-// Form state
-const isProcessing = ref(false)
-
-// Find the selected plan from subscription plans
+// Selected plan computed property
 const selectedPlan = computed(() => {
-  const planId = planType.value.includes('-') ? planType.value.split('-')[0] : planType.value
-
-  return subscriptionPlans.value.find(plan => plan.value === planId) || subscriptionPlans.value[0]
+  return (
+    subscriptionPlans.value.find(plan => plan.value === planType.value) ||
+    subscriptionPlans.value[0]
+  )
 })
 
-// Initialize tempSelectedPlan with current plan value
-const tempSelectedPlan = ref(selectedPlan.value?.value || 'growth')
+// Feature formatting function
+const getFormattedFeatures = (plan: any) => {
+  if (!plan || !plan.features) {
+    return [{ key: 'basic', label: 'Basic plan features' }]
+  }
 
-// Continue to dashboard with selected plan
+  const featureLabels: Record<string, string> = {
+    clients: `Manage up to ${plan.maxClients === -1 ? 'unlimited' : plan.maxClients} clients`,
+    styles: 'Create and manage clothing styles',
+    orders: 'Track customer orders and measurements',
+    team: 'Team collaboration features',
+    analytics: 'Advanced analytics and reporting',
+    support: 'Priority customer support',
+    storage: 'Cloud storage for designs and photos',
+  }
+
+  const features = []
+
+  // Add client limit as first feature
+  if (plan.maxClients !== undefined) {
+    features.push({
+      key: 'clients',
+      label: `Manage up to ${plan.maxClients === -1 ? 'unlimited' : plan.maxClients} clients`,
+    })
+  }
+
+  // Add other features based on what's enabled
+  for (const [featureKey, featureValue] of Object.entries(plan.features)) {
+    if (featureValue && featureKey !== 'clients') {
+      features.push({
+        key: featureKey,
+        label:
+          featureLabels[featureKey] || featureKey.charAt(0).toUpperCase() + featureKey.slice(1),
+      })
+    }
+  }
+
+  return features.length > 0 ? features : [{ key: 'basic', label: 'Basic plan features' }]
+}
+
+// Initialize tempSelectedPlan
+watch(
+  selectedPlan,
+  newPlan => {
+    if (newPlan && !tempSelectedPlan.value) {
+      tempSelectedPlan.value = newPlan.value
+    }
+  },
+  { immediate: true }
+)
+
+// Utility functions
+const showToast = (
+  type: 'success' | 'error' | 'info',
+  title: string,
+  description: string,
+  icon?: string
+) => {
+  const iconMap = {
+    success: 'i-heroicons-check-circle',
+    error: 'i-heroicons-x-circle',
+    info: 'i-heroicons-information-circle',
+  }
+
+  toast.add({
+    title,
+    description,
+    color: type === 'success' ? 'success' : type === 'error' ? 'error' : 'info',
+    icon: icon || iconMap[type],
+  })
+}
+
+const handleError = (error: unknown, defaultMessage: string) => {
+  const errorMessage =
+    (error as any)?.response?.data?.message || (error as Error)?.message || defaultMessage
+
+  showToast('error', 'Error', errorMessage)
+}
+
+const createSubscription = async () => {
+  const subscriptionData = {
+    planId: selectedPlan.value.id,
+    planName: selectedPlan.value.label,
+    billingPeriod: billingPeriod.value,
+    ...(selectedPlan.value.numericPrice > 0 && { amount: selectedPlan.value.numericPrice }),
+  }
+
+  return await $fetch('/api/subscriptions/create', {
+    method: 'POST',
+    body: subscriptionData,
+  })
+}
+
+// Main payment processing function
 const skipPayment = async () => {
-  // If plan has a price, process payment with Paystack
   if (selectedPlan.value?.numericPrice > 0) {
-    processPaystackPayment()
+    await processPaystackPayment()
     return
   }
 
-  // Otherwise continue with free plan
+  // Handle free plan
   isProcessing.value = true
 
   try {
-    // Create a subscription object for free/growth plan users using direct API call
-    const result = await $fetch('/api/subscription/create', {
-      method: 'POST',
-      body: {
-        planId: selectedPlan.value.id,
-        planName: selectedPlan.value.label,
-        billingPeriod: billingPeriod.value,
-      },
-      headers: authStore.getAuthHeaders(),
-    })
+    await createSubscription()
 
-    if (!result) {
-      throw new Error('Failed to create subscription')
-    }
-
-    // Show success message
-    toast.add({
-      title: 'Plan Selected',
-      description: `You have selected the ${selectedPlan.value.label} plan!`,
-      color: 'primary',
-    })
-
-    navigateTo('/auth/setup-measurements')
+    showToast('success', 'Plan Selected', `You have selected the ${selectedPlan.value.label} plan!`)
+    await navigateTo(SETUP_MEASUREMENTS_PATH)
   } catch (error) {
-    console.error('Error:', error)
-
-    // Show error toast
-    toast.add({
-      title: 'Error',
-      description: error.message || 'Failed to set up your subscription. Please try again.',
-      color: 'red',
-    })
+    handleError(error, 'Failed to set up your subscription. Please try again.')
   } finally {
     isProcessing.value = false
   }
 }
 
-// Handle successful payment
-async function onPaymentSuccess(response) {
-  console.log('Payment successful', response)
-  toast.success('Payment successful! Redirecting to next step...')
-  // Redirect to dashboard after successful confirmation
+// Payment event handlers
+const onPaymentSuccess = async (_response: any) => {
+  showToast('success', 'Payment successful!', 'Redirecting to next step...')
   await router.push(DASHBOARD_PATH)
 }
 
-// Handle payment errors
-function onPaymentError(error) {
-  console.error('Payment failed', error)
-  toast.error('Payment failed. Please try again or choose another payment method.')
+const onPaymentError = (_error: unknown) => {
+  showToast('error', 'Payment failed.', 'Please try again.')
   isProcessing.value = false
 }
 
 // Process payment with Paystack
-async function processPaystackPayment() {
+const processPaystackPayment = async () => {
+  isProcessing.value = true
+
   try {
-    isProcessing.value = true
-
-    // Create subscription first using direct API call
-    const subscriptionData = {
-      planId: selectedPlan.value.id,
-      billingPeriod: billingPeriod.value,
-      amount: selectedPlan.value.numericPrice,
-    }
-
-    const subscription = await $fetch('/api/subscription/create', {
-      method: 'POST',
-      body: subscriptionData,
-      headers: authStore.getAuthHeaders(),
-    })
+    // Create subscription first
+    await createSubscription()
 
     // Process payment
     const paymentData = {
       amount: selectedPlan.value.numericPrice,
-      email: user.value.email,
-      metadata: {
-        subscriptionId: subscription.id,
-        planId: selectedPlan.value.id,
-        planName: selectedPlan.value.label,
-        billingPeriod: billingPeriod.value,
-      },
+      planId: selectedPlan.value.id.toString(),
+      planName: selectedPlan.value.label,
+      billingPeriod: (billingPeriod.value || 'monthly').toString(),
     }
 
-    const paymentResponse = await processPayment(paymentData)
-    console.log('Payment response:', paymentResponse)
+    await processPayment(paymentData)
 
-    // Show success message
-    toast.success('Payment successful! Continuing to next step...')
-
-    // Redirect to setup measurements
-    router.push('/auth/setup-measurements')
+    showToast('success', 'Payment successful!', 'Redirecting to next step...')
+    await router.push(SETUP_MEASUREMENTS_PATH)
   } catch (error) {
-    console.error('Error processing payment:', error)
-
-    // Show detailed error message based on error type
-    if (error.response && error.response.data && error.response.data.message) {
-      toast.error(`Payment error: ${error.response.data.message}`)
-    } else if (error.message) {
-      toast.error(`Payment error: ${error.message}`)
-    } else {
-      toast.error(
-        'There was an error processing your payment. Please try again or contact support.'
-      )
-    }
+    handleError(error, 'Payment failed. Please try again or contact support.')
 
     // Provide recovery options
-    toast.info('You can try again or select a different plan.')
+    showToast('info', 'Try Again', 'You can try again or select a different plan.')
   } finally {
     isProcessing.value = false
   }
 }
 
-// Change Plan Modal
-const showChangePlanModal = ref(false)
-
-// Toggle modal function
+// Modal management
 const toggleChangePlanModal = () => {
   showChangePlanModal.value = !showChangePlanModal.value
 }
 
-// Billing period is now handled by the PlanSelectionModal
-const _isAnnualBilling = ref(billingPeriod.value === 'annual')
-
-// Handle modal close
 const onPlanModalClose = () => {
   showChangePlanModal.value = false
 }
 
-const changePlan = () => {
-  if (!tempSelectedPlan.value) return
-
-  // Update the plan type and billing period
-  planType.value = tempSelectedPlan.value
-  const isAnnual = tempSelectedPlan.value.includes('yearly')
-  billingPeriod.value = isAnnual ? 'annual' : 'monthly'
-
-  // Update the URL query parameters without refreshing the page
+const updateUrlQuery = (newPlan: string, newBilling: string) => {
   const query = {
     ...route.query,
-    plan: planType.value,
-    billing: billingPeriod.value,
+    plan: newPlan,
+    billing: newBilling,
   }
 
-  // Use router.replace to update the URL without refreshing
   navigateTo(
     {
       path: route.path,
@@ -369,70 +378,35 @@ const changePlan = () => {
     },
     { replace: true }
   )
+}
+
+const changePlan = () => {
+  if (!tempSelectedPlan.value) return
+
+  // Update plan type - keep the current billing period
+  planType.value = tempSelectedPlan.value
+
+  // Update URL query parameters
+  updateUrlQuery(planType.value || 'growth', billingPeriod.value || 'monthly')
 
   // Get the updated selected plan
   const newPlan = subscriptionPlans.value.find(p => p.value === tempSelectedPlan.value)
+  const planLabel = newPlan ? newPlan.label : tempSelectedPlan.value
 
-  // Close the modal
+  // Close modal and show confirmation
   showChangePlanModal.value = false
-
-  // Show a confirmation message
-  toast.add({
-    title: 'Plan Changed',
-    description: `You've selected the ${newPlan ? newPlan.label : tempSelectedPlan.value} plan.`,
-    color: 'primary',
-  })
+  showToast('success', 'Plan Changed', `You've selected the ${planLabel} plan.`)
 }
-
-// Get selected temp plan
-const _getSelectedTempPlan = computed(() => {
-  if (!tempSelectedPlan.value) return monthlyPlans[0]
-  const planId = tempSelectedPlan.value.includes('-')
-  return monthlyPlans.find(p => p.value === planId) || monthlyPlans[0]
-})
 
 // Handle plan fetch errors
-const handlePlanFetchError = error => {
-  useToast().add({
-    title: 'Error',
-    description: error?.message || 'Failed to load plans. Please try again later.',
-    color: 'red',
-  })
+const handlePlanFetchError = (error: any) => {
+  handleError(error, 'Failed to load plans. Please try again later.')
 }
 
-// Watch for modal open to initialize the selected plan
+// Initialize tempSelectedPlan when modal opens
 watch(showChangePlanModal, newVal => {
   if (newVal) {
-    // Initialize tempSelectedPlan with current plan value when modal opens
     tempSelectedPlan.value = selectedPlan.value?.value || 'growth'
   }
 })
 </script>
-
-<style scoped>
-/* Hide all navigation elements */
-.subscription-confirm-page :deep(nav),
-.subscription-confirm-page :deep(header),
-.subscription-confirm-page :deep([class*='navigation']),
-.subscription-confirm-page :deep([class*='nav-']),
-.subscription-confirm-page :deep([class*='-nav']) {
-  display: none !important;
-}
-
-/* Ensure content takes full viewport */
-:global(html),
-:global(body),
-:global(#__nuxt) {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-.subscription-confirm-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-</style>

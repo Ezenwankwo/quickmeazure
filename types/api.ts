@@ -53,6 +53,7 @@ export interface ApiRequestOptions {
 export interface AuthHeaders {
   Authorization?: string
   'X-Refresh-Token'?: string
+  'Content-Type'?: string
 }
 
 /**

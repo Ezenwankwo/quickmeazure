@@ -2,6 +2,10 @@
  * Enhanced type definitions to replace 'any' types throughout the application
  */
 
+// Basic utility types
+export type UnknownRecord = Record<string, unknown>
+export type StringRecord = Record<string, string>
+
 // Error handling types
 export interface ErrorWithMessage {
   message: string

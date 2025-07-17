@@ -46,7 +46,6 @@
               size="lg"
               class="w-full"
               :state="formErrors.name ? 'error' : undefined"
-              :ui="{ icon: { trailing: { pointer: '' } } }"
             >
               <template #trailing>
                 <UIcon v-if="name" name="i-heroicons-check-circle" class="text-green-500" />
@@ -71,7 +70,6 @@
               size="lg"
               class="w-full"
               :state="formErrors.email ? 'error' : undefined"
-              :ui="{ icon: { trailing: { pointer: '' } } }"
             >
               <template #trailing>
                 <UIcon
@@ -112,97 +110,108 @@
                 />
               </template>
             </UInput>
-            <div v-if="password" class="mt-2">
-              <div class="flex items-center gap-2">
+            <div v-if="password && !isPasswordValid" class="mt-2">
+              <div class="flex justify-between items-center mb-1">
+                <span class="text-sm text-gray-600">Password strength</span>
+                <span
+                  class="text-sm"
+                  :class="{
+                    'text-red-500': passwordStrength <= 1,
+                    'text-yellow-500': passwordStrength === 2,
+                    'text-blue-500': passwordStrength === 3,
+                    'text-green-500': passwordStrength === 4,
+                  }"
+                >
+                  {{
+                    passwordStrength === 0
+                      ? 'Very weak'
+                      : passwordStrength === 1
+                        ? 'Weak'
+                        : passwordStrength === 2
+                          ? 'Fair'
+                          : passwordStrength === 3
+                            ? 'Good'
+                            : 'Strong'
+                  }}
+                </span>
+              </div>
+              <div class="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  class="h-1 flex-grow rounded-full"
-                  :class="[passwordStrength >= 1 ? 'bg-green-500' : 'bg-gray-200']"
-                />
-                <div
-                  class="h-1 flex-grow rounded-full"
-                  :class="[passwordStrength >= 2 ? 'bg-green-500' : 'bg-gray-200']"
-                />
-                <div
-                  class="h-1 flex-grow rounded-full"
-                  :class="[passwordStrength >= 3 ? 'bg-green-500' : 'bg-gray-200']"
-                />
-                <div
-                  class="h-1 flex-grow rounded-full"
-                  :class="[passwordStrength >= 4 ? 'bg-green-500' : 'bg-gray-200']"
-                />
+                  class="h-2 rounded-full transition-all duration-300"
+                  :class="{
+                    'bg-red-500': passwordStrength <= 1,
+                    'bg-yellow-500': passwordStrength === 2,
+                    'bg-blue-500': passwordStrength === 3,
+                    'bg-green-500': passwordStrength === 4,
+                  }"
+                  :style="{ width: `${(passwordStrength / 4) * 100}%` }"
+                ></div>
               </div>
 
               <!-- Password criteria checklist -->
-              <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-1">
-                <div class="flex items-center">
-                  <UIcon
-                    :name="
-                      password.length >= 8 ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'
-                    "
-                    class="mr-1.5 text-xs"
-                    :class="password.length >= 8 ? 'text-green-500' : 'text-gray-400'"
-                  />
-                  <span
-                    class="text-xs"
-                    :class="password.length >= 8 ? 'text-green-600' : 'text-gray-500'"
-                    >8+ characters</span
-                  >
-                </div>
-                <div class="flex items-center">
-                  <UIcon
-                    :name="
-                      hasUpperCase(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'
-                    "
-                    class="mr-1.5 text-xs"
-                    :class="hasUpperCase(password) ? 'text-green-500' : 'text-gray-400'"
-                  />
-                  <span
-                    class="text-xs"
-                    :class="hasUpperCase(password) ? 'text-green-600' : 'text-gray-500'"
-                    >Uppercase letter</span
-                  >
-                </div>
-                <div class="flex items-center">
-                  <UIcon
-                    :name="
-                      hasLowerCase(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'
-                    "
-                    class="mr-1.5 text-xs"
-                    :class="hasLowerCase(password) ? 'text-green-500' : 'text-gray-400'"
-                  />
-                  <span
-                    class="text-xs"
-                    :class="hasLowerCase(password) ? 'text-green-600' : 'text-gray-500'"
-                    >Lowercase letter</span
-                  >
-                </div>
-                <div class="flex items-center">
-                  <UIcon
-                    :name="
-                      hasNumber(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'
-                    "
-                    class="mr-1.5 text-xs"
-                    :class="hasNumber(password) ? 'text-green-500' : 'text-gray-400'"
-                  />
-                  <span
-                    class="text-xs"
-                    :class="hasNumber(password) ? 'text-green-600' : 'text-gray-500'"
-                    >Number</span
-                  >
-                </div>
-                <div class="flex items-center col-span-2">
-                  <UIcon
-                    :name="
-                      hasSpecialChar(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'
-                    "
-                    class="mr-1.5 text-xs"
-                    :class="hasSpecialChar(password) ? 'text-green-500' : 'text-gray-400'"
-                  />
-                  <span
-                    class="text-xs"
-                    :class="hasSpecialChar(password) ? 'text-green-600' : 'text-gray-500'"
-                    >Special character</span
-                  >
+              <div class="mt-3 space-y-1">
+                <div class="text-sm">
+                  <div class="flex items-center space-x-2">
+                    <UIcon
+                      :name="
+                        password.length >= 8 ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'
+                      "
+                      :class="password.length >= 8 ? 'text-green-600' : 'text-gray-500'"
+                      class="h-4 w-4"
+                    />
+                    <span :class="password.length >= 8 ? 'text-green-600' : 'text-gray-500'"
+                      >At least 8 characters</span
+                    >
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <UIcon
+                      :name="
+                        hasUpperCase(password) && hasLowerCase(password)
+                          ? 'i-heroicons-check-circle'
+                          : 'i-heroicons-x-circle'
+                      "
+                      :class="
+                        hasUpperCase(password) && hasLowerCase(password)
+                          ? 'text-green-600'
+                          : 'text-gray-500'
+                      "
+                      class="h-4 w-4"
+                    />
+                    <span
+                      :class="
+                        hasUpperCase(password) && hasLowerCase(password)
+                          ? 'text-green-600'
+                          : 'text-gray-500'
+                      "
+                      >Upper and lowercase letters</span
+                    >
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <UIcon
+                      :name="
+                        hasNumber(password) ? 'i-heroicons-check-circle' : 'i-heroicons-x-circle'
+                      "
+                      :class="hasNumber(password) ? 'text-green-600' : 'text-gray-500'"
+                      class="h-4 w-4"
+                    />
+                    <span :class="hasNumber(password) ? 'text-green-600' : 'text-gray-500'"
+                      >At least one number</span
+                    >
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <UIcon
+                      :name="
+                        hasSpecialChar(password)
+                          ? 'i-heroicons-check-circle'
+                          : 'i-heroicons-x-circle'
+                      "
+                      :class="hasSpecialChar(password) ? 'text-green-600' : 'text-gray-500'"
+                      class="h-4 w-4"
+                    />
+                    <span :class="hasSpecialChar(password) ? 'text-green-600' : 'text-gray-500'"
+                      >Special character</span
+                    >
+                  </div>
                 </div>
               </div>
             </div>
@@ -224,7 +233,7 @@
               required
               size="lg"
               class="w-full"
-              :color="passwordMismatchError ? 'red' : undefined"
+              :color="passwordMismatchError ? 'error' : undefined"
               :ui="{ trailing: 'pe-1' }"
             >
               <template #trailing>
@@ -300,14 +309,13 @@ size="lg" />
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ROUTE_NAMES, ROUTE_PATHS } from '~/constants/routes'
-import { useAuthStore } from '~/store/modules/auth'
 
 const router = useRouter()
 const toast = useToast()
-const authStore = useAuthStore()
 
 // Constants
 const { AUTH, LEGAL } = ROUTE_NAMES
+const CONFIRM_PATH = ROUTE_NAMES.AUTH.CONFIRM
 
 const name = ref('')
 const email = ref('')
@@ -317,7 +325,7 @@ const agreeToTerms = ref(false)
 const isLoading = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
-const formErrors = ref({})
+const formErrors = ref<Record<string, string>>({})
 
 const hasLowerCase = (str: string) => /[a-z]/.test(str)
 const hasUpperCase = (str: string) => /[A-Z]/.test(str)
@@ -340,6 +348,16 @@ const passwordMismatchError = computed(() => {
   return password.value && confirmPassword.value && password.value !== confirmPassword.value
 })
 
+const isPasswordValid = computed(() => {
+  return (
+    password.value.length >= 8 &&
+    hasUpperCase(password.value) &&
+    hasLowerCase(password.value) &&
+    hasNumber(password.value) &&
+    hasSpecialChar(password.value)
+  )
+})
+
 const isFormValid = computed(() => {
   const fieldsValid =
     !!name.value &&
@@ -348,18 +366,11 @@ const isFormValid = computed(() => {
     password.value === confirmPassword.value &&
     agreeToTerms.value
 
-  const passwordValid =
-    password.value.length >= 8 &&
-    hasUpperCase(password.value) &&
-    hasLowerCase(password.value) &&
-    hasNumber(password.value) &&
-    hasSpecialChar(password.value)
-
-  return fieldsValid && passwordValid
+  return fieldsValid && isPasswordValid.value
 })
 
 const validateForm = () => {
-  const errors = {}
+  const errors: Record<string, string> = {}
 
   if (!name.value.trim()) {
     errors.name = 'Name is required'
@@ -436,26 +447,21 @@ async function handleRegister() {
       throw new Error('No response received from server')
     }
 
-    // Handle case where response is not in expected format but still contains data
-    let responseData = response
-    if (response.success === undefined) {
-      responseData = { success: true, data: response }
-    }
-
-    if (!responseData.success || !responseData.data) {
-      throw new Error(responseData.error || 'Registration failed')
+    // The API returns { user, token } directly, not wrapped in success/data
+    if (!response.user || !response.token) {
+      throw new Error('Invalid response format from server')
     }
 
     // Show success message
     toast.add({
       title: 'Registration Successful',
-      description: 'Your account has been created. Please log in.',
+      description: 'Your account has been created. Please select your subscription plan.',
       color: 'primary',
       icon: 'i-heroicons-check-circle',
     })
 
-    // Redirect to login page
-    await router.push(LOGIN_PATH)
+    // Redirect to subscription plan confirmation page
+    await router.push(CONFIRM_PATH)
   } catch (error: any) {
     console.error('Registration error:', error)
     const errorMessage = error.data?.message || error.message || 'Registration failed'

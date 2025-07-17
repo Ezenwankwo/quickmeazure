@@ -1,11 +1,12 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { useDrizzle, tables, eq, desc } from '~/server/utils/drizzle'
+import { handleApiError } from '~/utils/error-handling'
 
 export default defineEventHandler(async event => {
   try {
     // Get request body
-    const { email, password, remember = false } = await readBody(event)
+    const { email, password } = await readBody(event)
 
     // Validate required fields
     if (!email || !password) {
@@ -76,7 +77,7 @@ export default defineEventHandler(async event => {
       }
     }
 
-    // Generate JWT token
+    // Generate JWT token with 90-day expiry for WhatsApp-like persistence
     const config = useRuntimeConfig()
     const token = jwt.sign(
       {
@@ -88,7 +89,7 @@ export default defineEventHandler(async event => {
       },
       config.jwtSecret,
       {
-        expiresIn: remember ? '30d' : '7d',
+        expiresIn: '90d',
       }
     )
 
@@ -111,11 +112,11 @@ export default defineEventHandler(async event => {
       },
     })
 
-    // Set the token as cookie for API access
+    // Set the token as cookie for API access with 90-day expiry
     setCookie(event, 'auth_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV !== 'development',
-      maxAge: remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7, // 30 days or 7 days
+      maxAge: 60 * 60 * 24 * 90, // 90 days
       path: '/',
     })
 

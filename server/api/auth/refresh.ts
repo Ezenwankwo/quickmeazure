@@ -122,7 +122,7 @@ export default defineEventHandler(async event => {
       }
     }
 
-    // Generate new JWT token with longer expiry
+    // Generate new JWT token with 90-day expiry for WhatsApp-like persistence
     const newToken = jwt.sign(
       {
         id: user.id,
@@ -133,7 +133,7 @@ export default defineEventHandler(async event => {
       },
       config.jwtSecret,
       {
-        expiresIn: '7d', // 7 days
+        expiresIn: '90d', // 90 days
       }
     )
 
@@ -142,8 +142,22 @@ export default defineEventHandler(async event => {
       id: user.id,
       email: user.email,
       name: user.name,
-      subscriptionPlan,
-      subscriptionExpiry,
+      avatar: user.avatar,
+      businessName: user.businessName,
+      phone: user.phone,
+      location: user.location,
+      bio: user.bio,
+      specializations: user.specializations,
+      services: user.services,
+      hasCompletedSetup: user.hasCompletedSetup,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      subscription: {
+        plan: subscriptionPlan,
+        status:
+          subscriptions.length > 0 && subscriptions[0].status === 'active' ? 'active' : 'inactive',
+        expiryDate: subscriptionExpiry ? new Date(subscriptionExpiry).toISOString() : null,
+      },
       token: newToken, // Include token in user object for client access
     }
 
@@ -152,11 +166,11 @@ export default defineEventHandler(async event => {
       user: userObj,
     })
 
-    // Set the token as cookie
+    // Set the token as cookie with 90-day expiry
     setCookie(event, 'auth_token', newToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV !== 'development',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 90, // 90 days
       path: '/',
     })
 

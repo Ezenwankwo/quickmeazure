@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Plan, PaymentMethod, SubscriptionStatus } from '../../types/subscription'
+import type { Plan, PaymentMethod } from '../../types/subscription'
 
 // Define missing types
 export interface BillingHistoryItem {
@@ -38,21 +38,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     canceledAt: null,
     pastDue: false,
   })
-  const subscriptionDetails = ref<{
-    active: boolean
-    planId: number | null
-    trialEndsAt: string | null
-    currentPeriodEndsAt: string | null
-    canceledAt: string | null
-    pastDue: boolean
-  }>({
-    active: false,
-    planId: null,
-    trialEndsAt: null,
-    currentPeriodEndsAt: null,
-    canceledAt: null,
-    pastDue: false,
-  })
+
   const billingHistory = ref<BillingHistoryItem[]>([])
   const paymentMethods = ref<PaymentMethod[]>([])
   const isLoading = ref(false)
@@ -77,20 +63,45 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   // Helper function to check if a feature is available in the current plan
   const hasFeature = (featureId: string): boolean => {
     if (!currentPlan.value) return false
-    return currentPlan.value.features?.includes(featureId) || false
+    return !!currentPlan.value.features?.[featureId]
   }
 
   // Check if current usage is within plan limits
   const isWithinLimits = (limitType: keyof PlanLimits, currentValue: number): boolean => {
     if (!currentPlan.value) return false
-    const limit = currentPlan.value.limits[limitType]
-    return limit === -1 || currentValue <= limit // -1 means unlimited
+    let limit: number | undefined
+
+    switch (limitType) {
+      case 'clients':
+        limit = currentPlan.value.maxClients
+        break
+      case 'styles':
+        limit = currentPlan.value.maxStyles
+        break
+      case 'storage':
+        limit = currentPlan.value.maxStorage
+        break
+      default:
+        limit = 0
+    }
+
+    return limit === -1 || (limit !== undefined && currentValue <= limit) // -1 means unlimited
   }
 
   // Get a specific limit from the current plan
   const getLimit = (limitType: keyof PlanLimits): number => {
     if (!currentPlan.value) return 0
-    return currentPlan.value.limits[limitType]
+
+    switch (limitType) {
+      case 'clients':
+        return currentPlan.value.maxClients || 0
+      case 'styles':
+        return currentPlan.value.maxStyles || 0
+      case 'storage':
+        return currentPlan.value.maxStorage || 0
+      default:
+        return 0
+    }
   }
 
   // State setters
@@ -103,7 +114,14 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     currentPlan.value = plan
   }
 
-  const setStatus = (newStatus: SubscriptionStatus) => {
+  const setStatus = (newStatus: {
+    active: boolean
+    planId: number | null
+    trialEndsAt: string | null
+    currentPeriodEndsAt: string | null
+    canceledAt: string | null
+    pastDue: boolean
+  }) => {
     status.value = newStatus
   }
 

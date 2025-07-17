@@ -1,6 +1,5 @@
 import { defineEventHandler, createError, getRequestHeaders } from 'h3'
 import jwt from 'jsonwebtoken'
-import { useUserSession } from '#imports'
 
 // Define the token payload type
 interface TokenPayload {

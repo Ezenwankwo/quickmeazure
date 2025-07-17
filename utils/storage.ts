@@ -23,6 +23,42 @@ export function getFromStorage<T>(key: string): T | null {
 }
 
 /**
+ * Get a string value from localStorage without JSON parsing
+ * Useful for JWT tokens and other string values that don't need parsing
+ * @param key The localStorage key
+ * @returns The string value or null if not found
+ */
+export function getStringFromStorage(key: string): string | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    return localStorage.getItem(key)
+  } catch (error) {
+    console.error(`Error retrieving ${key} from localStorage:`, error)
+    return null
+  }
+}
+
+/**
+ * Set a string value in localStorage without JSON stringification
+ * Useful for JWT tokens and other string values
+ * @param key The localStorage key
+ * @param value The string value to store
+ * @returns True if successful, false otherwise
+ */
+export function setStringToStorage(key: string, value: string): boolean {
+  if (typeof window === 'undefined') return false
+
+  try {
+    localStorage.setItem(key, value)
+    return true
+  } catch (error) {
+    console.error(`Error storing ${key} in localStorage:`, error)
+    return false
+  }
+}
+
+/**
  * Set a value in localStorage with proper error handling
  * @param key The localStorage key
  * @param value The value to store

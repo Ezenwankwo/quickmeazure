@@ -420,7 +420,7 @@ const refreshSubscription = async () => {
 // Payment method management - handles both adding and changing payment methods
 const addPaymentMethod = async () => {
   try {
-    await $fetch('/api/subscription/update-payment-method', {
+    await $fetch('/api/subscriptions/payment-methods', {
       method: 'POST',
       body: {
         // Pass payment method details from your form
@@ -490,7 +490,7 @@ const confirmPlanChange = async (planId: string) => {
   try {
     changePlanLoading.value = true
 
-    await $fetch('/api/subscription/change-plan', {
+    await $fetch('/api/subscriptions/change-plan', {
       method: 'POST',
       body: {
         planId,
@@ -537,7 +537,7 @@ const confirmCancelSubscription = async () => {
   try {
     cancelLoading.value = true
 
-    await $fetch('/api/subscription/cancel', {
+    await $fetch('/api/subscriptions/cancel', {
       method: 'POST',
       body: {
         // Add any parameters required by your API
@@ -568,7 +568,7 @@ const confirmCancelSubscription = async () => {
 // Reactivate subscription
 const reactivateSubscription = async () => {
   try {
-    await $fetch('/api/subscription/resume', {
+    await $fetch('/api/subscriptions/resume', {
       method: 'POST',
       body: {},
       headers: authStore.getAuthHeaders(),
